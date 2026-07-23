@@ -1,5 +1,4 @@
-# syntax=docker/dockerfile:1
-FROM node:20-alpine AS build
+FROM node:20-alpine
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -10,12 +9,6 @@ RUN npm ci
 COPY apps/backend apps/backend
 WORKDIR /app/apps/backend
 RUN npx medusa build
-
-FROM node:20-alpine AS production
-WORKDIR /app
-
-COPY --from=build /app/apps/backend/.medusa/server ./
-RUN npm install --omit=dev
 
 ENV NODE_ENV=production
 EXPOSE 9000
