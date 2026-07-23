@@ -10,6 +10,8 @@ COPY apps/backend apps/backend
 WORKDIR /app/apps/backend
 RUN npx medusa build
 
+WORKDIR /app/apps/backend/.medusa/server
+
 ENV NODE_ENV=production
 EXPOSE 9000
 
