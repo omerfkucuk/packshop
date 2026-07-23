@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/backend/package.json apps/backend/package.json
 COPY apps/storefront/package.json apps/storefront/package.json
-RUN npm ci --workspace=apps/backend --include-workspace-root
+RUN npm ci
 
 COPY apps/backend apps/backend
 WORKDIR /app/apps/backend
