@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/backend/package.json apps/backend/package.json
 COPY apps/storefront/package.json apps/storefront/package.json
-RUN --mount=type=cache,target=/root/.npm \
+RUN --mount=type=cache,id=npm-cache,target=/root/.npm \
     npm ci --workspace=apps/backend --include-workspace-root
 
 COPY apps/backend apps/backend
@@ -16,7 +16,7 @@ FROM node:20-alpine AS production
 WORKDIR /app
 
 COPY --from=build /app/apps/backend/.medusa/server ./
-RUN --mount=type=cache,target=/root/.npm \
+RUN --mount=type=cache,id=npm-cache-prod,target=/root/.npm \
     npm install --omit=dev
 
 ENV NODE_ENV=production
