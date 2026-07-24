@@ -1,31 +1,32 @@
-import { Github } from "@medusajs/icons";
-import { Button, Heading } from "@modules/common/components/ui";
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
+
 const Hero = () => {
   return (
-    <div className="h-[75vh] w-full border-b border-ui-border-base relative bg-ui-bg-subtle">
-      <div className="absolute inset-0 z-10 flex flex-col justify-center items-center text-center small:p-32 gap-6">
-        <span>
-          <Heading
-            level="h1"
-            className="text-3xl leading-10 text-ui-fg-base font-normal"
+    <div className="w-full bg-ui-bg-subtle">
+      <div className="content-container flex flex-col items-center text-center gap-6 py-24 small:py-32">
+        <h1 className="text-4xl small:text-6xl font-bold tracking-tight max-w-3xl text-ui-fg-base">
+          İhtiyacına uygun kaliteli ürünler
+        </h1>
+        <p className="text-base small:text-lg text-ui-fg-subtle max-w-xl">
+          Keşfet, seç ve sipariş ver — sevdiğin ürünler kapına gelsin.
+        </p>
+        <div className="flex items-center gap-3 mt-2">
+          <LocalizedClientLink
+            href="/store"
+            className="inline-flex items-center justify-center bg-ui-button-inverted text-white px-6 py-3 rounded-md text-sm font-semibold hover:opacity-90"
           >
-            Ecommerce Starter Template
-          </Heading>
-          <Heading
-            level="h2"
-            className="text-3xl leading-10 text-ui-fg-subtle font-normal"
+            Alışverişe Başla
+          </LocalizedClientLink>
+          <LocalizedClientLink
+            href="/store"
+            className="inline-flex items-center justify-center border border-ui-border-base text-ui-fg-base px-6 py-3 rounded-md text-sm font-semibold hover:bg-ui-bg-base-hover"
           >
-            Powered by Medusa and Next.js
-          </Heading>
-        </span>
-        <a href="https://github.com/medusajs/dtc-starter" target="_blank">
-          <Button variant="secondary">
-            View on GitHub <Github />
-          </Button>
-        </a>
+            Tüm Ürünler
+          </LocalizedClientLink>
+        </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Hero;
+export default Hero
