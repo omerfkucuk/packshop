@@ -69,8 +69,14 @@ export default async function Nav() {
         <div className="hidden small:block border-t border-ui-border-base">
           <div className="content-container flex items-center gap-x-8 h-11 txt-compact-small-plus text-ui-fg-subtle">
             <ProductsSidebar categories={categories} />
-            <LocalizedClientLink href="/store" className="hover:text-ui-fg-base uppercase tracking-wide">
-              Tüm Ürünler
+            <LocalizedClientLink href="/tasarla" className="hover:text-ui-fg-base uppercase tracking-wide">
+              Tasarla
+            </LocalizedClientLink>
+            <LocalizedClientLink href="/kesfet" className="hover:text-ui-fg-base uppercase tracking-wide">
+              Keşfet
+            </LocalizedClientLink>
+            <LocalizedClientLink href="/isini-buyut" className="hover:text-ui-fg-base uppercase tracking-wide">
+              İşini Büyüt
             </LocalizedClientLink>
           </div>
         </div>
