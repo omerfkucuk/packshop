@@ -236,13 +236,21 @@ async function completeLogin(
 // `location` to send the browser to, since it never authenticates in a single
 // request the way `emailpass` does.
 export async function loginWithGoogle() {
-  const result = await sdk.auth.login("customer", "google", {})
+  let result: Awaited<ReturnType<typeof sdk.auth.login>>
+
+  try {
+    result = await sdk.auth.login("customer", "google", {})
+  } catch {
+    // e.g. the backend doesn't have the `google` provider configured - don't
+    // let this crash the whole page, send the customer back with an error.
+    redirect("/account?error=google_auth_failed")
+  }
 
   if (typeof result === "object" && "location" in result) {
     redirect(result.location)
   }
 
-  redirect("/account")
+  redirect("/account?error=google_auth_failed")
 }
 
 // Completes the Google OAuth flow after the provider redirects back with a
