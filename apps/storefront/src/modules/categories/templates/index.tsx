@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
 
-import InteractiveLink from "@modules/common/components/interactive-link"
 import SkeletonProductGrid from "@modules/skeletons/templates/skeleton-product-grid"
 import RefinementList from "@modules/store/components/refinement-list"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
@@ -39,6 +38,8 @@ export default function CategoryTemplate({
 
   getParents(category)
 
+  const breadcrumbParents = [...parents].reverse()
+
   return (
     <div
       className="flex flex-col small:flex-row small:items-start py-6 content-container"
@@ -50,38 +51,69 @@ export default function CategoryTemplate({
         hideOptionsPicker
       />
       <div className="w-full">
-        <div className="flex flex-row mb-8 text-2xl-semi gap-4">
-          {parents &&
-            parents.map((parent) => (
-              <span key={parent.id} className="text-ui-fg-subtle">
-                <LocalizedClientLink
-                  className="mr-4 hover:text-black"
-                  href={`/categories/${parent.handle}`}
-                  data-testid="sort-by-link"
-                >
-                  {parent.name}
-                </LocalizedClientLink>
-                /
-              </span>
-            ))}
-          <h1 data-testid="category-page-title">{category.name}</h1>
-        </div>
+        <nav className="flex items-center flex-wrap gap-x-2 text-sm text-ui-fg-muted mb-3">
+          <LocalizedClientLink href="/store" className="hover:text-ui-fg-base">
+            Mağaza
+          </LocalizedClientLink>
+          {breadcrumbParents.map((parent) => (
+            <span key={parent.id} className="flex items-center gap-x-2">
+              <span>/</span>
+              <LocalizedClientLink
+                href={`/categories/${parent.handle}`}
+                className="hover:text-ui-fg-base"
+                data-testid="sort-by-link"
+              >
+                {parent.name}
+              </LocalizedClientLink>
+            </span>
+          ))}
+          <span>/</span>
+          <span className="text-ui-fg-base">{category.name}</span>
+        </nav>
+        <h1
+          className="text-3xl small:text-4xl font-bold tracking-tight text-ui-fg-base mb-3"
+          data-testid="category-page-title"
+        >
+          {category.name}
+        </h1>
         {category.description && (
-          <div className="mb-8 text-base-regular">
-            <p>{category.description}</p>
-          </div>
+          <p className="text-base-regular text-ui-fg-subtle max-w-2xl mb-8">
+            {category.description}
+          </p>
         )}
-        {category.category_children && (
-          <div className="mb-8 text-base-large">
-            <ul className="grid grid-cols-1 gap-2">
-              {category.category_children?.map((c) => (
-                <li key={c.id}>
-                  <InteractiveLink href={`/categories/${c.handle}`}>
-                    {c.name}
-                  </InteractiveLink>
-                </li>
-              ))}
-            </ul>
+        {category.category_children && category.category_children.length > 0 && (
+          <div className="mb-10">
+            <div className="grid grid-cols-2 small:grid-cols-3 medium:grid-cols-4 gap-4">
+              {category.category_children.map((c) => {
+                const thumbnail = c.products?.[0]?.thumbnail
+
+                return (
+                  <LocalizedClientLink
+                    key={c.id}
+                    href={`/categories/${c.handle}`}
+                    className="group flex flex-col gap-3"
+                  >
+                    <div className="w-full aspect-square rounded-lg overflow-hidden bg-ui-bg-subtle">
+                      {thumbnail ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={thumbnail}
+                          alt={c.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-ui-fg-subtle text-sm text-center px-2">
+                          {c.name}
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-sm font-semibold text-ui-fg-base">
+                      {c.name}
+                    </span>
+                  </LocalizedClientLink>
+                )
+              })}
+            </div>
           </div>
         )}
         <Suspense

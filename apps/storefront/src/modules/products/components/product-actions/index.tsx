@@ -177,10 +177,10 @@ export default function ProductActions({
           data-testid="add-product-button"
         >
           {!selectedVariant && !options
-            ? "Select variant"
+            ? "Seçenek seçin"
             : !inStock || !isValidVariant
-            ? "Out of stock"
-            : "Add to cart"}
+            ? "Stokta yok"
+            : "Sepete ekle"}
         </Button>
         <MobileActions
           product={product}
