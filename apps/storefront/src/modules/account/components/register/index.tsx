@@ -5,6 +5,7 @@ import Input from "@modules/common/components/input"
 import { LOGIN_VIEW } from "@modules/account/templates/login-template"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
+import GoogleContinueButton from "@modules/account/components/google-continue-button"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { signup } from "@lib/data/customer"
 
@@ -27,6 +28,12 @@ const Register = ({ setCurrentView }: Props) => {
         Create your Medusa Store Member profile, and get access to an enhanced
         shopping experience.
       </p>
+      <GoogleContinueButton />
+      <div className="w-full flex items-center gap-x-4 my-6">
+        <span className="h-px flex-1 bg-ui-border-base" />
+        <span className="text-small-regular text-ui-fg-muted">or</span>
+        <span className="h-px flex-1 bg-ui-border-base" />
+      </div>
       {message?.state === "verification_required" && (
         <div
           className="w-full mb-4 text-center text-base-regular text-ui-fg-base bg-ui-bg-subtle border border-ui-border-base rounded-rounded p-4"

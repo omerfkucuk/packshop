@@ -232,6 +232,103 @@ async function completeLogin(
   return { state: "success" }
 }
 
+// Starts the Google OAuth redirect flow. The provider always responds with a
+// `location` to send the browser to, since it never authenticates in a single
+// request the way `emailpass` does.
+export async function loginWithGoogle() {
+  const result = await sdk.auth.login("customer", "google", {})
+
+  if (typeof result === "object" && "location" in result) {
+    redirect(result.location)
+  }
+
+  redirect("/account")
+}
+
+// Completes the Google OAuth flow after the provider redirects back with a
+// `code`/`state` pair. Mirrors `completeLogin`'s tail (create the customer
+// record on first login, persist the token, transfer the cart), but the
+// customer's email/name come from the token's `user_metadata` (set by Google)
+// instead of a login form, and a brand-new identity is re-linked with
+// `sdk.auth.refresh` rather than a password re-login.
+export async function completeGoogleLogin(
+  code: string,
+  state: string
+): Promise<{ success: boolean; error?: string }> {
+  let token: string
+
+  try {
+    const result = await sdk.auth.callback("customer", "google", {
+      code,
+      state,
+    })
+
+    if (typeof result !== "string") {
+      return {
+        success: false,
+        error: "Authentication requires additional steps that aren't supported.",
+      }
+    }
+
+    token = result
+  } catch (error) {
+    return { success: false, error: String(error) }
+  }
+
+  const payload = JSON.parse(
+    Buffer.from(token.split(".")[1], "base64url").toString()
+  ) as {
+    actor_id?: string
+    user_metadata?: {
+      email?: string
+      given_name?: string
+      family_name?: string
+    }
+  }
+
+  // An empty `actor_id` means this Google identity isn't linked to a customer
+  // yet - the first time this person signs in with Google.
+  if (!payload.actor_id) {
+    const email = payload.user_metadata?.email
+
+    if (!email) {
+      return { success: false, error: "Google didn't provide an email address." }
+    }
+
+    try {
+      await sdk.store.customer.create(
+        {
+          email,
+          first_name: payload.user_metadata?.given_name,
+          last_name: payload.user_metadata?.family_name,
+        },
+        {},
+        { authorization: `Bearer ${token}` }
+      )
+
+      const refreshed = await sdk.auth.refresh({
+        authorization: `Bearer ${token}`,
+      })
+      token = refreshed.token
+    } catch (error) {
+      return { success: false, error: String(error) }
+    }
+  }
+
+  await setAuthToken(token)
+
+  const customerCacheTag = await getCacheTag("customers")
+  revalidateTag(customerCacheTag)
+
+  try {
+    await transferCart()
+  } catch (error) {
+    return { success: false, error: String(error) }
+  }
+
+  return { success: true }
+}
+
 // Confirms a customer's email using the token from the verification link.
 //
 // The confirm route doesn't require authentication, so this works even when the

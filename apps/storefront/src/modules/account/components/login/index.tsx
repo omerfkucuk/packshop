@@ -2,14 +2,16 @@ import { login } from "@lib/data/customer"
 import { LOGIN_VIEW } from "@modules/account/templates/login-template"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
+import GoogleContinueButton from "@modules/account/components/google-continue-button"
 import Input from "@modules/common/components/input"
 import { useActionState } from "react"
 
 type Props = {
   setCurrentView: (view: LOGIN_VIEW) => void
+  googleError?: string
 }
 
-const Login = ({ setCurrentView }: Props) => {
+const Login = ({ setCurrentView, googleError }: Props) => {
   const [message, formAction] = useActionState(login, null)
 
   return (
@@ -21,6 +23,13 @@ const Login = ({ setCurrentView }: Props) => {
       <p className="text-center text-base-regular text-ui-fg-base mb-8">
         Sign in to access an enhanced shopping experience.
       </p>
+      <ErrorMessage error={googleError} data-testid="google-error-message" />
+      <GoogleContinueButton />
+      <div className="w-full flex items-center gap-x-4 my-6">
+        <span className="h-px flex-1 bg-ui-border-base" />
+        <span className="text-small-regular text-ui-fg-muted">or</span>
+        <span className="h-px flex-1 bg-ui-border-base" />
+      </div>
       {message?.state === "verification_required" && (
         <div
           className="w-full mb-6 text-center text-base-regular text-ui-fg-base bg-ui-bg-subtle border border-ui-border-base rounded-rounded p-4"

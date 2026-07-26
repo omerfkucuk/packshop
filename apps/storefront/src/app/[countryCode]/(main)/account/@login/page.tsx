@@ -7,6 +7,20 @@ export const metadata: Metadata = {
   description: "Sign in to your Medusa Store account.",
 }
 
-export default function Login() {
-  return <LoginTemplate />
+export default async function Login({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>
+}) {
+  const { error } = await searchParams
+
+  return (
+    <LoginTemplate
+      googleError={
+        error === "google_auth_failed"
+          ? "Something went wrong signing in with Google. Please try again."
+          : undefined
+      }
+    />
+  )
 }
