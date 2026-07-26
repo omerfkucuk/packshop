@@ -272,6 +272,7 @@ export async function completeGoogleLogin(
     })
 
     if (typeof result !== "string") {
+      console.error("completeGoogleLogin: unexpected callback result", result)
       return {
         success: false,
         error: "Authentication requires additional steps that aren't supported.",
@@ -280,6 +281,7 @@ export async function completeGoogleLogin(
 
     token = result
   } catch (error) {
+    console.error("completeGoogleLogin: callback failed", error)
     return { success: false, error: String(error) }
   }
 
@@ -294,10 +296,16 @@ export async function completeGoogleLogin(
     }
   }
 
+  console.error("completeGoogleLogin: decoded token", {
+    actor_id: payload.actor_id,
+    email: payload.user_metadata?.email,
+  })
+
   // An empty `actor_id` means this Google identity isn't linked to a customer
   // yet - the first time this person signs in with Google.
   if (!payload.actor_id) {
     const email = payload.user_metadata?.email
+    console.error("completeGoogleLogin: no actor_id on token, creating customer", { email })
 
     if (!email) {
       return { success: false, error: "Google didn't provide an email address." }
@@ -319,6 +327,7 @@ export async function completeGoogleLogin(
       })
       token = refreshed.token
     } catch (error) {
+      console.error("completeGoogleLogin: customer create/refresh failed", error)
       return { success: false, error: String(error) }
     }
   }
@@ -331,6 +340,7 @@ export async function completeGoogleLogin(
   try {
     await transferCart()
   } catch (error) {
+    console.error("completeGoogleLogin: transferCart failed", error)
     return { success: false, error: String(error) }
   }
 
