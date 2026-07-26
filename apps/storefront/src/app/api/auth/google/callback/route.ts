@@ -24,5 +24,11 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  return NextResponse.redirect(new URL("/account", request.url))
+  // `glogin=1` tells the login page to retry the auth check client-side for a
+  // few seconds - the customer record was just created/linked, and the store
+  // API can take a moment to recognize the new session on the very next
+  // request (confirmed: an immediate check 401s, the same check ~9s later
+  // succeeds, no code change needed on that end - just don't show the
+  // customer a stale login form while it catches up).
+  return NextResponse.redirect(new URL("/account?glogin=1", request.url))
 }

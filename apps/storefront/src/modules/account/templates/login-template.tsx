@@ -10,13 +10,23 @@ export enum LOGIN_VIEW {
   REGISTER = "register",
 }
 
-const LoginTemplate = ({ googleError }: { googleError?: string }) => {
+const LoginTemplate = ({
+  googleError,
+  googleLoginPending,
+}: {
+  googleError?: string
+  googleLoginPending?: boolean
+}) => {
   const [currentView, setCurrentView] = useState("sign-in")
 
   return (
     <div className="w-full flex justify-start px-8 py-8">
       {currentView === "sign-in" ? (
-        <Login setCurrentView={setCurrentView} googleError={googleError} />
+        <Login
+          setCurrentView={setCurrentView}
+          googleError={googleError}
+          googleLoginPending={googleLoginPending}
+        />
       ) : (
         <Register setCurrentView={setCurrentView} />
       )}

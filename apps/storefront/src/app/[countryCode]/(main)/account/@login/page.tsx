@@ -10,9 +10,9 @@ export const metadata: Metadata = {
 export default async function Login({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; glogin?: string }>
 }) {
-  const { error } = await searchParams
+  const { error, glogin } = await searchParams
 
   return (
     <LoginTemplate
@@ -21,6 +21,7 @@ export default async function Login({
           ? "Something went wrong signing in with Google. Please try again."
           : undefined
       }
+      googleLoginPending={glogin === "1"}
     />
   )
 }
