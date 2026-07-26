@@ -8,7 +8,6 @@ import { revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
 import {
   getAuthHeaders,
-  getCacheOptions,
   getCacheTag,
   getCartId,
   getPendingCustomer,
@@ -50,10 +49,12 @@ export const retrieveCustomer =
       ...authHeaders,
     }
 
-    const next = {
-      ...(await getCacheOptions("customers")),
-    }
-
+    // Never cache the identity check: `revalidateTag` after login/logout can
+    // take a moment to propagate across Vercel's distributed cache, which
+    // showed up as "logged in, but the account page still shows the login
+    // form until you refresh" right after the Google OAuth redirect (a real
+    // cross-request navigation, unlike the emailpass flow's same-request
+    // Server Action re-render).
     return await sdk.client
       .fetch<{ customer: HttpTypes.StoreCustomer }>(`/store/customers/me`, {
         method: "GET",
@@ -61,8 +62,7 @@ export const retrieveCustomer =
           fields: "*orders",
         },
         headers,
-        next,
-        cache: "force-cache",
+        cache: "no-store",
       })
       .then(({ customer }) => customer)
       .catch(() => null)
