@@ -2,7 +2,6 @@ import { Metadata } from "next"
 
 import FeaturedProducts from "@modules/home/components/featured-products"
 import Hero from "@modules/home/components/hero"
-import FirstContact from "@modules/home/components/first-contact"
 import PromoCards from "@modules/home/components/promo-cards"
 import CategoryGrid from "@modules/home/components/category-grid"
 import { listCollections } from "@lib/data/collections"
@@ -34,7 +33,6 @@ export default async function Home(props: {
     <>
       <Hero />
       <PromoCards />
-      <FirstContact />
       <CategoryGrid />
       <div className="py-12">
         <ul className="flex flex-col gap-x-6">
