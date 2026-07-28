@@ -4,7 +4,6 @@ import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 type PriceRow = {
   min_quantity: number | null
   max_quantity: number | null
-  price_list_id: string | null
 }
 
 // The Store API's normal /store/products endpoint only ever computes the
@@ -26,33 +25,37 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const { data: variants } = await query.graph({
     entity: "variant",
     filters: { id: variantId },
-    fields: [
-      "id",
-      "price_set.id",
-      "price_set.prices.min_quantity",
-      "price_set.prices.max_quantity",
-      "price_set.prices.price_list_id",
-    ],
+    fields: ["id", "price_set.id"],
   })
 
-  const priceSet = variants[0]?.price_set
+  const priceSetId = variants[0]?.price_set?.id
 
-  if (!priceSet?.id) {
+  if (!priceSetId) {
     res.json({ tiers: [] })
     return
   }
 
+  const pricingModuleService = req.scope.resolve(Modules.PRICING)
+
+  // query.graph's "prices" relation only surfaces the default (non price-list)
+  // price - price-list-scoped rows are filtered out of that resolver. Going
+  // through the Pricing module directly (a plain relation load, not the
+  // storefront-facing graph resolver) returns every raw price row instead.
+  // Only quantity-tier prices ever carry a min_quantity in this store's data
+  // model (the default price never does), so that alone identifies them.
+  const priceSet = await pricingModuleService.retrievePriceSet(priceSetId, {
+    relations: ["prices"],
+  })
+
   const breakpoints = Array.from(
     new Set(
       ((priceSet.prices ?? []) as PriceRow[])
-        .filter((p) => !!p.price_list_id && p.min_quantity != null)
+        .filter((p) => p.min_quantity != null)
         .map((p) => p.min_quantity as number)
     )
   ).sort((a, b) => a - b)
 
   const quantities = [1, ...breakpoints]
-
-  const pricingModuleService = req.scope.resolve(Modules.PRICING)
 
   const tiers = await Promise.all(
     quantities.map(async (quantity) => {
