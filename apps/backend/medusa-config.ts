@@ -39,5 +39,25 @@ module.exports = defineConfig({
         providers: authProviders,
       },
     },
+    {
+      resolve: "@medusajs/medusa/file",
+      options: {
+        providers: [
+          {
+            resolve: "@medusajs/medusa/file-local",
+            id: "local",
+            options: {
+              // Defaults to http://localhost:9000/static, which only resolves
+              // on the server itself - uploaded images were unreachable from
+              // any browser. The files themselves persist via a Railway
+              // Volume mounted at the provider's default upload dir
+              // (<cwd>/static, matched by Dockerfile's WORKDIR), so this only
+              // needs to fix the public URL, not the storage path.
+              backend_url: `${process.env.MEDUSA_STATIC_BASE_URL || "https://admin.packshop.com.tr"}/static`,
+            },
+          },
+        ],
+      },
+    },
   ],
 })
