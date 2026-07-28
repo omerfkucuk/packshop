@@ -7,6 +7,7 @@ import { Button } from "@modules/common/components/ui"
 import Divider from "@modules/common/components/divider"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
 import SizeSelectModal from "@modules/products/components/product-actions/size-select-modal"
+import QuantityTiers from "@modules/products/components/product-actions/quantity-tiers"
 import { isEqual } from "lodash"
 import { useParams, usePathname, useSearchParams } from "next/navigation"
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -31,6 +32,7 @@ export const optionsAsKeymap = (
 
 export default function ProductActions({
   product,
+  region,
   disabled,
 }: ProductActionsProps) {
   const router = useRouter()
@@ -39,6 +41,7 @@ export default function ProductActions({
 
   const [options, setOptions] = useState<Record<string, string | undefined>>({})
   const [isAdding, setIsAdding] = useState(false)
+  const [quantity, setQuantity] = useState(1)
   const countryCode = useParams().countryCode as string
 
   // If there is only 1 variant, preselect the options
@@ -129,7 +132,7 @@ export default function ProductActions({
 
     await addToCart({
       variantId: selectedVariant.id,
-      quantity: 1,
+      quantity,
       countryCode,
     })
 
@@ -171,6 +174,15 @@ export default function ProductActions({
             </div>
           )}
         </div>
+
+        {selectedVariant && (
+          <QuantityTiers
+            productId={product.id}
+            variantId={selectedVariant.id}
+            currencyCode={region.currency_code}
+            onQuantityChange={setQuantity}
+          />
+        )}
 
         <ProductPrice product={product} variant={selectedVariant} />
 
