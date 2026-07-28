@@ -77,46 +77,53 @@ const QuantityTiers = ({
   }
 
   return (
-    <div className="flex flex-col gap-y-2">
-      <span className="text-sm text-ui-fg-subtle">Adet</span>
-      <div className="flex flex-col gap-y-2" data-testid="quantity-tiers">
-        {tiers.map((tier) => (
-          <button
-            key={tier.quantity}
-            type="button"
-            onClick={() => {
-              setSelectedQuantity(tier.quantity)
-              onQuantityChange(tier.quantity)
-            }}
-            className={clx(
-              "flex items-center justify-between border rounded-md px-4 h-12 text-left transition-colors",
-              {
-                "border-ui-border-interactive":
-                  selectedQuantity === tier.quantity,
-                "border-ui-border-base hover:border-ui-fg-subtle":
-                  selectedQuantity !== tier.quantity,
-              }
-            )}
-            data-testid="quantity-tier-option"
-          >
-            <span className="font-medium text-ui-fg-base">
-              {tier.quantity}
-            </span>
-            <span className="text-ui-fg-subtle text-sm">
-              {convertToLocale({
-                amount: tier.unit_price,
-                currency_code: currencyCode,
-              })}
-              /adet
-            </span>
-            <span className="font-semibold text-ui-fg-base">
-              {convertToLocale({
-                amount: tier.unit_price * tier.quantity,
-                currency_code: currencyCode,
-              })}
-            </span>
-          </button>
-        ))}
+    <div className="flex flex-col gap-y-3">
+      <span className="text-base font-semibold text-ui-fg-base">Adet</span>
+      <div
+        className="flex flex-col rounded-lg border border-ui-border-base overflow-hidden"
+        data-testid="quantity-tiers"
+      >
+        {tiers.map((tier, index) => {
+          const isSelected = selectedQuantity === tier.quantity
+
+          return (
+            <button
+              key={tier.quantity}
+              type="button"
+              onClick={() => {
+                setSelectedQuantity(tier.quantity)
+                onQuantityChange(tier.quantity)
+              }}
+              className={clx(
+                "relative flex items-center justify-between px-4 h-14 text-left transition-colors",
+                index !== 0 && "border-t border-ui-border-base",
+                isSelected
+                  ? "z-10 -my-px rounded-md border border-ui-border-interactive"
+                  : "hover:bg-ui-bg-subtle"
+              )}
+              data-testid="quantity-tier-option"
+            >
+              <span className="font-medium text-ui-fg-base">
+                {tier.quantity}
+              </span>
+              <span className="flex items-center gap-x-6">
+                <span className="text-ui-fg-subtle text-sm">
+                  {convertToLocale({
+                    amount: tier.unit_price,
+                    currency_code: currencyCode,
+                  })}
+                  /adet
+                </span>
+                <span className="font-semibold text-ui-fg-base w-24 text-right">
+                  {convertToLocale({
+                    amount: tier.unit_price * tier.quantity,
+                    currency_code: currencyCode,
+                  })}
+                </span>
+              </span>
+            </button>
+          )
+        })}
       </div>
     </div>
   )
