@@ -96,7 +96,7 @@ const QuantityTiers = ({
               }}
               className={clx(
                 "relative flex items-center justify-between h-12 px-4 text-left transition-colors",
-                index !== 0 && "border-t border-black/5",
+                !isSelected && index !== 0 && "border-t border-black/5",
                 isSelected
                   ? "z-10 -my-px rounded-[4px] border border-black bg-ui-bg-subtle"
                   : "hover:bg-ui-bg-subtle"
