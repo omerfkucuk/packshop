@@ -20,7 +20,7 @@ const SearchBar = () => {
   return (
     <form
       onSubmit={onSubmit}
-      className="hidden small:flex items-center flex-1 h-12 rounded-full bg-black/[0.04] px-4 gap-2 text-ui-fg-subtle"
+      className="hidden small:flex items-center flex-1 h-10 rounded-full bg-black/[0.04] px-4 gap-2 text-ui-fg-subtle"
     >
       <MagnifyingGlass />
       <input
