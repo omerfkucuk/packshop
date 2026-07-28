@@ -26,7 +26,7 @@ const ProductsSidebar = ({ categories }: ProductsSidebarProps) => {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="txt-compact-small-plus uppercase tracking-wide hover:text-ui-fg-base"
+        className="h-8 flex items-center rounded-lg px-3 txt-compact-small-plus uppercase tracking-wide hover:bg-black/[0.04] hover:text-ui-fg-base transition-colors"
         data-testid="nav-products-button"
       >
         Ürünler
@@ -57,24 +57,25 @@ const ProductsSidebar = ({ categories }: ProductsSidebarProps) => {
               leaveTo="-translate-x-full"
             >
               <DialogPanel className="h-full w-full max-w-xs sm:max-w-sm bg-white flex flex-col">
-                <div className="flex items-center justify-between px-6 h-16 border-b border-ui-border-base">
+                <div className="flex items-center justify-between px-6 h-16 border-b border-black/10">
                   <span className="txt-compact-large-plus uppercase tracking-wide">
                     Ürünler
                   </span>
                   <button
                     type="button"
                     onClick={() => setOpen(false)}
+                    className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-black/[0.04] transition-colors"
                     data-testid="close-products-sidebar"
                   >
                     <XMark />
                   </button>
                 </div>
 
-                <div className="flex flex-col overflow-y-auto py-6 px-6 gap-1">
+                <div className="flex flex-col overflow-y-auto py-4 px-4 gap-1">
                   <LocalizedClientLink
                     href="/store"
                     onClick={() => setOpen(false)}
-                    className="txt-compact-large-plus uppercase tracking-wide py-3 border-b border-ui-border-base hover:text-ui-fg-subtle"
+                    className="txt-compact-large-plus uppercase tracking-wide px-2 py-3 rounded-lg border-b border-black/5 hover:bg-black/[0.04] hover:text-ui-fg-subtle transition-colors"
                   >
                     Tüm Ürünler
                   </LocalizedClientLink>
@@ -84,7 +85,7 @@ const ProductsSidebar = ({ categories }: ProductsSidebarProps) => {
                       key={category.id}
                       href={`/categories/${category.handle}`}
                       onClick={() => setOpen(false)}
-                      className="txt-compact-large uppercase tracking-wide py-3 border-b border-ui-border-base hover:text-ui-fg-subtle"
+                      className="txt-compact-large uppercase tracking-wide px-2 py-3 rounded-lg border-b border-black/5 hover:bg-black/[0.04] hover:text-ui-fg-subtle transition-colors"
                     >
                       {category.name}
                     </LocalizedClientLink>

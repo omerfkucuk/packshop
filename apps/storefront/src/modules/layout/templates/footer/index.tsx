@@ -27,7 +27,7 @@ export default async function Footer() {
         </div>
       </div>
 
-      <div className="border-t border-ui-border-base w-full">
+      <div className="border-t border-black/10 w-full">
         <div className="content-container flex flex-col w-full">
           <div className="flex flex-col gap-y-6 xsmall:flex-row items-start justify-between py-40">
             <div>

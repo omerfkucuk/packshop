@@ -22,7 +22,7 @@ export default async function Nav() {
 
   return (
     <div className="sticky top-0 inset-x-0 z-50 group bg-white">
-      <header className="relative mx-auto border-b duration-200 bg-white border-ui-border-base">
+      <header className="relative mx-auto border-b duration-200 bg-white border-black/10">
         <div className="content-container flex items-center justify-between h-16 gap-x-6">
           <div className="flex items-center gap-x-4 h-full">
             <div className="h-full small:hidden">
@@ -40,10 +40,10 @@ export default async function Nav() {
 
           <SearchBar />
 
-          <div className="flex items-center gap-x-6 h-full">
+          <div className="flex items-center gap-x-2 h-full">
             <div className="hidden small:flex items-center h-full">
               <LocalizedClientLink
-                className="hover:text-ui-fg-base"
+                className="flex items-center justify-center h-10 w-10 rounded-lg hover:bg-black/[0.04] transition-colors"
                 href="/account"
                 data-testid="nav-account-link"
               >
@@ -53,7 +53,7 @@ export default async function Nav() {
             <Suspense
               fallback={
                 <LocalizedClientLink
-                  className="hover:text-ui-fg-base flex gap-2"
+                  className="hover:bg-black/[0.04] transition-colors rounded-lg h-10 px-3 flex items-center gap-2"
                   href="/cart"
                   data-testid="nav-cart-link"
                 >
@@ -66,16 +66,25 @@ export default async function Nav() {
           </div>
         </div>
 
-        <div className="hidden small:block border-t border-ui-border-base">
-          <div className="content-container flex items-center gap-x-8 h-11 txt-compact-small-plus text-ui-fg-subtle">
+        <div className="hidden small:block border-t border-black/10">
+          <div className="content-container flex items-center gap-x-1 h-12 txt-compact-small-plus text-ui-fg-subtle">
             <ProductsSidebar categories={categories} />
-            <LocalizedClientLink href="/tasarla" className="hover:text-ui-fg-base uppercase tracking-wide">
+            <LocalizedClientLink
+              href="/tasarla"
+              className="h-8 flex items-center rounded-lg px-3 uppercase tracking-wide hover:bg-black/[0.04] hover:text-ui-fg-base transition-colors"
+            >
               Tasarla
             </LocalizedClientLink>
-            <LocalizedClientLink href="/kesfet" className="hover:text-ui-fg-base uppercase tracking-wide">
+            <LocalizedClientLink
+              href="/kesfet"
+              className="h-8 flex items-center rounded-lg px-3 uppercase tracking-wide hover:bg-black/[0.04] hover:text-ui-fg-base transition-colors"
+            >
               Keşfet
             </LocalizedClientLink>
-            <LocalizedClientLink href="/isini-buyut" className="hover:text-ui-fg-base uppercase tracking-wide">
+            <LocalizedClientLink
+              href="/isini-buyut"
+              className="h-8 flex items-center rounded-lg px-3 uppercase tracking-wide hover:bg-black/[0.04] hover:text-ui-fg-base transition-colors"
+            >
               İşini Büyüt
             </LocalizedClientLink>
           </div>

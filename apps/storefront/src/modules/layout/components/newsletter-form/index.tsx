@@ -30,11 +30,11 @@ const NewsletterForm = () => {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="E-posta adresin"
-        className="h-11 flex-1 small:w-64 rounded-md border border-ui-border-base px-4 text-sm outline-none bg-white"
+        className="h-10 flex-1 small:w-64 rounded-lg border border-black/10 px-4 text-sm outline-none bg-white"
       />
       <button
         type="submit"
-        className="h-11 px-5 rounded-md bg-ui-button-inverted text-white text-sm font-semibold whitespace-nowrap hover:opacity-90"
+        className="h-10 px-5 rounded-lg bg-ui-button-inverted text-white text-sm font-semibold whitespace-nowrap hover:opacity-90 transition-opacity"
       >
         Abone ol
       </button>
