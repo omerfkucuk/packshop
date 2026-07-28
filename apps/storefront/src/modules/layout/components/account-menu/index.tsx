@@ -24,7 +24,7 @@ const AccountMenu = ({
   }
 
   return (
-    <Popover className="relative h-full">
+    <Popover className="relative h-full flex items-center">
       <PopoverButton
         className="flex items-center justify-center h-10 w-10 rounded-lg hover:bg-black/[0.04] transition-colors"
         data-testid="nav-account-link"
