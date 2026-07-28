@@ -44,13 +44,31 @@ export default function ProductActions({
   const [quantity, setQuantity] = useState(1)
   const countryCode = useParams().countryCode as string
 
-  // If there is only 1 variant, preselect the options
+  // Preselect the options: if there is only 1 variant, use it; otherwise
+  // default to the first value of each option (the topmost row in
+  // SizeSelectModal/OptionSelect) so a variant is selected on page load.
   useEffect(() => {
     if (product.variants?.length === 1) {
       const variantOptions = optionsAsKeymap(product.variants[0].options)
       setOptions(variantOptions ?? {})
+      return
     }
-  }, [product.variants])
+
+    if ((product.variants?.length ?? 0) > 1) {
+      const defaultOptions = (product.options ?? []).reduce(
+        (acc: Record<string, string>, option) => {
+          const firstValue = option.values?.[0]?.value
+          if (option.id && firstValue) {
+            acc[option.id] = firstValue
+          }
+          return acc
+        },
+        {}
+      )
+
+      setOptions(defaultOptions)
+    }
+  }, [product.variants, product.options])
 
   const selectedVariant = useMemo(() => {
     if (!product.variants || product.variants.length === 0) {
