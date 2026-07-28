@@ -85,6 +85,8 @@ const QuantityTiers = ({
       >
         {tiers.map((tier, index) => {
           const isSelected = selectedQuantity === tier.quantity
+          const isFirst = index === 0
+          const isLast = index === tiers.length - 1
 
           return (
             <button
@@ -96,9 +98,13 @@ const QuantityTiers = ({
               }}
               className={clx(
                 "relative flex items-center justify-between h-12 px-4 text-left transition-colors",
-                !isSelected && index !== 0 && "border-t border-black/5",
+                !isSelected && !isFirst && "border-t border-black/5",
                 isSelected
-                  ? "z-10 -my-px rounded-[4px] border border-black bg-ui-bg-subtle"
+                  ? clx(
+                      "z-10 rounded-[4px] border border-black bg-ui-bg-subtle",
+                      !isFirst && "-mt-px",
+                      !isLast && "-mb-px"
+                    )
                   : "hover:bg-ui-bg-subtle"
               )}
               data-testid="quantity-tier-option"
