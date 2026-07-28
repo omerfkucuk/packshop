@@ -37,14 +37,17 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
   const pricingModuleService = req.scope.resolve(Modules.PRICING)
 
-  // query.graph's "prices" relation only surfaces the default (non price-list)
-  // price - price-list-scoped rows are filtered out of that resolver. Going
-  // through the Pricing module directly (a plain relation load, not the
-  // storefront-facing graph resolver) returns every raw price row instead.
-  // Only quantity-tier prices ever carry a min_quantity in this store's data
-  // model (the default price never does), so that alone identifies them.
+  // Both query.graph's "prices" relation AND the Pricing module's own default
+  // config exclude price-list prices when loading a price set's "prices"
+  // relation - PricingModuleService.normalizePriceSetConfig() defaults
+  // `options.populateWhere: { prices: { price_list_id: null } }`. Overriding
+  // that with an empty populateWhere is what actually surfaces every price
+  // row, tiers included. Only quantity-tier prices ever carry a min_quantity
+  // in this store's data model (the default price never does), so that alone
+  // identifies them once they're visible.
   const priceSet = await pricingModuleService.retrievePriceSet(priceSetId, {
     relations: ["prices"],
+    options: { populateWhere: {} },
   })
 
   const breakpoints = Array.from(
