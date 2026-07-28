@@ -35,10 +35,10 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
         className="content-container flex flex-col small:flex-row small:items-start gap-x-12 py-6 relative"
         data-testid="product-container"
       >
-        <div className="w-full small:w-3/5 relative">
+        <div className="w-full small:w-[48%] relative">
           <ImageGallery images={images} />
         </div>
-        <div className="flex flex-col small:sticky small:top-48 small:py-0 w-full small:w-2/5 py-8 gap-y-6">
+        <div className="flex flex-col small:sticky small:top-48 small:py-0 w-full small:w-[52%] py-8 gap-y-6">
           <ProductInfo product={product} />
           <ProductOnboardingCta />
           <Suspense
