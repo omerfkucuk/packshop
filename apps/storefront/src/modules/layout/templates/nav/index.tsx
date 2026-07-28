@@ -11,7 +11,6 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import AccountMenu from "@modules/layout/components/account-menu"
 import CartButton from "@modules/layout/components/cart-button"
 import SideMenu from "@modules/layout/components/side-menu"
-import ProductsSidebar from "@modules/layout/components/products-sidebar"
 import SearchBar from "@modules/layout/components/search-bar"
 
 export default async function Nav() {
@@ -28,10 +27,13 @@ export default async function Nav() {
     <div className="sticky top-0 inset-x-0 z-50 group bg-white">
       <header className="relative mx-auto border-b duration-200 bg-white border-black/10">
         <div className="content-container flex items-center justify-between h-16 gap-x-6">
-          <div className="flex items-center gap-x-4 h-full">
-            <div className="h-full small:hidden">
-              <SideMenu regions={regions} locales={locales} currentLocale={currentLocale} />
-            </div>
+          <div className="flex items-center gap-x-2 h-full">
+            <SideMenu
+              regions={regions}
+              locales={locales}
+              currentLocale={currentLocale}
+              categories={categories}
+            />
 
             <LocalizedClientLink
               href="/"
@@ -44,8 +46,8 @@ export default async function Nav() {
 
           <SearchBar />
 
-          <div className="flex items-center gap-x-2 h-full">
-            <div className="hidden small:flex items-center h-full">
+          <div className="flex items-center gap-x-1 h-full">
+            <div className="flex items-center h-full">
               <AccountMenu customer={customer} />
             </div>
             <Suspense
@@ -61,30 +63,6 @@ export default async function Nav() {
             >
               <CartButton />
             </Suspense>
-          </div>
-        </div>
-
-        <div className="hidden small:block border-t border-black/10">
-          <div className="content-container flex items-center gap-x-1 h-12 txt-compact-small-plus text-ui-fg-subtle">
-            <ProductsSidebar categories={categories} />
-            <LocalizedClientLink
-              href="/tasarla"
-              className="h-8 flex items-center rounded-lg px-3 uppercase tracking-wide hover:bg-black/[0.04] hover:text-ui-fg-base transition-colors"
-            >
-              Tasarla
-            </LocalizedClientLink>
-            <LocalizedClientLink
-              href="/kesfet"
-              className="h-8 flex items-center rounded-lg px-3 uppercase tracking-wide hover:bg-black/[0.04] hover:text-ui-fg-base transition-colors"
-            >
-              Keşfet
-            </LocalizedClientLink>
-            <LocalizedClientLink
-              href="/isini-buyut"
-              className="h-8 flex items-center rounded-lg px-3 uppercase tracking-wide hover:bg-black/[0.04] hover:text-ui-fg-base transition-colors"
-            >
-              İşini Büyüt
-            </LocalizedClientLink>
           </div>
         </div>
       </header>

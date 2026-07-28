@@ -13,9 +13,13 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 
 type ProductsSidebarProps = {
   categories: HttpTypes.StoreProductCategory[] | null
+  triggerClassName?: string
 }
 
-const ProductsSidebar = ({ categories }: ProductsSidebarProps) => {
+const ProductsSidebar = ({
+  categories,
+  triggerClassName,
+}: ProductsSidebarProps) => {
   const [open, setOpen] = useState(false)
 
   const topLevelCategories =
@@ -26,7 +30,10 @@ const ProductsSidebar = ({ categories }: ProductsSidebarProps) => {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="h-8 flex items-center rounded-lg px-3 txt-compact-small-plus uppercase tracking-wide hover:bg-black/[0.04] hover:text-ui-fg-base transition-colors"
+        className={
+          triggerClassName ??
+          "h-8 flex items-center rounded-lg px-3 txt-compact-small-plus uppercase tracking-wide hover:bg-black/[0.04] hover:text-ui-fg-base transition-colors"
+        }
         data-testid="nav-products-button"
       >
         Ürünler

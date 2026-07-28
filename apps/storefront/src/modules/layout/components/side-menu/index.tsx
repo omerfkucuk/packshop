@@ -5,27 +5,33 @@ import useToggleState from "@lib/hooks/use-toggle-state"
 import { ArrowRightMini, XMark } from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import MenuIcon from "@modules/common/icons/menu"
 import { Text, clx } from "@modules/common/components/ui"
 import { Fragment } from "react"
 import CountrySelect from "../country-select"
 import LanguageSelect from "../language-select"
+import ProductsSidebar from "../products-sidebar"
 import { Locale } from "@lib/data/locales"
 
-
 const SideMenuItems = {
-  Home: "/",
-  Store: "/store",
-  Account: "/account",
-  Cart: "/cart",
+  Tasarla: "/tasarla",
+  Keşfet: "/kesfet",
+  "İşini Büyüt": "/isini-buyut",
 }
 
 type SideMenuProps = {
   regions: HttpTypes.StoreRegion[] | null
   locales: Locale[] | null
   currentLocale: string | null
+  categories: HttpTypes.StoreProductCategory[] | null
 }
 
-const SideMenu = ({ regions, locales, currentLocale }: SideMenuProps) => {
+const SideMenu = ({
+  regions,
+  locales,
+  currentLocale,
+  categories,
+}: SideMenuProps) => {
   const countryToggleState = useToggleState()
   const languageToggleState = useToggleState()
 
@@ -38,9 +44,9 @@ const SideMenu = ({ regions, locales, currentLocale }: SideMenuProps) => {
               <div className="relative flex h-full">
                 <Popover.Button
                   data-testid="nav-menu-button"
-                  className="relative h-full flex items-center px-2 rounded-lg transition-colors ease-out duration-200 focus:outline-none hover:bg-black/[0.04] hover:text-ui-fg-base"
+                  className="relative flex items-center justify-center h-10 w-10 rounded-lg transition-colors ease-out duration-200 focus:outline-none hover:bg-black/[0.04] hover:text-ui-fg-base"
                 >
-                  Menu
+                  <MenuIcon />
                 </Popover.Button>
               </div>
 
@@ -73,6 +79,12 @@ const SideMenu = ({ regions, locales, currentLocale }: SideMenuProps) => {
                       </button>
                     </div>
                     <ul className="flex flex-col gap-6 items-start justify-start">
+                      <li>
+                        <ProductsSidebar
+                          categories={categories}
+                          triggerClassName="text-3xl leading-10 hover:text-ui-fg-disabled"
+                        />
+                      </li>
                       {Object.entries(SideMenuItems).map(([name, href]) => {
                         return (
                           <li key={name}>
