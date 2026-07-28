@@ -77,10 +77,10 @@ const QuantityTiers = ({
   }
 
   return (
-    <div className="flex flex-col gap-y-3">
-      <span className="text-base font-semibold text-ui-fg-base">Adet</span>
+    <div className="flex flex-col gap-y-2">
+      <span className="text-sm font-medium text-ui-fg-base">Adet</span>
       <div
-        className="flex flex-col rounded-lg border border-ui-border-base overflow-hidden"
+        className="flex flex-col rounded-[3px] border border-ui-border-base overflow-hidden"
         data-testid="quantity-tiers"
       >
         {tiers.map((tier, index) => {
@@ -95,15 +95,20 @@ const QuantityTiers = ({
                 onQuantityChange(tier.quantity)
               }}
               className={clx(
-                "relative flex items-center justify-between px-4 h-14 text-left transition-colors",
-                index !== 0 && "border-t border-ui-border-base",
+                "flex items-center justify-between h-12 pl-3 pr-4 text-left border-l-4 transition-colors",
+                index !== 0 && "border-t border-t-ui-border-base",
                 isSelected
-                  ? "z-10 -my-px rounded-md border border-ui-border-interactive"
-                  : "hover:bg-ui-bg-subtle"
+                  ? "border-l-ui-border-interactive bg-ui-bg-highlight"
+                  : "border-l-transparent hover:bg-ui-bg-subtle"
               )}
               data-testid="quantity-tier-option"
             >
-              <span className="font-medium text-ui-fg-base">
+              <span
+                className={clx(
+                  "font-medium",
+                  isSelected ? "text-ui-fg-interactive-hover" : "text-ui-fg-base"
+                )}
+              >
                 {tier.quantity}
               </span>
               <span className="flex items-center gap-x-6">
@@ -114,7 +119,14 @@ const QuantityTiers = ({
                   })}
                   /adet
                 </span>
-                <span className="font-semibold text-ui-fg-base w-24 text-right">
+                <span
+                  className={clx(
+                    "font-semibold w-24 text-right",
+                    isSelected
+                      ? "text-ui-fg-interactive-hover"
+                      : "text-ui-fg-base"
+                  )}
+                >
                   {convertToLocale({
                     amount: tier.unit_price * tier.quantity,
                     currency_code: currencyCode,
