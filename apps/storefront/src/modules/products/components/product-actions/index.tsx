@@ -6,6 +6,7 @@ import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
 import Divider from "@modules/common/components/divider"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
+import SizeSelectModal from "@modules/products/components/product-actions/size-select-modal"
 import { isEqual } from "lodash"
 import { useParams, usePathname, useSearchParams } from "next/navigation"
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -19,7 +20,7 @@ type ProductActionsProps = {
   disabled?: boolean
 }
 
-const optionsAsKeymap = (
+export const optionsAsKeymap = (
   variantOptions: HttpTypes.StoreProductVariant["options"]
 ) => {
   return variantOptions?.reduce((acc: Record<string, string>, varopt) => {
@@ -144,14 +145,25 @@ export default function ProductActions({
               {(product.options || []).map((option) => {
                 return (
                   <div key={option.id}>
-                    <OptionSelect
-                      option={option}
-                      current={options[option.id]}
-                      updateOption={setOptionValue}
-                      title={option.title ?? ""}
-                      data-testid="product-options"
-                      disabled={!!disabled || isAdding}
-                    />
+                    {option.title === "Ölçü" ? (
+                      <SizeSelectModal
+                        product={product}
+                        option={option}
+                        current={options[option.id]}
+                        updateOption={setOptionValue}
+                        data-testid="product-options"
+                        disabled={!!disabled || isAdding}
+                      />
+                    ) : (
+                      <OptionSelect
+                        option={option}
+                        current={options[option.id]}
+                        updateOption={setOptionValue}
+                        title={option.title ?? ""}
+                        data-testid="product-options"
+                        disabled={!!disabled || isAdding}
+                      />
+                    )}
                   </div>
                 )
               })}
