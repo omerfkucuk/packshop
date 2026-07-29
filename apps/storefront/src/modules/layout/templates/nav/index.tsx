@@ -10,6 +10,7 @@ import { ShoppingBag } from "@medusajs/icons"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import AccountMenu from "@modules/layout/components/account-menu"
 import CartButton from "@modules/layout/components/cart-button"
+import GoogleOneTap from "@modules/layout/components/google-one-tap"
 import SideMenu from "@modules/layout/components/side-menu"
 import SearchBar from "@modules/layout/components/search-bar"
 
@@ -25,6 +26,7 @@ export default async function Nav() {
 
   return (
     <div className="sticky top-0 inset-x-0 z-50 group bg-white">
+      <GoogleOneTap customer={customer} />
       <header className="relative mx-auto border-b duration-200 bg-white border-black/10">
         <div className="content-container flex items-center justify-between h-16 gap-x-6">
           <div className="flex items-center gap-x-2 h-full">

@@ -21,6 +21,20 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.
   })
 }
 
+// Google One Tap only needs the same client ID (it's a public identifier,
+// not a secret) - no separate credentials or callback URL, since the
+// storefront gets an already-signed ID token straight from Google's script
+// instead of going through a redirect.
+if (process.env.GOOGLE_CLIENT_ID) {
+  authProviders.push({
+    resolve: "./src/modules/auth-google-one-tap",
+    id: "google-one-tap",
+    options: {
+      clientId: process.env.GOOGLE_CLIENT_ID,
+    },
+  })
+}
+
 module.exports = defineConfig({
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,

@@ -253,12 +253,80 @@ export async function loginWithGoogle() {
   redirect("/account?error=google_auth_failed")
 }
 
-// Completes the Google OAuth flow after the provider redirects back with a
-// `code`/`state` pair. Mirrors `completeLogin`'s tail (create the customer
-// record on first login, persist the token, transfer the cart), but the
-// customer's email/name come from the token's `user_metadata` (set by Google)
-// instead of a login form, and a brand-new identity is re-linked with
+// Shared tail for every Google-based login (OAuth redirect callback and One
+// Tap alike): both hand back a Medusa auth token, and from there the rest is
+// identical - create the customer record on first login (email/name come
+// from the token's `user_metadata`, set by Google, not a login form), persist
+// the token, and transfer the cart. A brand-new identity is re-linked with
 // `sdk.auth.refresh` rather than a password re-login.
+async function finishGoogleLogin(
+  token: string,
+  logPrefix: string
+): Promise<{ success: boolean; error?: string }> {
+  const payload = JSON.parse(
+    Buffer.from(token.split(".")[1], "base64url").toString()
+  ) as {
+    actor_id?: string
+    user_metadata?: {
+      email?: string
+      given_name?: string
+      family_name?: string
+    }
+  }
+
+  console.error(`${logPrefix}: decoded token`, {
+    actor_id: payload.actor_id,
+    email: payload.user_metadata?.email,
+  })
+
+  // An empty `actor_id` means this Google identity isn't linked to a customer
+  // yet - the first time this person signs in with Google.
+  if (!payload.actor_id) {
+    const email = payload.user_metadata?.email
+    console.error(`${logPrefix}: no actor_id on token, creating customer`, { email })
+
+    if (!email) {
+      return { success: false, error: "Google didn't provide an email address." }
+    }
+
+    try {
+      await sdk.store.customer.create(
+        {
+          email,
+          first_name: payload.user_metadata?.given_name,
+          last_name: payload.user_metadata?.family_name,
+        },
+        {},
+        { authorization: `Bearer ${token}` }
+      )
+
+      const refreshed = await sdk.auth.refresh({
+        authorization: `Bearer ${token}`,
+      })
+      token = refreshed.token
+    } catch (error) {
+      console.error(`${logPrefix}: customer create/refresh failed`, error)
+      return { success: false, error: String(error) }
+    }
+  }
+
+  await setAuthToken(token)
+
+  const customerCacheTag = await getCacheTag("customers")
+  revalidateTag(customerCacheTag)
+
+  try {
+    await transferCart()
+  } catch (error) {
+    console.error(`${logPrefix}: transferCart failed`, error)
+    return { success: false, error: String(error) }
+  }
+
+  return { success: true }
+}
+
+// Completes the Google OAuth flow after the provider redirects back with a
+// `code`/`state` pair.
 export async function completeGoogleLogin(
   code: string,
   state: string
@@ -285,66 +353,39 @@ export async function completeGoogleLogin(
     return { success: false, error: String(error) }
   }
 
-  const payload = JSON.parse(
-    Buffer.from(token.split(".")[1], "base64url").toString()
-  ) as {
-    actor_id?: string
-    user_metadata?: {
-      email?: string
-      given_name?: string
-      family_name?: string
-    }
-  }
+  return finishGoogleLogin(token, "completeGoogleLogin")
+}
 
-  console.error("completeGoogleLogin: decoded token", {
-    actor_id: payload.actor_id,
-    email: payload.user_metadata?.email,
-  })
-
-  // An empty `actor_id` means this Google identity isn't linked to a customer
-  // yet - the first time this person signs in with Google.
-  if (!payload.actor_id) {
-    const email = payload.user_metadata?.email
-    console.error("completeGoogleLogin: no actor_id on token, creating customer", { email })
-
-    if (!email) {
-      return { success: false, error: "Google didn't provide an email address." }
-    }
-
-    try {
-      await sdk.store.customer.create(
-        {
-          email,
-          first_name: payload.user_metadata?.given_name,
-          last_name: payload.user_metadata?.family_name,
-        },
-        {},
-        { authorization: `Bearer ${token}` }
-      )
-
-      const refreshed = await sdk.auth.refresh({
-        authorization: `Bearer ${token}`,
-      })
-      token = refreshed.token
-    } catch (error) {
-      console.error("completeGoogleLogin: customer create/refresh failed", error)
-      return { success: false, error: String(error) }
-    }
-  }
-
-  await setAuthToken(token)
-
-  const customerCacheTag = await getCacheTag("customers")
-  revalidateTag(customerCacheTag)
+// Completes a Google One Tap login: the browser already holds a signed ID
+// token from Google's own script (no redirect, no code/state pair), so this
+// just hands it to the backend's `google-one-tap` auth provider - which
+// verifies the token itself - and then runs the same post-login steps as the
+// OAuth redirect flow.
+export async function loginWithGoogleOneTap(
+  credential: string
+): Promise<{ success: boolean; error?: string }> {
+  let token: string
 
   try {
-    await transferCart()
+    const result = await sdk.auth.login("customer", "google-one-tap", {
+      id_token: credential,
+    })
+
+    if (typeof result !== "string") {
+      console.error("loginWithGoogleOneTap: unexpected login result", result)
+      return {
+        success: false,
+        error: "Authentication requires additional steps that aren't supported.",
+      }
+    }
+
+    token = result
   } catch (error) {
-    console.error("completeGoogleLogin: transferCart failed", error)
+    console.error("loginWithGoogleOneTap: login failed", error)
     return { success: false, error: String(error) }
   }
 
-  return { success: true }
+  return finishGoogleLogin(token, "loginWithGoogleOneTap")
 }
 
 // Confirms a customer's email using the token from the verification link.
