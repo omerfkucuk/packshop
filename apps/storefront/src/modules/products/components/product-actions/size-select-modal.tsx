@@ -1,11 +1,11 @@
 "use client"
 
 import { Dialog, Transition } from "@headlessui/react"
-import { Fragment, useEffect, useState } from "react"
+import { Fragment, useState } from "react"
 
 import { ChevronDownMini } from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
-import { Button, clx } from "@modules/common/components/ui"
+import { clx } from "@modules/common/components/ui"
 import X from "@modules/common/icons/x"
 import Thumbnail from "@modules/products/components/thumbnail"
 import { getProductPrice } from "@lib/util/get-product-price"
@@ -23,6 +23,8 @@ type Props = {
 
 // Packhelp-style size picker: a trigger button that opens a modal listing
 // each size next to its price, instead of a row of plain pill buttons.
+// Picking a row selects it and closes the modal immediately - no separate
+// save step.
 const SizeSelectModal = ({
   product,
   option,
@@ -32,11 +34,6 @@ const SizeSelectModal = ({
   "data-testid": dataTestId,
 }: Props) => {
   const [open, setOpen] = useState(false)
-  const [pending, setPending] = useState(current)
-
-  useEffect(() => {
-    setPending(current)
-  }, [current, open])
 
   const rows = (option.values ?? [])
     .map((v) => v.value)
@@ -52,10 +49,8 @@ const SizeSelectModal = ({
       return { value, price }
     })
 
-  const handleSave = () => {
-    if (pending) {
-      updateOption(option.id, pending)
-    }
+  const handleSelect = (value: string) => {
+    updateOption(option.id, value)
     setOpen(false)
   }
 
@@ -133,13 +128,13 @@ const SizeSelectModal = ({
                       <button
                         key={row.value}
                         type="button"
-                        onClick={() => setPending(row.value)}
+                        onClick={() => handleSelect(row.value)}
                         className={clx(
                           "flex items-center justify-between border rounded-md px-4 h-12 text-sm text-left transition-colors",
                           {
-                            "border-ui-border-interactive": pending === row.value,
+                            "border-ui-border-interactive": current === row.value,
                             "border-ui-border-base hover:border-ui-fg-subtle":
-                              pending !== row.value,
+                              current !== row.value,
                           }
                         )}
                         data-testid="size-select-modal-option"
@@ -152,16 +147,6 @@ const SizeSelectModal = ({
                         )}
                       </button>
                     ))}
-                  </div>
-                  <div className="flex items-center justify-end pt-4 mt-4 border-t border-ui-border-base">
-                    <Button
-                      onClick={handleSave}
-                      disabled={!pending}
-                      className="w-full"
-                      data-testid="size-select-modal-save"
-                    >
-                      Kaydet ve kapat
-                    </Button>
                   </div>
                 </div>
               </Dialog.Panel>
