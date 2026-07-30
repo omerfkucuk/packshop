@@ -3,6 +3,7 @@
 import { Dialog, Transition } from "@headlessui/react"
 import { Fragment, useEffect, useState } from "react"
 
+import { ChevronDownMini } from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
 import { Button, clx } from "@modules/common/components/ui"
 import X from "@modules/common/icons/x"
@@ -60,18 +61,19 @@ const SizeSelectModal = ({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        disabled={disabled}
-        className="flex items-center justify-between w-full border border-ui-border-base rounded-md px-4 h-10 text-sm hover:border-ui-border-interactive disabled:opacity-50 disabled:cursor-not-allowed"
-        data-testid={dataTestId}
-      >
-        <span className="text-ui-fg-subtle">{option.title}</span>
-        <span className="font-medium text-ui-fg-base">
-          {current ?? "Seçin"}
-        </span>
-      </button>
+      <div className="flex flex-col gap-y-2">
+        <span className="text-sm font-semibold text-black">{option.title}</span>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          disabled={disabled}
+          className="flex items-center justify-between w-full border border-black/10 rounded-lg px-4 h-10 text-sm hover:border-black/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          data-testid={dataTestId}
+        >
+          <span className="font-medium text-black">{current ?? "Seçin"}</span>
+          <ChevronDownMini className="text-black/50" />
+        </button>
+      </div>
 
       <Transition appear show={open} as={Fragment}>
         <Dialog
