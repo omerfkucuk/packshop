@@ -43,11 +43,24 @@ export default function ProductActions({
   const [isAdding, setIsAdding] = useState(false)
   const [quantity, setQuantity] = useState(1)
   const countryCode = useParams().countryCode as string
+  const didInitOptions = useRef(false)
 
   // Preselect the options: if there is only 1 variant, use it; otherwise
   // default to the first value of each option (the topmost row in
   // SizeSelectModal/OptionSelect) so a variant is selected on page load.
+  // Guarded to run once - the effect below writes the selected variant's id
+  // to the `v_id` query param, which re-triggers this Server Component with
+  // a fresh `product` object (new array/object references even though nothing
+  // about the options actually changed). Without the guard, that refetch
+  // reran this effect and stomped the selection the user had just made back
+  // to the first option, so picking a different size in the modal appeared
+  // to do nothing.
   useEffect(() => {
+    if (didInitOptions.current) {
+      return
+    }
+    didInitOptions.current = true
+
     if (product.variants?.length === 1) {
       const variantOptions = optionsAsKeymap(product.variants[0].options)
       setOptions(variantOptions ?? {})
