@@ -9,6 +9,15 @@ import { HttpTypes } from "@medusajs/types"
 
 // Google Identity Services isn't published with types; this is the sliver of
 // its API this component actually calls.
+type PromptMomentNotification = {
+  isNotDisplayed: () => boolean
+  isSkippedMoment: () => boolean
+  isDismissedMoment: () => boolean
+  getNotDisplayedReason: () => string
+  getSkippedReason: () => string
+  getDismissedReason: () => string
+}
+
 declare global {
   interface Window {
     google?: {
@@ -19,8 +28,12 @@ declare global {
             callback: (response: { credential: string }) => void
             auto_select?: boolean
             cancel_on_tap_outside?: boolean
+            use_fedcm_for_prompt?: boolean
+            itp_support?: boolean
           }) => void
-          prompt: () => void
+          prompt: (
+            momentListener?: (notification: PromptMomentNotification) => void
+          ) => void
         }
       }
     }
@@ -44,9 +57,15 @@ const GoogleOneTap = ({
 
   const handleCredential = useCallback(
     async (response: { credential: string }) => {
-      const result = await loginWithGoogleOneTap(response.credential)
-      if (result.success) {
-        router.refresh()
+      try {
+        const result = await loginWithGoogleOneTap(response.credential)
+        if (result.success) {
+          router.refresh()
+        } else {
+          console.error("Google One Tap login failed:", result.error)
+        }
+      } catch (error) {
+        console.error("Google One Tap login threw:", error)
       }
     },
     [router]
@@ -63,8 +82,27 @@ const GoogleOneTap = ({
       callback: handleCredential,
       auto_select: false,
       cancel_on_tap_outside: true,
+      // Chrome requires One Tap to go through FedCM (Federated Credential
+      // Management) now - without this the prompt can render but silently
+      // fail to hand back a credential on account selection.
+      use_fedcm_for_prompt: true,
+      itp_support: true,
     })
-    window.google.accounts.id.prompt()
+
+    // The moment listener isn't needed for the happy path, but without it
+    // a suppressed/skipped prompt (e.g. Google's own cooldown after a
+    // previous dismissal) fails completely silently - this at least surfaces
+    // *why* in the console instead of just "nothing happened".
+    window.google.accounts.id.prompt((notification) => {
+      if (notification.isNotDisplayed()) {
+        console.log(
+          "Google One Tap not displayed:",
+          notification.getNotDisplayedReason()
+        )
+      } else if (notification.isSkippedMoment()) {
+        console.log("Google One Tap skipped:", notification.getSkippedReason())
+      }
+    })
   }, [handleCredential])
 
   if (customer || !GOOGLE_CLIENT_ID) {
