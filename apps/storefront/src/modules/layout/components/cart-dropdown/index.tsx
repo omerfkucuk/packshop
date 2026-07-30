@@ -90,7 +90,7 @@ const CartDropdown = ({
             <span className="relative inline-flex">
               <ShoppingBag />
               {totalItems > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-ui-fg-base text-white text-[10px] leading-none">
+                <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-[#0E8345] text-white text-[10px] leading-none">
                   {totalItems}
                 </span>
               )}
