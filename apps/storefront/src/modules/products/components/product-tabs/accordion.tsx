@@ -1,3 +1,4 @@
+import { ChevronDownMini } from "@medusajs/icons"
 import { Text, clx } from "@modules/common/components/ui"
 import * as AccordionPrimitive from "@radix-ui/react-accordion"
 import React from "react"
@@ -47,7 +48,7 @@ const Item: React.FC<AccordionItemProps> = ({
     <AccordionPrimitive.Item
       {...props}
       className={clx(
-        "border-ui-border-base group border-t last:mb-0 last:border-b",
+        "border-black/10 group border-t last:mb-0 last:border-b",
         "py-3",
         className
       )}
@@ -56,7 +57,7 @@ const Item: React.FC<AccordionItemProps> = ({
         <div className="flex flex-col">
           <div className="flex w-full items-center justify-between">
             <div className="flex items-center gap-4">
-              <Text className="text-ui-fg-subtle text-sm">{title}</Text>
+              <Text className="font-semibold text-black text-sm">{title}</Text>
             </div>
             <AccordionPrimitive.Trigger>
               {customTrigger || <MorphingTrigger />}
@@ -88,11 +89,8 @@ Accordion.Item = Item
 
 const MorphingTrigger = () => {
   return (
-    <div className="text-ui-fg-base hover:bg-ui-bg-base-hover active:bg-ui-bg-base-hover active:text-ui-fg-interactive focus:border-ui-border-interactive disabled:text-ui-fg-disabled bg-transparent disabled:bg-transparent rounded-rounded group relative p-[6px]">
-      <div className="h-5 w-5">
-        <span className="bg-ui-fg-base rounded-circle group-radix-state-open:rotate-90 absolute inset-y-[31.75%] left-[48%] right-1/2 w-[1.5px] duration-300" />
-        <span className="bg-ui-fg-base rounded-circle group-radix-state-open:rotate-90 group-radix-state-open:left-1/2 group-radix-state-open:right-1/2 absolute inset-x-[31.75%] top-[48%] bottom-1/2 h-[1.5px] duration-300" />
-      </div>
+    <div className="flex h-7 w-7 items-center justify-center rounded-lg text-black/60 transition-transform duration-150 group-radix-state-open:rotate-180">
+      <ChevronDownMini />
     </div>
   )
 }

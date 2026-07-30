@@ -51,8 +51,8 @@ export default function CategoryTemplate({
         hideOptionsPicker
       />
       <div className="w-full">
-        <nav className="flex items-center flex-wrap gap-x-2 text-sm text-ui-fg-muted mb-3">
-          <LocalizedClientLink href="/store" className="hover:text-ui-fg-base">
+        <nav className="flex items-center flex-wrap gap-x-2 text-sm text-black/50 mb-3">
+          <LocalizedClientLink href="/store" className="hover:text-black">
             Mağaza
           </LocalizedClientLink>
           {breadcrumbParents.map((parent) => (
@@ -60,7 +60,7 @@ export default function CategoryTemplate({
               <span>/</span>
               <LocalizedClientLink
                 href={`/categories/${parent.handle}`}
-                className="hover:text-ui-fg-base"
+                className="hover:text-black"
                 data-testid="sort-by-link"
               >
                 {parent.name}
@@ -68,16 +68,16 @@ export default function CategoryTemplate({
             </span>
           ))}
           <span>/</span>
-          <span className="text-ui-fg-base">{category.name}</span>
+          <span className="text-black">{category.name}</span>
         </nav>
         <h1
-          className="text-3xl small:text-4xl font-bold tracking-tight text-ui-fg-base mb-3"
+          className="text-3xl small:text-4xl font-bold tracking-tight text-black mb-3"
           data-testid="category-page-title"
         >
           {category.name}
         </h1>
         {category.description && (
-          <p className="text-base-regular text-ui-fg-subtle max-w-2xl mb-8">
+          <p className="text-base text-black/60 max-w-2xl mb-8">
             {category.description}
           </p>
         )}
@@ -91,23 +91,23 @@ export default function CategoryTemplate({
                   <LocalizedClientLink
                     key={c.id}
                     href={`/categories/${c.handle}`}
-                    className="group flex flex-col gap-3"
+                    className="group flex flex-col gap-3 rounded-lg p-2 -m-2 transition-colors hover:bg-black/[0.04]"
                   >
-                    <div className="w-full aspect-square rounded-lg overflow-hidden bg-ui-bg-subtle">
+                    <div className="w-full aspect-square rounded-lg overflow-hidden border border-black/10 bg-black/[0.02]">
                       {thumbnail ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={thumbnail}
                           alt={c.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-ui-fg-subtle text-sm text-center px-2">
+                        <div className="w-full h-full flex items-center justify-center text-black/40 text-sm text-center px-2">
                           {c.name}
                         </div>
                       )}
                     </div>
-                    <span className="text-sm font-semibold text-ui-fg-base">
+                    <span className="text-sm font-semibold text-black">
                       {c.name}
                     </span>
                   </LocalizedClientLink>

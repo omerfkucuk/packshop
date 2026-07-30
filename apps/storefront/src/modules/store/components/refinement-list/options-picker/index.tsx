@@ -56,10 +56,8 @@ const OptionsPicker = ({
 
   return (
     <div className="flex flex-col gap-y-4">
-      <div className="flex items-center justify-between px-1">
-        <span className="txt-compact-small-plus text-ui-fg-subtle">
-          Seçenekler
-        </span>
+      <div className="flex items-center justify-between px-3">
+        <span className="text-sm font-semibold text-black">Seçenekler</span>
       </div>
       <Accordion.Root
         type="multiple"
@@ -104,18 +102,18 @@ const OptionsPicker = ({
               className="overflow-hidden"
             >
               <Accordion.Header>
-                <Accordion.Trigger className="flex w-full items-center justify-between py-3 text-left">
+                <Accordion.Trigger className="flex w-full items-center justify-between px-3 py-2 rounded-lg text-left transition-colors hover:bg-black/[0.04]">
                   <div className="flex items-center gap-2">
-                    <span className="txt-compact-small-plus text-ui-fg-base">
+                    <span className="text-sm text-black">
                       {option.title || "Seçenek"}
                     </span>
-                    <span className="txt-compact-small-plus text-ui-fg-muted">
+                    <span className="text-sm text-black/50">
                       ({selectedCount})
                     </span>
                   </div>
                   <span
                     className={clsx(
-                      "flex h-7 w-7 items-center justify-center text-ui-fg-muted transition-transform duration-150",
+                      "flex h-7 w-7 items-center justify-center text-black/50 transition-transform duration-150",
                       {
                         "rotate-180": isOpen,
                       }
@@ -125,7 +123,7 @@ const OptionsPicker = ({
                   </span>
                 </Accordion.Trigger>
               </Accordion.Header>
-              <Accordion.Content className="pb-4 pt-1">
+              <Accordion.Content className="px-3 pb-4 pt-1">
                 <div className="flex flex-wrap gap-2">
                   {values.map((value) => {
                     const isSelected = selectedValueIds.includes(value.id)
@@ -135,11 +133,10 @@ const OptionsPicker = ({
                         key={value.id}
                         onClick={() => toggleValue(value.id)}
                         className={clsx(
-                          "border-ui-border-base border text-small-regular h-10 rounded-rounded px-3 flex items-center transition-colors duration-150",
+                          "border border-black/10 text-sm h-10 rounded-lg px-3 flex items-center transition-colors duration-150",
                           {
-                            "border-ui-border-interactive text-ui-fg-base":
-                              isSelected,
-                            "text-ui-fg-muted hover:text-ui-fg-base":
+                            "border-black text-black": isSelected,
+                            "text-black/60 hover:border-black/20 hover:text-black":
                               !isSelected,
                           }
                         )}

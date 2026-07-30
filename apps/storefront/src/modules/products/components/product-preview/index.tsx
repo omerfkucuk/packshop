@@ -38,7 +38,7 @@ export default async function ProductPreview({
         />
         <div className="flex flex-col gap-y-1 mt-4">
           <Text
-            className="font-semibold text-ui-fg-base"
+            className="font-semibold text-black"
             data-testid="product-title"
           >
             {product.title}
