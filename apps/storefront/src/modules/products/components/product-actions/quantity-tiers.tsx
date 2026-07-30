@@ -78,9 +78,9 @@ const QuantityTiers = ({
 
   return (
     <div className="flex flex-col gap-y-2">
-      <span className="text-sm font-medium text-ui-fg-base">Adet</span>
+      <span className="text-sm font-semibold text-black">Adet</span>
       <div
-        className="flex flex-col rounded-none border border-black/10 overflow-hidden"
+        className="flex flex-col rounded-lg border border-black/10 overflow-hidden"
         data-testid="quantity-tiers"
       >
         {tiers.map((tier, index) => {
@@ -101,26 +101,24 @@ const QuantityTiers = ({
                 !isSelected && !isFirst && "border-t border-black/5",
                 isSelected
                   ? clx(
-                      "z-10 rounded-[4px] border border-black bg-ui-bg-subtle",
+                      "z-10 rounded-lg border border-black bg-black/[0.02]",
                       !isFirst && "-mt-px",
                       !isLast && "-mb-px"
                     )
-                  : "hover:bg-ui-bg-subtle"
+                  : "hover:bg-black/[0.04]"
               )}
               data-testid="quantity-tier-option"
             >
-              <span className="font-medium text-ui-fg-base">
-                {tier.quantity}
-              </span>
+              <span className="font-medium text-black">{tier.quantity}</span>
               <span className="flex items-center gap-x-6">
-                <span className="text-ui-fg-subtle text-sm">
+                <span className="text-black/50 text-sm">
                   {convertToLocale({
                     amount: tier.unit_price,
                     currency_code: currencyCode,
                   })}
                   /adet
                 </span>
-                <span className="font-semibold text-ui-fg-base w-24 text-right">
+                <span className="font-semibold text-black w-24 text-right">
                   {convertToLocale({
                     amount: tier.unit_price * tier.quantity,
                     currency_code: currencyCode,
