@@ -18,10 +18,7 @@ import LanguageSelect from "../language-select"
 import { Locale } from "@lib/data/locales"
 
 const SideMenuItems = {
-  Tasarla: "/tasarla",
   "Marka Merkezi": "/marka-merkezi",
-  Keşfet: "/kesfet",
-  "İşini Büyüt": "/isini-buyut",
 }
 
 type SideMenuProps = {
