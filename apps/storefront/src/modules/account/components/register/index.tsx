@@ -21,46 +21,46 @@ const Register = ({ setCurrentView }: Props) => {
       className="max-w-sm flex flex-col items-center"
       data-testid="register-page"
     >
-      <h1 className="text-large-semi uppercase mb-6">
-        Become a Medusa Store Member
+      <h1 className="text-2xl font-bold tracking-tight text-black mb-6">
+        Hesap oluşturun
       </h1>
-      <p className="text-center text-base-regular text-ui-fg-base mb-4">
-        Create your Medusa Store Member profile, and get access to an enhanced
-        shopping experience.
+      <p className="text-center text-base text-black/70 mb-4">
+        Packshop&apos;ta hesap oluşturun ve alışverişe hemen başlayın.
       </p>
       <GoogleContinueButton />
       <div className="w-full flex items-center gap-x-4 my-6">
-        <span className="h-px flex-1 bg-ui-border-base" />
-        <span className="text-small-regular text-ui-fg-muted">or</span>
-        <span className="h-px flex-1 bg-ui-border-base" />
+        <span className="h-px flex-1 bg-black/10" />
+        <span className="text-sm text-black/40">veya</span>
+        <span className="h-px flex-1 bg-black/10" />
       </div>
       {message?.state === "verification_required" && (
         <div
-          className="w-full mb-4 text-center text-base-regular text-ui-fg-base bg-ui-bg-subtle border border-ui-border-base rounded-rounded p-4"
+          className="w-full mb-4 text-center text-base text-black bg-black/[0.02] border border-black/10 rounded-lg p-4"
           data-testid="register-verification-message"
         >
-          We sent a verification link to <strong>{message.email}</strong>.
-          Please check your inbox to verify your email, then sign in.
+          <strong>{message.email}</strong> adresine bir doğrulama bağlantısı
+          gönderdik. Gelen kutunuzu kontrol edip e-postanızı doğruladıktan
+          sonra giriş yapabilirsiniz.
         </div>
       )}
       <form className="w-full flex flex-col" action={formAction}>
         <div className="flex flex-col w-full gap-y-2">
           <Input
-            label="First name"
+            label="Ad"
             name="first_name"
             required
             autoComplete="given-name"
             data-testid="first-name-input"
           />
           <Input
-            label="Last name"
+            label="Soyad"
             name="last_name"
             required
             autoComplete="family-name"
             data-testid="last-name-input"
           />
           <Input
-            label="Email"
+            label="E-posta"
             name="email"
             required
             type="email"
@@ -68,14 +68,14 @@ const Register = ({ setCurrentView }: Props) => {
             data-testid="email-input"
           />
           <Input
-            label="Phone"
+            label="Telefon"
             name="phone"
             type="tel"
             autoComplete="tel"
             data-testid="phone-input"
           />
           <Input
-            label="Password"
+            label="Şifre"
             name="password"
             required
             type="password"
@@ -87,34 +87,34 @@ const Register = ({ setCurrentView }: Props) => {
           error={message?.state === "error" ? message.error : null}
           data-testid="register-error"
         />
-        <span className="text-center text-ui-fg-base text-small-regular mt-6">
-          By creating an account, you agree to Medusa Store&apos;s{" "}
+        <span className="text-center text-black/70 text-sm mt-6">
+          Hesap oluşturarak Packshop&apos;un{" "}
           <LocalizedClientLink
             href="/content/privacy-policy"
             className="underline"
           >
-            Privacy Policy
+            Gizlilik Politikası
           </LocalizedClientLink>{" "}
-          and{" "}
+          ve{" "}
           <LocalizedClientLink
             href="/content/terms-of-use"
             className="underline"
           >
-            Terms of Use
+            Kullanım Şartları
           </LocalizedClientLink>
-          .
+          &apos;nı kabul etmiş olursunuz.
         </span>
         <SubmitButton className="w-full mt-6" data-testid="register-button">
-          Join
+          Kayıt ol
         </SubmitButton>
       </form>
-      <span className="text-center text-ui-fg-base text-small-regular mt-6">
-        Already a member?{" "}
+      <span className="text-center text-black/70 text-sm mt-6">
+        Zaten üye misiniz?{" "}
         <button
           onClick={() => setCurrentView(LOGIN_VIEW.SIGN_IN)}
           className="underline"
         >
-          Sign in
+          Giriş yapın
         </button>
         .
       </span>

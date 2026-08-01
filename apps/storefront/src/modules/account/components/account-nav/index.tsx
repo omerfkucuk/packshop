@@ -30,31 +30,31 @@ const AccountNav = ({
         {route !== `/${countryCode}/account` ? (
           <LocalizedClientLink
             href="/account"
-            className="flex items-center gap-x-2 text-small-regular py-2"
+            className="flex items-center gap-x-2 text-sm py-2 text-black"
             data-testid="account-main-link"
           >
             <>
               <ChevronDown className="transform rotate-90" />
-              <span>Account</span>
+              <span>Hesabım</span>
             </>
           </LocalizedClientLink>
         ) : (
           <>
-            <div className="text-xl-semi mb-4 px-8">
-              Hello {customer?.first_name}
+            <div className="text-xl font-bold text-black mb-4 px-8">
+              Merhaba {customer?.first_name}
             </div>
-            <div className="text-base-regular">
+            <div className="text-base text-black">
               <ul>
                 <li>
                   <LocalizedClientLink
                     href="/account/profile"
-                    className="flex items-center justify-between py-4 border-b border-gray-200 px-8"
+                    className="flex items-center justify-between py-4 border-b border-black/10 px-8 hover:bg-black/[0.04] transition-colors"
                     data-testid="profile-link"
                   >
                     <>
                       <div className="flex items-center gap-x-2">
                         <User size={20} />
-                        <span>Profile</span>
+                        <span>Profilim</span>
                       </div>
                       <ChevronDown className="transform -rotate-90" />
                     </>
@@ -63,13 +63,13 @@ const AccountNav = ({
                 <li>
                   <LocalizedClientLink
                     href="/account/addresses"
-                    className="flex items-center justify-between py-4 border-b border-gray-200 px-8"
+                    className="flex items-center justify-between py-4 border-b border-black/10 px-8 hover:bg-black/[0.04] transition-colors"
                     data-testid="addresses-link"
                   >
                     <>
                       <div className="flex items-center gap-x-2">
                         <MapPin size={20} />
-                        <span>Addresses</span>
+                        <span>Adreslerim</span>
                       </div>
                       <ChevronDown className="transform -rotate-90" />
                     </>
@@ -78,12 +78,12 @@ const AccountNav = ({
                 <li>
                   <LocalizedClientLink
                     href="/account/orders"
-                    className="flex items-center justify-between py-4 border-b border-gray-200 px-8"
+                    className="flex items-center justify-between py-4 border-b border-black/10 px-8 hover:bg-black/[0.04] transition-colors"
                     data-testid="orders-link"
                   >
                     <div className="flex items-center gap-x-2">
                       <Package size={20} />
-                      <span>Orders</span>
+                      <span>Siparişlerim</span>
                     </div>
                     <ChevronDown className="transform -rotate-90" />
                   </LocalizedClientLink>
@@ -91,13 +91,13 @@ const AccountNav = ({
                 <li>
                   <button
                     type="button"
-                    className="flex items-center justify-between py-4 border-b border-gray-200 px-8 w-full"
+                    className="flex items-center justify-between py-4 border-b border-black/10 px-8 w-full hover:bg-black/[0.04] transition-colors"
                     onClick={handleLogout}
                     data-testid="logout-button"
                   >
                     <div className="flex items-center gap-x-2">
                       <ArrowRightOnRectangle />
-                      <span>Log out</span>
+                      <span>Çıkış yap</span>
                     </div>
                     <ChevronDown className="transform -rotate-90" />
                   </button>
@@ -110,53 +110,54 @@ const AccountNav = ({
       <div className="hidden small:block" data-testid="account-nav">
         <div>
           <div className="pb-4">
-            <h3 className="text-base-semi">Account</h3>
+            <h3 className="text-sm font-semibold text-black">Hesabım</h3>
           </div>
-          <div className="text-base-regular">
-            <ul className="flex mb-0 justify-start items-start flex-col gap-y-4">
-              <li>
+          <div className="text-base">
+            <ul className="flex mb-0 justify-start items-start flex-col gap-y-1 -mx-3 w-full">
+              <li className="w-full">
                 <AccountNavLink
                   href="/account"
                   route={route!}
                   data-testid="overview-link"
                 >
-                  Overview
+                  Genel Bakış
                 </AccountNavLink>
               </li>
-              <li>
+              <li className="w-full">
                 <AccountNavLink
                   href="/account/profile"
                   route={route!}
                   data-testid="profile-link"
                 >
-                  Profile
+                  Profilim
                 </AccountNavLink>
               </li>
-              <li>
+              <li className="w-full">
                 <AccountNavLink
                   href="/account/addresses"
                   route={route!}
                   data-testid="addresses-link"
                 >
-                  Addresses
+                  Adreslerim
                 </AccountNavLink>
               </li>
-              <li>
+              <li className="w-full">
                 <AccountNavLink
                   href="/account/orders"
                   route={route!}
                   data-testid="orders-link"
                 >
-                  Orders
+                  Siparişlerim
                 </AccountNavLink>
               </li>
-              <li className="text-grey-700">
+              <li className="w-full">
                 <button
                   type="button"
                   onClick={handleLogout}
                   data-testid="logout-button"
+                  className="text-left w-full rounded-lg px-3 py-2 text-black/60 hover:bg-black/[0.04] hover:text-black transition-colors"
                 >
-                  Log out
+                  Çıkış yap
                 </button>
               </li>
             </ul>
@@ -186,9 +187,12 @@ const AccountNavLink = ({
   return (
     <LocalizedClientLink
       href={href}
-      className={clx("text-ui-fg-subtle hover:text-ui-fg-base", {
-        "text-ui-fg-base font-semibold": active,
-      })}
+      className={clx(
+        "block rounded-lg px-3 py-2 transition-colors text-black/60 hover:bg-black/[0.04] hover:text-black",
+        {
+          "text-black font-semibold": active,
+        }
+      )}
       data-testid={dataTestId}
     >
       {children}

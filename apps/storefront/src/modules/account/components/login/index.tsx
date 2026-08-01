@@ -22,47 +22,49 @@ const Login = ({ setCurrentView, googleError, googleLoginPending }: Props) => {
       data-testid="login-page"
     >
       <GoogleLoginRetry active={!!googleLoginPending} />
-      <h1 className="text-large-semi uppercase mb-6">Welcome back</h1>
+      <h1 className="text-2xl font-bold tracking-tight text-black mb-6">
+        Tekrar hoş geldiniz
+      </h1>
       {googleLoginPending && (
         <p
-          className="text-center text-base-regular text-ui-fg-base mb-8"
+          className="text-center text-base text-black mb-8"
           data-testid="google-login-pending-message"
         >
-          Finishing sign in with Google...
+          Google ile giriş tamamlanıyor...
         </p>
       )}
-      <p className="text-center text-base-regular text-ui-fg-base mb-8">
-        Sign in to access an enhanced shopping experience.
+      <p className="text-center text-base text-black/70 mb-8">
+        Hesabınıza giriş yapın.
       </p>
       <ErrorMessage error={googleError} data-testid="google-error-message" />
       <GoogleContinueButton />
       <div className="w-full flex items-center gap-x-4 my-6">
-        <span className="h-px flex-1 bg-ui-border-base" />
-        <span className="text-small-regular text-ui-fg-muted">or</span>
-        <span className="h-px flex-1 bg-ui-border-base" />
+        <span className="h-px flex-1 bg-black/10" />
+        <span className="text-sm text-black/40">veya</span>
+        <span className="h-px flex-1 bg-black/10" />
       </div>
       {message?.state === "verification_required" && (
         <div
-          className="w-full mb-6 text-center text-base-regular text-ui-fg-base bg-ui-bg-subtle border border-ui-border-base rounded-rounded p-4"
+          className="w-full mb-6 text-center text-base text-black bg-black/[0.02] border border-black/10 rounded-lg p-4"
           data-testid="login-verification-message"
         >
-          We sent a verification link to <strong>{message.email}</strong>.
-          Please verify your email, then sign in.
+          <strong>{message.email}</strong> adresine bir doğrulama bağlantısı
+          gönderdik. E-postanızı doğruladıktan sonra giriş yapabilirsiniz.
         </div>
       )}
       <form className="w-full" action={formAction}>
         <div className="flex flex-col w-full gap-y-2">
           <Input
-            label="Email"
+            label="E-posta"
             name="email"
             type="email"
-            title="Enter a valid email address."
+            title="Geçerli bir e-posta adresi girin."
             autoComplete="email"
             required
             data-testid="email-input"
           />
           <Input
-            label="Password"
+            label="Şifre"
             name="password"
             type="password"
             autoComplete="current-password"
@@ -75,17 +77,17 @@ const Login = ({ setCurrentView, googleError, googleLoginPending }: Props) => {
           data-testid="login-error-message"
         />
         <SubmitButton data-testid="sign-in-button" className="w-full mt-6">
-          Sign in
+          Giriş yap
         </SubmitButton>
       </form>
-      <span className="text-center text-ui-fg-base text-small-regular mt-6">
-        Not a member?{" "}
+      <span className="text-center text-black/70 text-sm mt-6">
+        Üye değil misiniz?{" "}
         <button
           onClick={() => setCurrentView(LOGIN_VIEW.REGISTER)}
           className="underline"
           data-testid="register-button"
         >
-          Join us
+          Kayıt olun
         </button>
         .
       </span>
