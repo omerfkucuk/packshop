@@ -2,10 +2,9 @@
 
 import { useActionState, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Trash, Link as LinkIcon } from "@medusajs/icons"
+import { Trash, Link as LinkIcon, XMark } from "@medusajs/icons"
 
 import { Brand, deleteBrand, addBrand, updateBrand } from "@lib/data/brands"
-import { Heading } from "@modules/common/components/ui"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
 import Input from "@modules/common/components/input"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -46,40 +45,46 @@ const BrandForm = ({ countryCode, brand }: BrandFormProps) => {
 
   return (
     <div className="flex flex-col gap-y-8">
-      <div className="flex flex-col gap-y-2">
-        <LocalizedClientLink
-          href="/marka-merkezi"
-          className="text-sm text-black/50 hover:text-black transition-colors w-fit"
-        >
-          ← Marka Merkezi
-        </LocalizedClientLink>
+      <div className="flex flex-col gap-y-4">
         <div className="flex items-center justify-between">
-          <Heading className="text-2xl font-bold tracking-tight text-black">
+          <h1 className="text-2xl font-bold tracking-tight text-black">
             {isEdit ? "Markayı düzenle" : "Yeni marka oluştur"}
-          </Heading>
-          {isEdit && (
-            <div className="flex items-center gap-x-4">
-              <button
-                type="button"
-                className="text-sm text-black flex items-center gap-x-2"
-                onClick={copyShareLink}
-                data-testid="brand-share-button"
-              >
-                <LinkIcon />
-                {copied ? "Kopyalandı" : "Paylaş"}
-              </button>
-              <button
-                type="button"
-                className="text-sm text-black flex items-center gap-x-2"
-                onClick={removeBrand}
-                data-testid="brand-delete-button"
-              >
-                {removing ? <Spinner /> : <Trash />}
-                Sil
-              </button>
-            </div>
-          )}
+          </h1>
+          <LocalizedClientLink
+            href="/marka-merkezi"
+            className="flex items-center gap-2 text-sm text-black/50 hover:text-black transition-colors"
+            data-testid="back-to-overview-button"
+          >
+            <XMark /> Marka Merkezi&apos;ne dön
+          </LocalizedClientLink>
         </div>
+        <p className="text-base text-black/70">
+          {isEdit
+            ? "Marka kimliğini güncelle, logonu yükle ve paylaşım linkini kopyala."
+            : "Firma bilgilerini, renklerini, yazı tipini ve sosyal medya hesaplarını tek bir yerde topla."}
+        </p>
+        {isEdit && (
+          <div className="flex items-center gap-x-4">
+            <button
+              type="button"
+              className="text-sm text-black flex items-center gap-x-2"
+              onClick={copyShareLink}
+              data-testid="brand-share-button"
+            >
+              <LinkIcon />
+              {copied ? "Kopyalandı" : "Paylaş"}
+            </button>
+            <button
+              type="button"
+              className="text-sm text-black flex items-center gap-x-2"
+              onClick={removeBrand}
+              data-testid="brand-delete-button"
+            >
+              {removing ? <Spinner /> : <Trash />}
+              Sil
+            </button>
+          </div>
+        )}
       </div>
 
       {isEdit && (
@@ -177,14 +182,7 @@ const BrandForm = ({ countryCode, brand }: BrandFormProps) => {
           </div>
         )}
 
-        <div className="flex gap-3">
-          <LocalizedClientLink
-            href="/marka-merkezi"
-            className="inline-flex items-center justify-center h-10 px-4 rounded-md font-medium bg-white text-black border border-gray-200 hover:bg-gray-50 transition-colors"
-            data-testid="cancel-button"
-          >
-            Vazgeç
-          </LocalizedClientLink>
+        <div>
           <SubmitButton data-testid="save-button">Kaydet</SubmitButton>
         </div>
       </form>
