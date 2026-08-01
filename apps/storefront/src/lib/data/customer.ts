@@ -315,11 +315,15 @@ async function finishGoogleLogin(
   const customerCacheTag = await getCacheTag("customers")
   revalidateTag(customerCacheTag)
 
+  // The login itself is already done at this point (the auth cookie above is
+  // queued on the response no matter what happens next). Don't let a cart
+  // transfer failure report the whole login as failed - worst case someone's
+  // anonymous cart doesn't merge into their account, which is recoverable,
+  // versus telling them login failed when it didn't.
   try {
     await transferCart()
   } catch (error) {
     console.error(`${logPrefix}: transferCart failed`, error)
-    return { success: false, error: String(error) }
   }
 
   return { success: true }
