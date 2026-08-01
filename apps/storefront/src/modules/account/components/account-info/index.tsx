@@ -22,7 +22,7 @@ const AccountInfo = ({
   isSuccess,
   isError,
   clearState,
-  errorMessage = "An error occurred, please try again",
+  errorMessage = "Bir hata oluştu, lütfen tekrar deneyin",
   children,
   'data-testid': dataTestid
 }: AccountInfoProps) => {
@@ -42,13 +42,15 @@ const AccountInfo = ({
   }, [isSuccess, close])
 
   return (
-    <div className="text-small-regular" data-testid={dataTestid}>
+    <div className="text-sm" data-testid={dataTestid}>
       <div className="flex items-end justify-between">
-        <div className="flex flex-col">
-          <span className="uppercase text-ui-fg-base">{label}</span>
+        <div className="flex flex-col gap-y-1">
+          <span className="text-xs font-semibold text-black/50 tracking-wide">
+            {label}
+          </span>
           <div className="flex items-center flex-1 basis-0 justify-end gap-x-4">
             {typeof currentInfo === "string" ? (
-              <span className="font-semibold" data-testid="current-info">{currentInfo}</span>
+              <span className="font-semibold text-black" data-testid="current-info">{currentInfo}</span>
             ) : (
               currentInfo
             )}
@@ -63,7 +65,7 @@ const AccountInfo = ({
             data-testid="edit-button"
             data-active={state}
           >
-            {state ? "Cancel" : "Edit"}
+            {state ? "Vazgeç" : "Düzenle"}
           </Button>
         </div>
       </div>
@@ -82,7 +84,7 @@ const AccountInfo = ({
           data-testid="success-message"
         >
           <Badge className="p-2 my-4" color="green">
-            <span>{label} updated succesfully</span>
+            <span>{label} güncellendi</span>
           </Badge>
         </Disclosure.Panel>
       </Disclosure>
@@ -126,7 +128,7 @@ const AccountInfo = ({
                 type="submit"
                 data-testid="save-button"
               >
-                Save changes
+                Kaydet
               </Button>
             </div>
           </div>
