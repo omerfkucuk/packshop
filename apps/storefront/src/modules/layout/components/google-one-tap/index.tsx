@@ -1,8 +1,8 @@
 "use client"
 
 import Script from "next/script"
-import { useCallback, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { usePathname, useRouter } from "next/navigation"
 
 import { loginWithGoogleOneTap } from "@lib/data/customer"
 import { HttpTypes } from "@medusajs/types"
@@ -41,6 +41,8 @@ declare global {
 }
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+const RETRY_ATTEMPTS = 10
+const RETRY_INTERVAL_MS = 1000
 
 // Shows Google's own One Tap prompt (the small "Sign in as ___" card Google
 // renders itself, fixed to the top-right of the viewport) to anyone who
@@ -53,13 +55,43 @@ const GoogleOneTap = ({
   customer: HttpTypes.StoreCustomer | null
 }) => {
   const router = useRouter()
+  const pathname = usePathname()
   const promptedRef = useRef(false)
+  const [retrying, setRetrying] = useState(false)
+  const retryCountRef = useRef(0)
+
+  // Mirrors GoogleLoginRetry (used after the OAuth redirect flow): the store
+  // API can take a few seconds to recognize a session that was just created,
+  // so an immediate single refresh right after login can still render as
+  // "logged out". Keep refreshing for a few seconds instead of only once.
+  useEffect(() => {
+    if (!retrying) {
+      return
+    }
+    if (customer) {
+      setRetrying(false)
+      retryCountRef.current = 0
+      return
+    }
+    if (retryCountRef.current >= RETRY_ATTEMPTS) {
+      setRetrying(false)
+      return
+    }
+
+    const timeout = setTimeout(() => {
+      retryCountRef.current += 1
+      router.refresh()
+    }, RETRY_INTERVAL_MS)
+
+    return () => clearTimeout(timeout)
+  }, [retrying, customer, router])
 
   const handleCredential = useCallback(
     async (response: { credential: string }) => {
       try {
         const result = await loginWithGoogleOneTap(response.credential)
         if (result.success) {
+          setRetrying(true)
           router.refresh()
         } else {
           console.error("Google One Tap login failed:", result.error)
@@ -105,7 +137,14 @@ const GoogleOneTap = ({
     })
   }, [handleCredential])
 
-  if (customer || !GOOGLE_CLIENT_ID) {
+  // Don't run One Tap on /account - the customer is already there to sign in
+  // through the form/button, and having both Google Identity Services flows
+  // active on the same page at once caused Chrome's own FedCM account picker
+  // to surface a confusing "couldn't fetch info, click to retry" prompt on
+  // top of the plain "Continue with Google" button.
+  const isAccountPage = pathname?.includes("/account")
+
+  if (customer || !GOOGLE_CLIENT_ID || isAccountPage) {
     return null
   }
 
