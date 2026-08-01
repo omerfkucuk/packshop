@@ -2,6 +2,7 @@
 
 import { sdk } from "@lib/config"
 import { revalidateTag } from "next/cache"
+import { redirect } from "next/navigation"
 import { getAuthHeaders, getCacheTag } from "./cookies"
 
 export type Brand = {
@@ -35,6 +36,19 @@ export const listBrands = async (): Promise<Brand[]> => {
     })
     .then(({ brands }) => brands)
     .catch(() => [])
+}
+
+export const retrieveBrand = async (id: string): Promise<Brand | null> => {
+  const headers = { ...(await getAuthHeaders()) }
+
+  return sdk.client
+    .fetch<{ brand: Brand }>(`/store/brands/${id}`, {
+      method: "GET",
+      headers,
+      cache: "no-store",
+    })
+    .then(({ brand }) => brand)
+    .catch(() => null)
 }
 
 export const getSharedBrand = async (
@@ -81,6 +95,7 @@ export const addBrand = async (
   _currentState: BrandFormState,
   formData: FormData
 ): Promise<BrandFormState> => {
+  const countryCode = formData.get("countryCode") as string
   const headers = { ...(await getAuthHeaders()) }
   const body = brandFieldsFromFormData(formData)
 
@@ -88,14 +103,21 @@ export const addBrand = async (
     return { success: false, error: "Marka adı gereklidir." }
   }
 
-  return sdk.client
-    .fetch("/store/brands", { method: "POST", headers, body })
-    .then(async () => {
-      const cacheTag = await getCacheTag("customers")
-      revalidateTag(cacheTag)
-      return { success: true, error: null }
-    })
-    .catch((err) => ({ success: false, error: String(err) }))
+  let brand: Brand
+  try {
+    ;({ brand } = await sdk.client.fetch<{ brand: Brand }>("/store/brands", {
+      method: "POST",
+      headers,
+      body,
+    }))
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+
+  const cacheTag = await getCacheTag("customers")
+  revalidateTag(cacheTag)
+
+  redirect(`/${countryCode}/marka-merkezi/${brand.id}`)
 }
 
 export const updateBrand = async (
@@ -103,6 +125,7 @@ export const updateBrand = async (
   formData: FormData
 ): Promise<BrandFormState> => {
   const id = formData.get("brandId") as string
+  const countryCode = formData.get("countryCode") as string
   const headers = { ...(await getAuthHeaders()) }
   const body = brandFieldsFromFormData(formData)
 
@@ -114,14 +137,20 @@ export const updateBrand = async (
     return { success: false, error: "Marka adı gereklidir." }
   }
 
-  return sdk.client
-    .fetch(`/store/brands/${id}`, { method: "POST", headers, body })
-    .then(async () => {
-      const cacheTag = await getCacheTag("customers")
-      revalidateTag(cacheTag)
-      return { success: true, error: null }
+  try {
+    await sdk.client.fetch(`/store/brands/${id}`, {
+      method: "POST",
+      headers,
+      body,
     })
-    .catch((err) => ({ success: false, error: String(err) }))
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+
+  const cacheTag = await getCacheTag("customers")
+  revalidateTag(cacheTag)
+
+  redirect(`/${countryCode}/marka-merkezi`)
 }
 
 export const deleteBrand = async (id: string): Promise<void> => {
