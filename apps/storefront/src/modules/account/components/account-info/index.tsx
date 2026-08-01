@@ -115,7 +115,7 @@ const AccountInfo = ({
             "transition-[max-height,opacity] duration-300 ease-in-out overflow-visible",
             {
               "max-h-[1000px] opacity-100": state,
-              "max-h-0 opacity-0": !state,
+              "max-h-0 opacity-0 pointer-events-none": !state,
             }
           )}
         >
