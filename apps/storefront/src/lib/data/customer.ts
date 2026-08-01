@@ -259,9 +259,17 @@ export async function loginWithGoogle() {
 // from the token's `user_metadata`, set by Google, not a login form), persist
 // the token, and transfer the cart. A brand-new identity is re-linked with
 // `sdk.auth.refresh` rather than a password re-login.
+//
+// `tryLinkExistingCustomer` is only available to flows that hold a
+// re-verifiable credential (currently just One Tap's raw id_token) - it's
+// called when customer creation fails because this email already has an
+// account (e.g. they signed up with a password, or with the other Google
+// button before), to link this new, still-unlinked identity to that
+// existing customer instead of giving up.
 async function finishGoogleLogin(
   token: string,
-  logPrefix: string
+  logPrefix: string,
+  tryLinkExistingCustomer?: () => Promise<boolean>
 ): Promise<{ success: boolean; error?: string }> {
   const payload = JSON.parse(
     Buffer.from(token.split(".")[1], "base64url").toString()
@@ -305,8 +313,26 @@ async function finishGoogleLogin(
       })
       token = refreshed.token
     } catch (error) {
-      console.error(`${logPrefix}: customer create/refresh failed`, error)
-      return { success: false, error: String(error) }
+      const alreadyHasAccount = (error as { status?: number })?.status === 422
+      const linked =
+        alreadyHasAccount && tryLinkExistingCustomer
+          ? await tryLinkExistingCustomer()
+          : false
+
+      if (!linked) {
+        console.error(`${logPrefix}: customer create/refresh failed`, error)
+        return { success: false, error: String(error) }
+      }
+
+      try {
+        const refreshed = await sdk.auth.refresh({
+          authorization: `Bearer ${token}`,
+        })
+        token = refreshed.token
+      } catch (refreshError) {
+        console.error(`${logPrefix}: refresh after linking failed`, refreshError)
+        return { success: false, error: String(refreshError) }
+      }
     }
   }
 
@@ -389,7 +415,31 @@ export async function loginWithGoogleOneTap(
     return { success: false, error: String(error) }
   }
 
-  return finishGoogleLogin(token, "loginWithGoogleOneTap")
+  return finishGoogleLogin(token, "loginWithGoogleOneTap", () =>
+    linkExistingCustomerToGoogleOneTap(credential)
+  )
+}
+
+// Asks the backend to link this (still-unlinked) google-one-tap identity to
+// an existing customer with the same, Google-verified email - see the
+// comment on `finishGoogleLogin` for why this is needed. Re-verifies the ID
+// token server-side rather than trusting anything the client claims.
+async function linkExistingCustomerToGoogleOneTap(
+  credential: string
+): Promise<boolean> {
+  try {
+    const result = await sdk.client.fetch<{ linked: boolean }>(
+      "/store/auth/google-one-tap/link",
+      {
+        method: "POST",
+        body: { id_token: credential },
+      }
+    )
+    return result.linked
+  } catch (error) {
+    console.error("linkExistingCustomerToGoogleOneTap: request failed", error)
+    return false
+  }
 }
 
 // Confirms a customer's email using the token from the verification link.

@@ -1,6 +1,3 @@
-import { promisify } from "util"
-import jwt, { type JwtHeader } from "jsonwebtoken"
-import jwksClient, { type JwksClient } from "jwks-rsa"
 import {
   AuthenticationInput,
   AuthenticationResponse,
@@ -8,15 +5,7 @@ import {
   Logger,
 } from "@medusajs/framework/types"
 import { AbstractAuthModuleProvider, MedusaError } from "@medusajs/framework/utils"
-
-const verifyJwt = promisify(jwt.verify) as (
-  token: string,
-  getKey: (header: JwtHeader, callback: (err: Error | null, key?: string) => void) => void,
-  options: Record<string, unknown>
-) => Promise<Record<string, any> | undefined>
-
-const GOOGLE_JWKS_URI = "https://www.googleapis.com/oauth2/v3/certs"
-const GOOGLE_ISSUERS = ["https://accounts.google.com", "accounts.google.com"]
+import { verifyGoogleIdToken } from "../../utils/verify-google-id-token"
 
 type InjectedDependencies = {
   logger: Logger
@@ -38,7 +27,6 @@ class GoogleOneTapAuthService extends AbstractAuthModuleProvider {
 
   protected config_: Options
   protected logger_: Logger
-  protected jwks_: JwksClient
 
   static validateOptions(options: Options) {
     if (!options.clientId) {
@@ -51,28 +39,6 @@ class GoogleOneTapAuthService extends AbstractAuthModuleProvider {
     super(...arguments)
     this.config_ = options
     this.logger_ = logger
-    this.jwks_ = jwksClient({
-      jwksUri: GOOGLE_JWKS_URI,
-      cache: true,
-      rateLimit: true,
-    })
-  }
-
-  private getSigningKey_ = (
-    header: JwtHeader,
-    callback: (err: Error | null, key?: string) => void
-  ) => {
-    if (!header.kid) {
-      callback(new Error("ID token is missing 'kid' header"))
-      return
-    }
-    this.jwks_.getSigningKey(header.kid, (err, key) => {
-      if (err || !key) {
-        callback(err ?? new Error("Unable to resolve signing key"))
-        return
-      }
-      callback(null, key.getPublicKey())
-    })
   }
 
   async authenticate(
@@ -85,13 +51,9 @@ class GoogleOneTapAuthService extends AbstractAuthModuleProvider {
       return { success: false, error: "No id_token provided" }
     }
 
-    let payload: Record<string, any> | undefined
+    let payload
     try {
-      payload = await verifyJwt(idToken, this.getSigningKey_, {
-        algorithms: ["RS256"],
-        audience: this.config_.clientId,
-        issuer: GOOGLE_ISSUERS,
-      })
+      payload = await verifyGoogleIdToken(idToken, this.config_.clientId)
     } catch (err: any) {
       return {
         success: false,
@@ -99,17 +61,11 @@ class GoogleOneTapAuthService extends AbstractAuthModuleProvider {
       }
     }
 
-    if (!payload) {
-      return { success: false, error: "Invalid id_token" }
-    }
     if (!payload.email_verified) {
       return {
         success: false,
         error: "Email not verified, cannot proceed with authentication",
       }
-    }
-    if (!payload.sub) {
-      return { success: false, error: "id_token is missing 'sub' claim" }
     }
 
     const entity_id = payload.sub
