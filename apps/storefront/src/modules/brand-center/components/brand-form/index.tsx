@@ -2,12 +2,11 @@
 
 import { useActionState, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Trash, Link as LinkIcon, XMark } from "@medusajs/icons"
+import { Trash, Link as LinkIcon } from "@medusajs/icons"
 
 import { Brand, deleteBrand, addBrand, updateBrand } from "@lib/data/brands"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
 import Input from "@modules/common/components/input"
-import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Spinner from "@modules/common/icons/spinner"
 import ColorListInput from "../brand-card/color-list-input"
 import LogoUpload from "../brand-card/logo-upload"
@@ -46,18 +45,9 @@ const BrandForm = ({ countryCode, brand }: BrandFormProps) => {
   return (
     <div className="flex flex-col gap-y-8">
       <div className="flex flex-col gap-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight text-black">
-            {isEdit ? "Markayı düzenle" : "Yeni marka oluştur"}
-          </h1>
-          <LocalizedClientLink
-            href="/marka-merkezi"
-            className="flex items-center gap-2 text-sm text-black/50 hover:text-black transition-colors"
-            data-testid="back-to-overview-button"
-          >
-            <XMark /> Marka Merkezi&apos;ne dön
-          </LocalizedClientLink>
-        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-black">
+          {isEdit ? "Markayı düzenle" : "Yeni marka oluştur"}
+        </h1>
         <p className="text-base text-black/70">
           {isEdit
             ? "Marka kimliğini güncelle, logonu yükle ve paylaşım linkini kopyala."
@@ -183,7 +173,9 @@ const BrandForm = ({ countryCode, brand }: BrandFormProps) => {
         )}
 
         <div>
-          <SubmitButton data-testid="save-button">Kaydet</SubmitButton>
+          <SubmitButton data-testid="save-button">
+            {isEdit ? "Güncelle" : "Kaydet"}
+          </SubmitButton>
         </div>
       </form>
     </div>
