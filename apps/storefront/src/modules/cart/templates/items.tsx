@@ -18,40 +18,42 @@ const ItemsTemplate = ({ cart }: ItemsTemplateProps) => {
           Sepetim
         </h1>
       </div>
-      <Table>
-        <Table.Header className="border-t-0">
-          <Table.Row className="text-black/50 text-sm font-medium">
-            <Table.HeaderCell className="!pl-0">Ürün</Table.HeaderCell>
-            <Table.HeaderCell></Table.HeaderCell>
-            <Table.HeaderCell>Adet</Table.HeaderCell>
-            <Table.HeaderCell className="hidden small:table-cell">
-              Fiyat
-            </Table.HeaderCell>
-            <Table.HeaderCell className="!pr-0 text-right">
-              Toplam
-            </Table.HeaderCell>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {items
-            ? items
-                .sort((a, b) => {
-                  return (a.created_at ?? "") > (b.created_at ?? "") ? -1 : 1
-                })
-                .map((item) => {
-                  return (
-                    <Item
-                      key={item.id}
-                      item={item}
-                      currencyCode={cart?.currency_code}
-                    />
-                  )
-                })
-            : repeat(5).map((i) => {
-                return <SkeletonLineItem key={i} />
-              })}
-        </Table.Body>
-      </Table>
+      <div className="overflow-x-auto">
+        <Table>
+          <Table.Header className="border-t-0">
+            <Table.Row className="text-black/50 text-sm font-medium">
+              <Table.HeaderCell className="!pl-0">Ürün</Table.HeaderCell>
+              <Table.HeaderCell></Table.HeaderCell>
+              <Table.HeaderCell>Adet</Table.HeaderCell>
+              <Table.HeaderCell className="hidden small:table-cell">
+                Fiyat
+              </Table.HeaderCell>
+              <Table.HeaderCell className="!pr-0 text-right">
+                Toplam
+              </Table.HeaderCell>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
+            {items
+              ? items
+                  .sort((a, b) => {
+                    return (a.created_at ?? "") > (b.created_at ?? "") ? -1 : 1
+                  })
+                  .map((item) => {
+                    return (
+                      <Item
+                        key={item.id}
+                        item={item}
+                        currencyCode={cart?.currency_code}
+                      />
+                    )
+                  })
+              : repeat(5).map((i) => {
+                  return <SkeletonLineItem key={i} />
+                })}
+          </Table.Body>
+        </Table>
+      </div>
     </div>
   )
 }

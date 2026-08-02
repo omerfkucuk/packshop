@@ -62,9 +62,9 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
         </LocalizedClientLink>
       </Table.Cell>
 
-      <Table.Cell className="text-left">
+      <Table.Cell className="text-left max-w-[120px] small:max-w-none">
         <Text
-          className="font-medium text-black"
+          className="font-medium text-black truncate"
           data-testid="product-title"
         >
           {item.product_title}
@@ -122,7 +122,7 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
         >
           {type === "preview" && (
             <span className="flex gap-x-1 ">
-              <Text className="text-ui-fg-muted">{item.quantity}x </Text>
+              <Text className="text-black/50">{item.quantity}x </Text>
               <LineItemUnitPrice
                 item={item}
                 style="tight"
