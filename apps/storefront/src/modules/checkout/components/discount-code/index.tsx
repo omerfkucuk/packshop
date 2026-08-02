@@ -61,10 +61,10 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
             <button
               onClick={() => setIsOpen(!isOpen)}
               type="button"
-              className="txt-medium text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
+              className="text-sm text-black underline underline-offset-2 hover:no-underline"
               data-testid="add-discount-button"
             >
-              Add Promotion Code(s)
+              İndirim kodu ekle
             </button>
 
             {/* <Tooltip content="You can add multiple promotion codes">
@@ -87,7 +87,7 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
                   variant="secondary"
                   data-testid="discount-apply-button"
                 >
-                  Apply
+                  Uygula
                 </SubmitButton>
               </div>
 
@@ -102,8 +102,8 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
         {promotions.length > 0 && (
           <div className="w-full flex items-center">
             <div className="flex flex-col w-full">
-              <Heading className="txt-medium mb-2">
-                Promotion(s) applied:
+              <Heading className="text-sm font-semibold text-black mb-2">
+                Uygulanan indirim kodları:
               </Heading>
 
               {promotions.map((promotion) => {
@@ -158,7 +158,7 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
                       >
                         <Trash size={14} />
                         <span className="sr-only">
-                          Remove discount code from order
+                          İndirim kodunu kaldır
                         </span>
                       </button>
                     )}
