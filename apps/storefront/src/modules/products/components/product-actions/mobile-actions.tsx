@@ -7,6 +7,7 @@ import ChevronDown from "@modules/common/icons/chevron-down"
 import X from "@modules/common/icons/x"
 
 import { getProductPrice } from "@lib/util/get-product-price"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import OptionSelect from "./option-select"
 import { HttpTypes } from "@medusajs/types"
 import { isSimpleProduct } from "@lib/util/product"
@@ -21,6 +22,7 @@ type MobileActionsProps = {
   isAdding?: boolean
   show: boolean
   optionsDisabled: boolean
+  isCustom?: boolean
 }
 
 const MobileActions: React.FC<MobileActionsProps> = ({
@@ -33,6 +35,7 @@ const MobileActions: React.FC<MobileActionsProps> = ({
   isAdding,
   show,
   optionsDisabled,
+  isCustom,
 }) => {
   const { state, open, close } = useToggleState()
 
@@ -129,6 +132,15 @@ const MobileActions: React.FC<MobileActionsProps> = ({
                   : "Sepete ekle"}
               </Button>
             </div>
+            {isCustom && (
+              <LocalizedClientLink
+                href={`/tasarla?product=${product.handle}`}
+                className="inline-flex items-center justify-center w-full h-10 px-4 rounded-md font-medium bg-white text-black border border-gray-200 hover:bg-gray-50 transition-colors"
+                data-testid="mobile-design-button"
+              >
+                Tasarla
+              </LocalizedClientLink>
+            )}
           </div>
         </Transition>
       </div>

@@ -2,9 +2,11 @@
 
 import { addToCart } from "@lib/data/cart"
 import { useIntersection } from "@lib/hooks/use-in-view"
+import { isCustomProduct } from "@lib/util/product"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
 import Divider from "@modules/common/components/divider"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
 import SizeSelectModal from "@modules/products/components/product-actions/size-select-modal"
 import QuantityTiers from "@modules/products/components/product-actions/quantity-tiers"
@@ -151,6 +153,8 @@ export default function ProductActions({
     return false
   }, [selectedVariant])
 
+  const isCustom = isCustomProduct(product)
+
   const actionsRef = useRef<HTMLDivElement>(null)
 
   const inView = useIntersection(actionsRef, "0px")
@@ -217,26 +221,37 @@ export default function ProductActions({
 
         <ProductPrice product={product} variant={selectedVariant} />
 
-        <Button
-          onClick={handleAddToCart}
-          disabled={
-            !inStock ||
-            !selectedVariant ||
-            !!disabled ||
-            isAdding ||
-            !isValidVariant
-          }
-          variant="primary"
-          className="w-full h-10"
-          isLoading={isAdding}
-          data-testid="add-product-button"
-        >
-          {!selectedVariant && Object.keys(options).length === 0
-            ? "Seçenek seçin"
-            : !inStock || !isValidVariant
-            ? "Stokta yok"
-            : "Sepete ekle"}
-        </Button>
+        <div className={isCustom ? "grid grid-cols-2 gap-x-3" : undefined}>
+          <Button
+            onClick={handleAddToCart}
+            disabled={
+              !inStock ||
+              !selectedVariant ||
+              !!disabled ||
+              isAdding ||
+              !isValidVariant
+            }
+            variant="primary"
+            className="w-full h-10"
+            isLoading={isAdding}
+            data-testid="add-product-button"
+          >
+            {!selectedVariant && Object.keys(options).length === 0
+              ? "Seçenek seçin"
+              : !inStock || !isValidVariant
+              ? "Stokta yok"
+              : "Sepete ekle"}
+          </Button>
+          {isCustom && (
+            <LocalizedClientLink
+              href={`/tasarla?product=${product.handle}`}
+              className="inline-flex items-center justify-center w-full h-10 px-4 rounded-md font-medium bg-white text-black border border-gray-200 hover:bg-gray-50 transition-colors"
+              data-testid="design-product-button"
+            >
+              Tasarla
+            </LocalizedClientLink>
+          )}
+        </div>
         <MobileActions
           product={product}
           variant={selectedVariant}
@@ -247,6 +262,7 @@ export default function ProductActions({
           isAdding={isAdding}
           show={!inView}
           optionsDisabled={!!disabled || isAdding}
+          isCustom={isCustom}
         />
       </div>
     </>
