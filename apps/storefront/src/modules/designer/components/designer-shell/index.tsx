@@ -172,7 +172,7 @@ const DesignerShell = ({
       {/* Main row */}
       <div className="flex-1 flex min-h-0">
         {/* Icon rail */}
-        <nav className="w-20 shrink-0 border-r border-black/10 flex flex-col items-center py-4 gap-y-1 overflow-y-auto">
+        <nav className="w-24 shrink-0 border-r border-black/10 flex flex-col items-center py-4 gap-y-1 overflow-y-auto">
           {TOOLS.map((tool) => {
             const Icon = tool.icon
             const active = activeTool === tool.id
@@ -180,7 +180,7 @@ const DesignerShell = ({
               <button
                 key={tool.id}
                 onClick={() => setActiveTool(tool.id)}
-                className={`flex flex-col items-center gap-y-1 w-16 py-2 rounded-lg text-[11px] transition-colors ${
+                className={`flex flex-col items-center gap-y-1 w-20 py-2 rounded-lg text-[10px] transition-colors ${
                   active
                     ? "bg-black/[0.06] text-black font-medium"
                     : "text-black/50 hover:bg-black/[0.04] hover:text-black"
