@@ -48,7 +48,7 @@ export default async function TasarlaPage(props: Props) {
       countryCode,
       queryParams: {
         limit: 100,
-        fields: "handle,title,thumbnail,*images,*categories,+tags",
+        fields: "handle,title,thumbnail,*images,*categories,*tags",
       },
     }),
     listCategories(),
