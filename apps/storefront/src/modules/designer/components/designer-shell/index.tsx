@@ -409,56 +409,56 @@ const DesignerShell = ({
           )}
         </div>
 
-        {/* Canvas */}
-        <div className="flex-1 bg-black/[0.02] flex items-center justify-center overflow-auto p-8">
-          {image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={image}
-              alt={product?.title}
-              className="max-h-full max-w-full object-contain"
-              data-testid="designer-canvas-image"
-            />
-          ) : product ? (
-            <span className="text-sm text-black/50">Görsel bulunamadı.</span>
-          ) : (
-            <span className="text-sm text-black/50">
-              Soldan bir ürün seçerek başlayın.
-            </span>
-          )}
-        </div>
-      </div>
+        {/* Canvas + AI bar */}
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 bg-black/[0.02] flex items-center justify-center overflow-auto p-8">
+            {image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={image}
+                alt={product?.title}
+                className="max-h-full max-w-full object-contain"
+                data-testid="designer-canvas-image"
+              />
+            ) : product ? (
+              <span className="text-sm text-black/50">Görsel bulunamadı.</span>
+            ) : (
+              <span className="text-sm text-black/50">
+                Soldan bir ürün seçerek başlayın.
+              </span>
+            )}
+          </div>
 
-      {/* AI bar */}
-      <div className="shrink-0 border-t border-black/10 p-4">
-        <form
-          onSubmit={handleAiSubmit}
-          className="max-w-3xl mx-auto flex items-center gap-x-3"
-        >
-          <input
-            type="text"
-            value={aiPrompt}
-            onChange={(e) => {
-              setAiPrompt(e.target.value)
-              setAiMessage(null)
-            }}
-            placeholder={
-              selectedBrand
-                ? `${selectedBrand.brand_name} marka kitini kullanarak bir tasarım tarif et...`
-                : "Tasarımını tarif et, seçili öğeleri kullanarak senin için oluşturalım..."
-            }
-            className="flex-1 h-11 px-4 border border-black/10 rounded-lg text-sm focus:outline-none focus:border-black transition-colors"
-            data-testid="designer-ai-input"
-          />
-          <Button type="submit" className="h-11 shrink-0" data-testid="designer-ai-submit">
-            AI ile Oluştur
-          </Button>
-        </form>
-        {aiMessage && (
-          <p className="max-w-3xl mx-auto text-sm text-black/50 mt-2">
-            {aiMessage}
-          </p>
-        )}
+          {/* AI bar */}
+          <div className="shrink-0 border-t border-black/10 p-4">
+            <form
+              onSubmit={handleAiSubmit}
+              className="flex items-center gap-x-3"
+            >
+              <input
+                type="text"
+                value={aiPrompt}
+                onChange={(e) => {
+                  setAiPrompt(e.target.value)
+                  setAiMessage(null)
+                }}
+                placeholder={
+                  selectedBrand
+                    ? `${selectedBrand.brand_name} marka kitini kullanarak bir tasarım tarif et...`
+                    : "Tasarımını tarif et, seçili öğeleri kullanarak senin için oluşturalım..."
+                }
+                className="flex-1 h-11 px-4 border border-black/10 rounded-lg text-sm focus:outline-none focus:border-black transition-colors"
+                data-testid="designer-ai-input"
+              />
+              <Button type="submit" className="h-11 shrink-0" data-testid="designer-ai-submit">
+                AI ile Oluştur
+              </Button>
+            </form>
+            {aiMessage && (
+              <p className="text-sm text-black/50 mt-2">{aiMessage}</p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
