@@ -1,9 +1,11 @@
 import { Metadata } from "next"
 
 import { listProducts } from "@lib/data/products"
+import { listCategories } from "@lib/data/categories"
 import { getRegion } from "@lib/data/regions"
 import { retrieveCustomer } from "@lib/data/customer"
 import { listBrands } from "@lib/data/brands"
+import { isCustomProduct } from "@lib/util/product"
 import ComingSoon from "@modules/common/components/coming-soon"
 import DesignerShell from "@modules/designer/components/designer-shell"
 
@@ -50,6 +52,18 @@ export default async function TasarlaPage(props: Props) {
   const customer = await retrieveCustomer()
   const brands = customer ? await listBrands() : []
 
+  const [{ response }, categories] = await Promise.all([
+    listProducts({
+      countryCode,
+      queryParams: {
+        limit: 100,
+        fields: "handle,title,thumbnail,*images,*categories,+tags",
+      },
+    }),
+    listCategories(),
+  ])
+  const customProducts = response.products.filter(isCustomProduct)
+
   return (
     <DesignerShell
       product={product}
@@ -58,6 +72,8 @@ export default async function TasarlaPage(props: Props) {
       initialVariantId={variantId}
       initialQuantity={quantity ? parseInt(quantity, 10) || 1 : 1}
       brands={brands}
+      products={customProducts}
+      categories={categories}
     />
   )
 }

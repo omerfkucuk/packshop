@@ -38,6 +38,8 @@ type DesignerShellProps = {
   initialVariantId?: string
   initialQuantity: number
   brands: Brand[]
+  products: HttpTypes.StoreProduct[]
+  categories: HttpTypes.StoreProductCategory[]
 }
 
 const DesignerShell = ({
@@ -47,12 +49,15 @@ const DesignerShell = ({
   initialVariantId,
   initialQuantity,
   brands,
+  products,
+  categories,
 }: DesignerShellProps) => {
   const router = useRouter()
 
   const initialVariant = product.variants?.find((v) => v.id === initialVariantId)
 
   const [activeTool, setActiveTool] = useState<Tool>("urun")
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
   const [options, setOptions] = useState<Record<string, string | undefined>>(
     () => optionsAsKeymap(initialVariant?.options ?? null) ?? {}
   )
@@ -79,6 +84,17 @@ const DesignerShell = ({
   const displayPrice = price.variantPrice || price.cheapestPrice
 
   const image = product.images?.[0]?.url ?? product.thumbnail
+
+  const filteredProducts = activeCategoryId
+    ? products.filter((p) =>
+        p.categories?.some((c) => c.id === activeCategoryId)
+      )
+    : products
+
+  const handleSelectProduct = (handle: string | null | undefined) => {
+    if (!handle) return
+    router.push(`/${countryCode}/tasarla?product=${handle}`)
+  }
 
   const handleAddToCart = async () => {
     if (!selectedVariant?.id) return
@@ -176,8 +192,72 @@ const DesignerShell = ({
         {/* Tool panel */}
         <div className="w-80 shrink-0 border-r border-black/10 overflow-y-auto p-5">
           {activeTool === "urun" && (
-            <div className="flex flex-col gap-y-6">
+            <div className="flex flex-col gap-y-4">
               <h2 className="text-lg font-semibold text-black">Ürün</h2>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setActiveCategoryId(null)}
+                  className={`h-8 px-3 rounded-full border text-sm transition-colors ${
+                    activeCategoryId === null
+                      ? "border-black text-black"
+                      : "border-black/10 text-black/70 hover:border-black/20"
+                  }`}
+                >
+                  Tümü
+                </button>
+                {categories.map((category) => (
+                  <button
+                    key={category.id}
+                    onClick={() => setActiveCategoryId(category.id)}
+                    className={`h-8 px-3 rounded-full border text-sm transition-colors ${
+                      activeCategoryId === category.id
+                        ? "border-black text-black"
+                        : "border-black/10 text-black/70 hover:border-black/20"
+                    }`}
+                  >
+                    {category.name}
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {filteredProducts.map((p) => {
+                  const isActive = p.id === product.id
+                  const thumb = p.thumbnail ?? p.images?.[0]?.url
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => handleSelectProduct(p.handle)}
+                      className={`flex flex-col gap-y-2 p-2 rounded-lg border text-left transition-colors ${
+                        isActive
+                          ? "border-black"
+                          : "border-black/10 hover:border-black/20"
+                      }`}
+                    >
+                      <div className="aspect-square rounded-lg bg-black/[0.02] border border-black/10 overflow-hidden flex items-center justify-center">
+                        {thumb ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={thumb}
+                            alt={p.title}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-xs text-black/30">Görsel yok</span>
+                        )}
+                      </div>
+                      <span className="text-xs text-black/70 truncate">
+                        {p.title}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {activeTool === "komponent" && (
+            <div className="flex flex-col gap-y-6">
+              <h2 className="text-lg font-semibold text-black">Konfigürasyon</h2>
               {(product.options || []).map((option) => (
                 <div key={option.id} className="flex flex-col gap-y-2">
                   <span className="text-sm font-medium text-black">
@@ -301,8 +381,7 @@ const DesignerShell = ({
             </div>
           )}
 
-          {(activeTool === "komponent" ||
-            activeTool === "tema" ||
+          {(activeTool === "tema" ||
             activeTool === "yazi" ||
             activeTool === "elementler") && (
             <div className="flex flex-col gap-y-2">
