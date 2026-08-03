@@ -171,10 +171,16 @@ export default function ProductActions({
     })
 
     setIsAdding(false)
+  }
 
-    if (isCustom) {
-      router.push(`/${countryCode}/tasarla?product=${product.handle}`)
-    }
+  // Custom products skip the cart entirely for now - the design tool will
+  // add the (customized) item to the cart itself once a design is finished.
+  const handleDesign = () => {
+    if (!selectedVariant?.id) return
+
+    router.push(
+      `/${countryCode}/tasarla?product=${product.handle}&variant=${selectedVariant.id}&quantity=${quantity}`
+    )
   }
 
   return (
@@ -224,28 +230,42 @@ export default function ProductActions({
 
         <ProductPrice product={product} variant={selectedVariant} />
 
-        <Button
-          onClick={handleAddToCart}
-          disabled={
-            !inStock ||
-            !selectedVariant ||
-            !!disabled ||
-            isAdding ||
-            !isValidVariant
-          }
-          variant="primary"
-          className="w-full h-10"
-          isLoading={isAdding}
-          data-testid="add-product-button"
-        >
-          {!selectedVariant && Object.keys(options).length === 0
-            ? "Seçenek seçin"
-            : !inStock || !isValidVariant
-            ? "Stokta yok"
-            : isCustom
-            ? "Sepete Ekle ve Tasarla"
-            : "Sepete ekle"}
-        </Button>
+        {isCustom ? (
+          <Button
+            onClick={handleDesign}
+            disabled={!selectedVariant || !!disabled || !isValidVariant}
+            variant="primary"
+            className="w-full h-10"
+            data-testid="design-product-button"
+          >
+            {!selectedVariant && Object.keys(options).length === 0
+              ? "Seçenek seçin"
+              : !isValidVariant
+              ? "Seçenek seçin"
+              : "Tasarla"}
+          </Button>
+        ) : (
+          <Button
+            onClick={handleAddToCart}
+            disabled={
+              !inStock ||
+              !selectedVariant ||
+              !!disabled ||
+              isAdding ||
+              !isValidVariant
+            }
+            variant="primary"
+            className="w-full h-10"
+            isLoading={isAdding}
+            data-testid="add-product-button"
+          >
+            {!selectedVariant && Object.keys(options).length === 0
+              ? "Seçenek seçin"
+              : !inStock || !isValidVariant
+              ? "Stokta yok"
+              : "Sepete ekle"}
+          </Button>
+        )}
         <MobileActions
           product={product}
           variant={selectedVariant}
@@ -253,6 +273,7 @@ export default function ProductActions({
           updateOptions={setOptionValue}
           inStock={inStock}
           handleAddToCart={handleAddToCart}
+          handleDesign={handleDesign}
           isAdding={isAdding}
           show={!inView}
           optionsDisabled={!!disabled || isAdding}

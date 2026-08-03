@@ -18,6 +18,7 @@ type MobileActionsProps = {
   updateOptions: (title: string, value: string) => void
   inStock?: boolean
   handleAddToCart: () => void
+  handleDesign?: () => void
   isAdding?: boolean
   show: boolean
   optionsDisabled: boolean
@@ -31,6 +32,7 @@ const MobileActions: React.FC<MobileActionsProps> = ({
   updateOptions,
   inStock,
   handleAddToCart,
+  handleDesign,
   isAdding,
   show,
   optionsDisabled,
@@ -117,21 +119,30 @@ const MobileActions: React.FC<MobileActionsProps> = ({
                   <ChevronDown />
                 </div>
               </Button>}
-              <Button
-                onClick={handleAddToCart}
-                disabled={!inStock || !variant}
-                className="w-full"
-                isLoading={isAdding}
-                data-testid="mobile-cart-button"
-              >
-                {!variant
-                  ? "Seçenek seçin"
-                  : !inStock
-                  ? "Stokta yok"
-                  : isCustom
-                  ? "Sepete Ekle ve Tasarla"
-                  : "Sepete ekle"}
-              </Button>
+              {isCustom ? (
+                <Button
+                  onClick={handleDesign}
+                  disabled={!variant}
+                  className="w-full"
+                  data-testid="mobile-design-button"
+                >
+                  {!variant ? "Seçenek seçin" : "Tasarla"}
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleAddToCart}
+                  disabled={!inStock || !variant}
+                  className="w-full"
+                  isLoading={isAdding}
+                  data-testid="mobile-cart-button"
+                >
+                  {!variant
+                    ? "Seçenek seçin"
+                    : !inStock
+                    ? "Stokta yok"
+                    : "Sepete ekle"}
+                </Button>
+              )}
             </div>
           </div>
         </Transition>
