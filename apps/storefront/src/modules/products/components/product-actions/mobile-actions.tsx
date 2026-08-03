@@ -7,7 +7,6 @@ import ChevronDown from "@modules/common/icons/chevron-down"
 import X from "@modules/common/icons/x"
 
 import { getProductPrice } from "@lib/util/get-product-price"
-import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import OptionSelect from "./option-select"
 import { HttpTypes } from "@medusajs/types"
 import { isSimpleProduct } from "@lib/util/product"
@@ -129,18 +128,11 @@ const MobileActions: React.FC<MobileActionsProps> = ({
                   ? "Seçenek seçin"
                   : !inStock
                   ? "Stokta yok"
+                  : isCustom
+                  ? "Sepete Ekle ve Tasarla"
                   : "Sepete ekle"}
               </Button>
             </div>
-            {isCustom && (
-              <LocalizedClientLink
-                href={`/tasarla?product=${product.handle}`}
-                className="inline-flex items-center justify-center w-full h-10 px-4 rounded-md font-medium bg-white text-black border border-gray-200 hover:bg-gray-50 transition-colors"
-                data-testid="mobile-design-button"
-              >
-                Tasarla
-              </LocalizedClientLink>
-            )}
           </div>
         </Transition>
       </div>
