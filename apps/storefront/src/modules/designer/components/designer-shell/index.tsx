@@ -1,0 +1,370 @@
+"use client"
+
+import { useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
+import { isEqual } from "lodash"
+import { HttpTypes } from "@medusajs/types"
+import {
+  CogSixTooth,
+  Puzzle,
+  Sparkles,
+  Swatch,
+  Text as TextIcon,
+  Photo,
+} from "@medusajs/icons"
+
+import { Brand } from "@lib/data/brands"
+import { addToCart } from "@lib/data/cart"
+import { getProductPrice } from "@lib/util/get-product-price"
+import { optionsAsKeymap } from "@modules/products/components/product-actions"
+import { Button } from "@modules/common/components/ui"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
+
+type Tool = "urun" | "komponent" | "marka-kiti" | "tema" | "yazi" | "elementler"
+
+const TOOLS: { id: Tool; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: "urun", label: "Ürün", icon: Photo },
+  { id: "komponent", label: "Komponent", icon: CogSixTooth },
+  { id: "marka-kiti", label: "Marka Kiti", icon: Swatch },
+  { id: "tema", label: "Tema", icon: Sparkles },
+  { id: "yazi", label: "Yazı", icon: TextIcon },
+  { id: "elementler", label: "Elementler", icon: Puzzle },
+]
+
+type DesignerShellProps = {
+  product: HttpTypes.StoreProduct
+  region: HttpTypes.StoreRegion
+  countryCode: string
+  initialVariantId?: string
+  initialQuantity: number
+  brands: Brand[]
+}
+
+const DesignerShell = ({
+  product,
+  region,
+  countryCode,
+  initialVariantId,
+  initialQuantity,
+  brands,
+}: DesignerShellProps) => {
+  const router = useRouter()
+
+  const initialVariant = product.variants?.find((v) => v.id === initialVariantId)
+
+  const [activeTool, setActiveTool] = useState<Tool>("urun")
+  const [options, setOptions] = useState<Record<string, string | undefined>>(
+    () => optionsAsKeymap(initialVariant?.options ?? null) ?? {}
+  )
+  const [quantity, setQuantity] = useState(initialQuantity)
+  const [isAdding, setIsAdding] = useState(false)
+  const [selectedBrandId, setSelectedBrandId] = useState<string | null>(
+    brands[0]?.id ?? null
+  )
+  const [aiPrompt, setAiPrompt] = useState("")
+  const [aiMessage, setAiMessage] = useState<string | null>(null)
+
+  const selectedVariant = useMemo(() => {
+    return product.variants?.find((v) =>
+      isEqual(optionsAsKeymap(v.options), options)
+    )
+  }, [product.variants, options])
+
+  const selectedBrand = brands.find((b) => b.id === selectedBrandId) ?? null
+
+  const price = getProductPrice({
+    product,
+    variantId: selectedVariant?.id,
+  })
+  const displayPrice = price.variantPrice || price.cheapestPrice
+
+  const image = product.images?.[0]?.url ?? product.thumbnail
+
+  const handleAddToCart = async () => {
+    if (!selectedVariant?.id) return
+
+    setIsAdding(true)
+    await addToCart({
+      variantId: selectedVariant.id,
+      quantity,
+      countryCode,
+    })
+    setIsAdding(false)
+    router.push(`/${countryCode}/cart`)
+  }
+
+  const handleAiSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!aiPrompt.trim()) return
+    setAiMessage(
+      "AI ile tasarım oluşturma özelliği yakında burada aktif olacak."
+    )
+  }
+
+  return (
+    <div className="h-full w-full flex flex-col bg-white">
+      {/* Top bar */}
+      <header className="h-16 shrink-0 border-b border-black/10 flex items-center justify-between px-4 gap-x-4">
+        <LocalizedClientLink
+          href="/"
+          className="font-bold text-lg text-black shrink-0"
+        >
+          Packshop
+        </LocalizedClientLink>
+
+        <div className="flex items-center gap-x-4 min-w-0">
+          <div className="hidden small:flex items-center gap-x-3 min-w-0">
+            {image && (
+              <div className="h-10 w-10 rounded-lg border border-black/10 bg-black/[0.02] flex items-center justify-center shrink-0 overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={image}
+                  alt={product.title}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            )}
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-medium text-black truncate max-w-[180px]">
+                {product.title}
+              </span>
+              <span className="text-xs text-black/50">{quantity} adet</span>
+            </div>
+          </div>
+          {displayPrice && (
+            <span className="font-semibold text-black shrink-0">
+              {displayPrice.calculated_price}
+            </span>
+          )}
+          <Button
+            onClick={handleAddToCart}
+            disabled={!selectedVariant || isAdding}
+            isLoading={isAdding}
+            className="h-10 shrink-0"
+            data-testid="designer-add-to-cart"
+          >
+            Sepete Ekle
+          </Button>
+        </div>
+      </header>
+
+      {/* Main row */}
+      <div className="flex-1 flex min-h-0">
+        {/* Icon rail */}
+        <nav className="w-20 shrink-0 border-r border-black/10 flex flex-col items-center py-4 gap-y-1 overflow-y-auto">
+          {TOOLS.map((tool) => {
+            const Icon = tool.icon
+            const active = activeTool === tool.id
+            return (
+              <button
+                key={tool.id}
+                onClick={() => setActiveTool(tool.id)}
+                className={`flex flex-col items-center gap-y-1 w-16 py-2 rounded-lg text-[11px] transition-colors ${
+                  active
+                    ? "bg-black/[0.06] text-black font-medium"
+                    : "text-black/50 hover:bg-black/[0.04] hover:text-black"
+                }`}
+                data-testid={`designer-tool-${tool.id}`}
+              >
+                <Icon className="h-5 w-5" />
+                {tool.label}
+              </button>
+            )
+          })}
+        </nav>
+
+        {/* Tool panel */}
+        <div className="w-80 shrink-0 border-r border-black/10 overflow-y-auto p-5">
+          {activeTool === "urun" && (
+            <div className="flex flex-col gap-y-6">
+              <h2 className="text-lg font-semibold text-black">Ürün</h2>
+              {(product.options || []).map((option) => (
+                <div key={option.id} className="flex flex-col gap-y-2">
+                  <span className="text-sm font-medium text-black">
+                    {option.title}
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {(option.values || []).map((v) => {
+                      const isSelected = options[option.id!] === v.value
+                      return (
+                        <button
+                          key={v.id}
+                          onClick={() =>
+                            setOptions((prev) => ({
+                              ...prev,
+                              [option.id!]: v.value,
+                            }))
+                          }
+                          className={`h-9 px-3 rounded-lg border text-sm transition-colors ${
+                            isSelected
+                              ? "border-black text-black"
+                              : "border-black/10 text-black/70 hover:border-black/20"
+                          }`}
+                        >
+                          {v.value}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+              <div className="flex flex-col gap-y-2">
+                <span className="text-sm font-medium text-black">Adet</span>
+                <div className="flex items-center gap-x-2">
+                  <button
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    className="h-9 w-9 rounded-lg border border-black/10 text-black hover:bg-black/[0.04]"
+                  >
+                    −
+                  </button>
+                  <span className="w-10 text-center text-black">
+                    {quantity}
+                  </span>
+                  <button
+                    onClick={() => setQuantity((q) => q + 1)}
+                    className="h-9 w-9 rounded-lg border border-black/10 text-black hover:bg-black/[0.04]"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTool === "marka-kiti" && (
+            <div className="flex flex-col gap-y-4">
+              <h2 className="text-lg font-semibold text-black">Marka Kiti</h2>
+              {brands.length === 0 ? (
+                <div className="flex flex-col gap-y-3">
+                  <p className="text-sm text-black/70">
+                    Henüz bir markanız yok. Logo, renk ve yazı tipinizi
+                    kullanmak için önce bir marka oluşturun.
+                  </p>
+                  <LocalizedClientLink
+                    href="/marka-merkezi/yeni"
+                    className="text-sm text-black underline underline-offset-2 hover:no-underline w-fit"
+                  >
+                    Marka oluştur
+                  </LocalizedClientLink>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-y-3">
+                  {brands.map((brand) => {
+                    const isSelected = brand.id === selectedBrandId
+                    return (
+                      <button
+                        key={brand.id}
+                        onClick={() => setSelectedBrandId(brand.id)}
+                        className={`flex items-center gap-x-3 p-3 rounded-lg border text-left transition-colors ${
+                          isSelected
+                            ? "border-black"
+                            : "border-black/10 hover:border-black/20"
+                        }`}
+                      >
+                        {brand.logo_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={brand.logo_url}
+                            alt={brand.brand_name}
+                            className="h-10 w-10 rounded-lg border border-black/10 object-contain shrink-0"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-lg border border-black/10 bg-black/[0.02] shrink-0" />
+                        )}
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-medium text-black truncate">
+                            {brand.brand_name}
+                          </span>
+                          {!!brand.colors?.length && (
+                            <div className="flex gap-x-1 mt-1">
+                              {brand.colors.slice(0, 5).map((c) => (
+                                <span
+                                  key={c}
+                                  className="h-3 w-3 rounded-full border border-black/10"
+                                  style={{ backgroundColor: c }}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
+                  <LocalizedClientLink
+                    href="/marka-merkezi/yeni"
+                    className="text-sm text-black underline underline-offset-2 hover:no-underline w-fit"
+                  >
+                    Yeni marka ekle
+                  </LocalizedClientLink>
+                </div>
+              )}
+            </div>
+          )}
+
+          {(activeTool === "komponent" ||
+            activeTool === "tema" ||
+            activeTool === "yazi" ||
+            activeTool === "elementler") && (
+            <div className="flex flex-col gap-y-2">
+              <h2 className="text-lg font-semibold text-black">
+                {TOOLS.find((t) => t.id === activeTool)?.label}
+              </h2>
+              <p className="text-sm text-black/50">
+                Bu araç yakında burada aktif olacak.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Canvas */}
+        <div className="flex-1 bg-black/[0.02] flex items-center justify-center overflow-auto p-8">
+          {image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={image}
+              alt={product.title}
+              className="max-h-full max-w-full object-contain"
+              data-testid="designer-canvas-image"
+            />
+          ) : (
+            <span className="text-sm text-black/50">Görsel bulunamadı.</span>
+          )}
+        </div>
+      </div>
+
+      {/* AI bar */}
+      <div className="shrink-0 border-t border-black/10 p-4">
+        <form
+          onSubmit={handleAiSubmit}
+          className="max-w-3xl mx-auto flex items-center gap-x-3"
+        >
+          <input
+            type="text"
+            value={aiPrompt}
+            onChange={(e) => {
+              setAiPrompt(e.target.value)
+              setAiMessage(null)
+            }}
+            placeholder={
+              selectedBrand
+                ? `${selectedBrand.brand_name} marka kitini kullanarak bir tasarım tarif et...`
+                : "Tasarımını tarif et, seçili öğeleri kullanarak senin için oluşturalım..."
+            }
+            className="flex-1 h-11 px-4 border border-black/10 rounded-lg text-sm focus:outline-none focus:border-black transition-colors"
+            data-testid="designer-ai-input"
+          />
+          <Button type="submit" className="h-11 shrink-0" data-testid="designer-ai-submit">
+            AI ile Oluştur
+          </Button>
+        </form>
+        {aiMessage && (
+          <p className="max-w-3xl mx-auto text-sm text-black/50 mt-2">
+            {aiMessage}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default DesignerShell
