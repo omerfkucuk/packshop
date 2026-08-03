@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { notFound } from "next/navigation"
 
 import { listProducts } from "@lib/data/products"
 import { listCategories } from "@lib/data/categories"
@@ -6,7 +7,6 @@ import { getRegion } from "@lib/data/regions"
 import { retrieveCustomer } from "@lib/data/customer"
 import { listBrands } from "@lib/data/brands"
 import { isCustomProduct } from "@lib/util/product"
-import ComingSoon from "@modules/common/components/coming-soon"
 import DesignerShell from "@modules/designer/components/designer-shell"
 
 export const metadata: Metadata = {
@@ -30,29 +30,20 @@ export default async function TasarlaPage(props: Props) {
 
   const region = await getRegion(countryCode)
 
-  const product =
-    region && productHandle
-      ? await listProducts({
-          countryCode,
-          queryParams: { handle: productHandle },
-        }).then(({ response }) => response.products[0])
-      : null
-
-  if (!region || !product) {
-    return (
-      <div className="h-full w-full flex items-center justify-center">
-        <ComingSoon
-          title="Kendi Tasarımını Oluştur"
-          description="Bir ürün seçip 'Tasarla' butonuna bastığında burada tasarım stüdyosu açılacak."
-        />
-      </div>
-    )
+  if (!region) {
+    notFound()
   }
 
   const customer = await retrieveCustomer()
-  const brands = customer ? await listBrands() : []
 
-  const [{ response }, categories] = await Promise.all([
+  const [product, brands, { response }, categories] = await Promise.all([
+    productHandle
+      ? listProducts({
+          countryCode,
+          queryParams: { handle: productHandle },
+        }).then(({ response }) => response.products[0] ?? null)
+      : null,
+    customer ? listBrands() : [],
     listProducts({
       countryCode,
       queryParams: {

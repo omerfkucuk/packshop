@@ -24,7 +24,7 @@ type Tool = "urun" | "komponent" | "marka-kiti" | "tema" | "yazi" | "elementler"
 
 const TOOLS: { id: Tool; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "urun", label: "Ürün", icon: Photo },
-  { id: "komponent", label: "Komponent", icon: CogSixTooth },
+  { id: "komponent", label: "Konfigürasyon", icon: CogSixTooth },
   { id: "marka-kiti", label: "Marka Kiti", icon: Swatch },
   { id: "tema", label: "Tema", icon: Sparkles },
   { id: "yazi", label: "Yazı", icon: TextIcon },
@@ -32,7 +32,7 @@ const TOOLS: { id: Tool; label: string; icon: React.ComponentType<{ className?: 
 ]
 
 type DesignerShellProps = {
-  product: HttpTypes.StoreProduct
+  product: HttpTypes.StoreProduct | null
   region: HttpTypes.StoreRegion
   countryCode: string
   initialVariantId?: string
@@ -54,7 +54,7 @@ const DesignerShell = ({
 }: DesignerShellProps) => {
   const router = useRouter()
 
-  const initialVariant = product.variants?.find((v) => v.id === initialVariantId)
+  const initialVariant = product?.variants?.find((v) => v.id === initialVariantId)
 
   const [activeTool, setActiveTool] = useState<Tool>("urun")
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
@@ -70,20 +70,19 @@ const DesignerShell = ({
   const [aiMessage, setAiMessage] = useState<string | null>(null)
 
   const selectedVariant = useMemo(() => {
-    return product.variants?.find((v) =>
+    return product?.variants?.find((v) =>
       isEqual(optionsAsKeymap(v.options), options)
     )
-  }, [product.variants, options])
+  }, [product, options])
 
   const selectedBrand = brands.find((b) => b.id === selectedBrandId) ?? null
 
-  const price = getProductPrice({
-    product,
-    variantId: selectedVariant?.id,
-  })
-  const displayPrice = price.variantPrice || price.cheapestPrice
+  const price = product
+    ? getProductPrice({ product, variantId: selectedVariant?.id })
+    : null
+  const displayPrice = price?.variantPrice || price?.cheapestPrice
 
-  const image = product.images?.[0]?.url ?? product.thumbnail
+  const image = product?.images?.[0]?.url ?? product?.thumbnail
 
   const filteredProducts = activeCategoryId
     ? products.filter((p) =>
@@ -129,24 +128,30 @@ const DesignerShell = ({
         </LocalizedClientLink>
 
         <div className="flex items-center gap-x-4 min-w-0">
-          <div className="hidden small:flex items-center gap-x-3 min-w-0">
-            {image && (
-              <div className="h-10 w-10 rounded-lg border border-black/10 bg-black/[0.02] flex items-center justify-center shrink-0 overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={image}
-                  alt={product.title}
-                  className="h-full w-full object-cover"
-                />
+          {product ? (
+            <div className="hidden small:flex items-center gap-x-3 min-w-0">
+              {image && (
+                <div className="h-10 w-10 rounded-lg border border-black/10 bg-black/[0.02] flex items-center justify-center shrink-0 overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={image}
+                    alt={product.title}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              )}
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-medium text-black truncate max-w-[180px]">
+                  {product.title}
+                </span>
+                <span className="text-xs text-black/50">{quantity} adet</span>
               </div>
-            )}
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm font-medium text-black truncate max-w-[180px]">
-                {product.title}
-              </span>
-              <span className="text-xs text-black/50">{quantity} adet</span>
             </div>
-          </div>
+          ) : (
+            <span className="hidden small:block text-sm text-black/50">
+              Bir ürün seçin
+            </span>
+          )}
           {displayPrice && (
             <span className="font-semibold text-black shrink-0">
               {displayPrice.calculated_price}
@@ -221,7 +226,7 @@ const DesignerShell = ({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {filteredProducts.map((p) => {
-                  const isActive = p.id === product.id
+                  const isActive = p.id === product?.id
                   const thumb = p.thumbnail ?? p.images?.[0]?.url
                   return (
                     <button
@@ -255,7 +260,16 @@ const DesignerShell = ({
             </div>
           )}
 
-          {activeTool === "komponent" && (
+          {activeTool === "komponent" && !product && (
+            <div className="flex flex-col gap-y-2">
+              <h2 className="text-lg font-semibold text-black">Konfigürasyon</h2>
+              <p className="text-sm text-black/50">
+                Önce Ürün sekmesinden bir ürün seçin.
+              </p>
+            </div>
+          )}
+
+          {activeTool === "komponent" && product && (
             <div className="flex flex-col gap-y-6">
               <h2 className="text-lg font-semibold text-black">Konfigürasyon</h2>
               {(product.options || []).map((option) => (
@@ -401,12 +415,16 @@ const DesignerShell = ({
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={image}
-              alt={product.title}
+              alt={product?.title}
               className="max-h-full max-w-full object-contain"
               data-testid="designer-canvas-image"
             />
-          ) : (
+          ) : product ? (
             <span className="text-sm text-black/50">Görsel bulunamadı.</span>
+          ) : (
+            <span className="text-sm text-black/50">
+              Soldan bir ürün seçerek başlayın.
+            </span>
           )}
         </div>
       </div>
