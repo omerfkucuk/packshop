@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { isEqual } from "lodash"
 import { HttpTypes } from "@medusajs/types"
@@ -56,7 +56,15 @@ const DesignerShell = ({
 
   const initialVariant = product?.variants?.find((v) => v.id === initialVariantId)
 
-  const [activeTool, setActiveTool] = useState<Tool>("urun")
+  // Skip straight to the next step when we already have what it needs: no
+  // product yet -> pick one, a product but no variant -> configure it, a
+  // variant already chosen (e.g. arriving from a product page) -> brand kit.
+  const [activeTool, setActiveTool] = useState<Tool>(() => {
+    if (!product) return "urun"
+    if (initialVariant) return "marka-kiti"
+    return "komponent"
+  })
+  const hasAutoAdvancedToBrandKit = useRef(!!initialVariant)
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
   const [options, setOptions] = useState<Record<string, string | undefined>>(
     () => optionsAsKeymap(initialVariant?.options ?? null) ?? {}
@@ -74,6 +82,19 @@ const DesignerShell = ({
       isEqual(optionsAsKeymap(v.options), options)
     )
   }, [product, options])
+
+  // First time the customer finishes configuring a variant in this session,
+  // jump them to Marka Kiti - after that, let them click around freely.
+  useEffect(() => {
+    if (
+      selectedVariant &&
+      activeTool === "komponent" &&
+      !hasAutoAdvancedToBrandKit.current
+    ) {
+      hasAutoAdvancedToBrandKit.current = true
+      setActiveTool("marka-kiti")
+    }
+  }, [selectedVariant, activeTool])
 
   const selectedBrand = brands.find((b) => b.id === selectedBrandId) ?? null
 
