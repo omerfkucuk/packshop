@@ -57,6 +57,10 @@ export default async function TasarlaPage(props: Props) {
 
   return (
     <DesignerShell
+      // Force a remount when switching products from inside the designer -
+      // otherwise the previous product's option/variant selection state
+      // sticks around and never matches the new product's variants.
+      key={product?.id ?? "none"}
       product={product}
       region={region}
       countryCode={countryCode}
