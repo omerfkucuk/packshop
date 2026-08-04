@@ -16,6 +16,7 @@ import {
 import { Brand } from "@lib/data/brands"
 import { addToCart } from "@lib/data/cart"
 import { getProductPrice } from "@lib/util/get-product-price"
+import { getCustomSizeRanges } from "@lib/util/custom-size"
 import { optionsAsKeymap } from "@modules/products/components/product-actions"
 import { Button } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -71,6 +72,11 @@ const DesignerShell = ({
   )
   const [quantity, setQuantity] = useState(initialQuantity)
   const [isAdding, setIsAdding] = useState(false)
+  const sizeRanges = product ? getCustomSizeRanges(product) : null
+  const [useCustomSize, setUseCustomSize] = useState(false)
+  const [customWidth, setCustomWidth] = useState(sizeRanges?.width.min ?? 5)
+  const [customHeight, setCustomHeight] = useState(sizeRanges?.height.min ?? 5)
+  const [customDepth, setCustomDepth] = useState(sizeRanges?.depth.min ?? 5)
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(
     brands[0]?.id ?? null
   )
@@ -129,6 +135,29 @@ const DesignerShell = ({
     router.push(`/${countryCode}/cart`)
   }
 
+  // No variant exists for a custom size, so this adds the product's base
+  // variant with the requested dimensions attached as metadata - someone on
+  // the team follows up with real pricing, the cart total isn't final yet.
+  const handleRequestCustomQuote = async () => {
+    const baseVariantId = product?.variants?.[0]?.id
+    if (!baseVariantId) return
+
+    setIsAdding(true)
+    await addToCart({
+      variantId: baseVariantId,
+      quantity,
+      countryCode,
+      metadata: {
+        custom_size: true,
+        custom_width_cm: customWidth,
+        custom_height_cm: customHeight,
+        custom_depth_cm: customDepth,
+      },
+    })
+    setIsAdding(false)
+    router.push(`/${countryCode}/cart`)
+  }
+
   const handleAiSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!aiPrompt.trim()) return
@@ -178,15 +207,27 @@ const DesignerShell = ({
               {displayPrice.calculated_price}
             </span>
           )}
-          <Button
-            onClick={handleAddToCart}
-            disabled={!selectedVariant || isAdding}
-            isLoading={isAdding}
-            className="h-10 shrink-0"
-            data-testid="designer-add-to-cart"
-          >
-            Sepete Ekle
-          </Button>
+          {useCustomSize ? (
+            <Button
+              onClick={handleRequestCustomQuote}
+              disabled={!product || isAdding}
+              isLoading={isAdding}
+              className="h-10 shrink-0"
+              data-testid="designer-request-quote"
+            >
+              Teklif İste
+            </Button>
+          ) : (
+            <Button
+              onClick={handleAddToCart}
+              disabled={!selectedVariant || isAdding}
+              isLoading={isAdding}
+              className="h-10 shrink-0"
+              data-testid="designer-add-to-cart"
+            >
+              Sepete Ekle
+            </Button>
+          )}
         </div>
       </header>
 
@@ -293,36 +334,98 @@ const DesignerShell = ({
           {activeTool === "komponent" && product && (
             <div className="flex flex-col gap-y-6">
               <h2 className="text-lg font-semibold text-black">Konfigürasyon</h2>
-              {(product.options || []).map((option) => (
-                <div key={option.id} className="flex flex-col gap-y-2">
-                  <span className="text-sm font-medium text-black">
-                    {option.title}
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    {(option.values || []).map((v) => {
-                      const isSelected = options[option.id!] === v.value
-                      return (
-                        <button
-                          key={v.id}
-                          onClick={() =>
-                            setOptions((prev) => ({
-                              ...prev,
-                              [option.id!]: v.value,
-                            }))
-                          }
-                          className={`h-9 px-3 rounded-lg border text-sm transition-colors ${
-                            isSelected
-                              ? "border-black text-black"
-                              : "border-black/10 text-black/70 hover:border-black/20"
-                          }`}
-                        >
-                          {v.value}
-                        </button>
-                      )
-                    })}
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setUseCustomSize(false)}
+                  className={`h-8 px-3 rounded-full border text-sm transition-colors ${
+                    !useCustomSize
+                      ? "border-black text-black"
+                      : "border-black/10 text-black/70 hover:border-black/20"
+                  }`}
+                >
+                  Standart ölçüler
+                </button>
+                <button
+                  onClick={() => setUseCustomSize(true)}
+                  className={`h-8 px-3 rounded-full border text-sm transition-colors ${
+                    useCustomSize
+                      ? "border-black text-black"
+                      : "border-black/10 text-black/70 hover:border-black/20"
+                  }`}
+                >
+                  Özel ölçü
+                </button>
+              </div>
+
+              {!useCustomSize &&
+                (product.options || []).map((option) => (
+                  <div key={option.id} className="flex flex-col gap-y-2">
+                    <span className="text-sm font-medium text-black">
+                      {option.title}
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {(option.values || []).map((v) => {
+                        const isSelected = options[option.id!] === v.value
+                        return (
+                          <button
+                            key={v.id}
+                            onClick={() =>
+                              setOptions((prev) => ({
+                                ...prev,
+                                [option.id!]: v.value,
+                              }))
+                            }
+                            className={`h-9 px-3 rounded-lg border text-sm transition-colors ${
+                              isSelected
+                                ? "border-black text-black"
+                                : "border-black/10 text-black/70 hover:border-black/20"
+                            }`}
+                          >
+                            {v.value}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
+                ))}
+
+              {useCustomSize && sizeRanges && (
+                <div className="flex flex-col gap-y-4">
+                  {(
+                    [
+                      ["En", customWidth, setCustomWidth, sizeRanges.width],
+                      ["Boy", customHeight, setCustomHeight, sizeRanges.height],
+                      ["Derinlik", customDepth, setCustomDepth, sizeRanges.depth],
+                    ] as const
+                  ).map(([label, value, setValue, range]) => (
+                    <div key={label} className="flex flex-col gap-y-2">
+                      <span className="text-sm font-medium text-black">
+                        {label} (cm) — {range.min}-{range.max} cm arası
+                      </span>
+                      <input
+                        type="number"
+                        min={range.min}
+                        max={range.max}
+                        value={value}
+                        onChange={(e) => {
+                          const next = parseFloat(e.target.value)
+                          if (isNaN(next)) return
+                          setValue(
+                            Math.min(range.max, Math.max(range.min, next))
+                          )
+                        }}
+                        className="h-9 px-3 border border-black/10 rounded-lg text-sm focus:outline-none focus:border-black transition-colors"
+                      />
+                    </div>
+                  ))}
+                  <p className="text-xs text-black/50">
+                    Özel ölçü seçtiğinizde fiyat teklif gerektirir - ekibimiz
+                    sipariş sonrası sizinle iletişime geçer.
+                  </p>
                 </div>
-              ))}
+              )}
+
               <div className="flex flex-col gap-y-2">
                 <span className="text-sm font-medium text-black">Adet</span>
                 <div className="flex items-center gap-x-2">
