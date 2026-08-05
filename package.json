@@ -30,7 +30,8 @@
   },
   "workspaces": [
     "apps/**",
-    "!apps/backend/.medusa/**"
+    "!apps/backend/.medusa/**",
+    "packages/**"
   ],
   "overrides": {
     "ajv": "^8.0.0"
