@@ -121,21 +121,25 @@ const DesignerShell = ({
 
   const geometryType = product ? getGeometryType(product) : null
 
-  // Custom size inputs are already in cm (En/Boy/Derinlik); standard sizes
-  // only exist as free text in the variant title (e.g. "K105 (45 cm x 35 cm
-  // x 25 cm)") - there's no structured dimension field on the variant yet.
-  const geometryDimensionsCm = useCustomSize
-    ? { length: customHeight, width: customWidth, height: customDepth }
+  // Custom size inputs are in cm (En/Boy/Derinlik) and need converting; a
+  // standard variant's title is already plain mm text (e.g. "450x350x250")
+  // since there's no structured dimension field on the variant itself.
+  const geometryDimensionsMm = useCustomSize
+    ? {
+        length: customHeight * 10,
+        width: customWidth * 10,
+        height: customDepth * 10,
+      }
     : parseDimensionsFromVariantTitle(selectedVariant?.title)
 
   const geometryPanels =
-    geometryType === "fefco-0201" && geometryDimensionsCm
+    geometryType === "fefco-0201" && geometryDimensionsMm
       ? (() => {
           try {
             return generateFefco0201({
-              length: geometryDimensionsCm.length * 10,
-              width: geometryDimensionsCm.width * 10,
-              height: geometryDimensionsCm.height * 10,
+              length: geometryDimensionsMm.length,
+              width: geometryDimensionsMm.width,
+              height: geometryDimensionsMm.height,
               thickness: 3,
             })
           } catch {
