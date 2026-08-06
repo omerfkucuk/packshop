@@ -31,6 +31,11 @@ import DielinePreview from "../dieline-preview"
 
 type Tool = "urun" | "komponent" | "marka-kiti" | "tema" | "yazi" | "elementler"
 
+// Die-cutting/corrugator constraints for custom sizes: Boy (length) and En
+// (width) together, and En and Yükseklik (height) together, each need at
+// least 27cm combined, and Boy must never be shorter than En.
+const MIN_PAIR_SUM_CM = 27
+
 const TOOLS: { id: Tool; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "urun", label: "Ürün", icon: Photo },
   { id: "komponent", label: "Konfigürasyon", icon: CogSixTooth },
@@ -121,7 +126,20 @@ const DesignerShell = ({
 
   const geometryType = product ? getGeometryType(product) : null
 
-  // Custom size inputs are in cm (En/Boy/Derinlik) and need converting; a
+  const customSizeErrors: string[] = []
+  if (useCustomSize) {
+    if (customHeight < customWidth) {
+      customSizeErrors.push("Boy, En'den küçük olamaz.")
+    }
+    if (customHeight + customWidth < MIN_PAIR_SUM_CM) {
+      customSizeErrors.push(`Boy + En toplamı en az ${MIN_PAIR_SUM_CM} cm olmalı.`)
+    }
+    if (customWidth + customDepth < MIN_PAIR_SUM_CM) {
+      customSizeErrors.push(`En + Yükseklik toplamı en az ${MIN_PAIR_SUM_CM} cm olmalı.`)
+    }
+  }
+
+  // Custom size inputs are in cm (Boy/En/Yükseklik) and need converting; a
   // standard variant's title is already plain mm text (e.g. "450x350x250")
   // since there's no structured dimension field on the variant itself.
   const geometryDimensionsMm = useCustomSize
@@ -177,7 +195,7 @@ const DesignerShell = ({
   // the team follows up with real pricing, the cart total isn't final yet.
   const handleRequestCustomQuote = async () => {
     const baseVariantId = product?.variants?.[0]?.id
-    if (!baseVariantId) return
+    if (!baseVariantId || customSizeErrors.length > 0) return
 
     setIsAdding(true)
     await addToCart({
@@ -247,7 +265,7 @@ const DesignerShell = ({
           {useCustomSize ? (
             <Button
               onClick={handleRequestCustomQuote}
-              disabled={!product || isAdding}
+              disabled={!product || isAdding || customSizeErrors.length > 0}
               isLoading={isAdding}
               className="h-10 shrink-0"
               data-testid="designer-request-quote"
@@ -431,9 +449,9 @@ const DesignerShell = ({
                 <div className="flex flex-col gap-y-4">
                   {(
                     [
-                      ["En", customWidth, setCustomWidth, sizeRanges.width],
                       ["Boy", customHeight, setCustomHeight, sizeRanges.height],
-                      ["Derinlik", customDepth, setCustomDepth, sizeRanges.depth],
+                      ["En", customWidth, setCustomWidth, sizeRanges.width],
+                      ["Yükseklik", customDepth, setCustomDepth, sizeRanges.depth],
                     ] as const
                   ).map(([label, value, setValue, range]) => (
                     <div key={label} className="flex flex-col gap-y-2">
@@ -456,6 +474,15 @@ const DesignerShell = ({
                       />
                     </div>
                   ))}
+                  {customSizeErrors.length > 0 && (
+                    <div className="flex flex-col gap-y-1">
+                      {customSizeErrors.map((error) => (
+                        <p key={error} className="text-xs text-rose-500">
+                          {error}
+                        </p>
+                      ))}
+                    </div>
+                  )}
                   <p className="text-xs text-black/50">
                     Özel ölçü seçtiğinizde fiyat teklif gerektirir - ekibimiz
                     sipariş sonrası sizinle iletişime geçer.
