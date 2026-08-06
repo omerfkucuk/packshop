@@ -13,13 +13,21 @@ import {
   Photo,
 } from "@medusajs/icons"
 
+// Imported from the box-styles subpath specifically (not the package root)
+// so client bundles never pull in export/dxf.ts's @tarikjabiri/dxf
+// dependency, which is only ever needed server-side.
+import { generateFefco0201 } from "@dtc/packaging-engine/box-styles"
+
 import { Brand } from "@lib/data/brands"
 import { addToCart } from "@lib/data/cart"
 import { getProductPrice } from "@lib/util/get-product-price"
 import { getCustomSizeRanges } from "@lib/util/custom-size"
+import { getGeometryType } from "@lib/util/product"
+import { parseDimensionsFromVariantTitle } from "@lib/util/parse-variant-dimensions"
 import { optionsAsKeymap } from "@modules/products/components/product-actions"
 import { Button } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import DielinePreview from "../dieline-preview"
 
 type Tool = "urun" | "komponent" | "marka-kiti" | "tema" | "yazi" | "elementler"
 
@@ -110,6 +118,31 @@ const DesignerShell = ({
   const displayPrice = price?.variantPrice || price?.cheapestPrice
 
   const image = product?.images?.[0]?.url ?? product?.thumbnail
+
+  const geometryType = product ? getGeometryType(product) : null
+
+  // Custom size inputs are already in cm (En/Boy/Derinlik); standard sizes
+  // only exist as free text in the variant title (e.g. "K105 (45 cm x 35 cm
+  // x 25 cm)") - there's no structured dimension field on the variant yet.
+  const geometryDimensionsCm = useCustomSize
+    ? { length: customHeight, width: customWidth, height: customDepth }
+    : parseDimensionsFromVariantTitle(selectedVariant?.title)
+
+  const geometryPanels =
+    geometryType === "fefco-0201" && geometryDimensionsCm
+      ? (() => {
+          try {
+            return generateFefco0201({
+              length: geometryDimensionsCm.length * 10,
+              width: geometryDimensionsCm.width * 10,
+              height: geometryDimensionsCm.height * 10,
+              thickness: 3,
+            })
+          } catch {
+            return null
+          }
+        })()
+      : null
 
   const filteredProducts = activeCategoryId
     ? products.filter((p) =>
@@ -536,7 +569,12 @@ const DesignerShell = ({
         {/* Canvas + AI bar */}
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 bg-black/[0.02] flex items-center justify-center overflow-auto p-8">
-            {image ? (
+            {geometryPanels ? (
+              <DielinePreview
+                panels={geometryPanels}
+                className="max-h-full max-w-full"
+              />
+            ) : image ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={image}

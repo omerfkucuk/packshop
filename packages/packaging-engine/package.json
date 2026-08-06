@@ -8,6 +8,23 @@
   "files": [
     "dist"
   ],
+  "exports": {
+    ".": "./dist/index.js",
+    "./shared": "./dist/shared/index.js",
+    "./box-styles": "./dist/box-styles/index.js",
+    "./pouch-styles": "./dist/pouch-styles/index.js",
+    "./placement": "./dist/placement/index.js",
+    "./export": "./dist/export/index.js"
+  },
+  "typesVersions": {
+    "*": {
+      "shared": ["dist/shared/index.d.ts"],
+      "box-styles": ["dist/box-styles/index.d.ts"],
+      "pouch-styles": ["dist/pouch-styles/index.d.ts"],
+      "placement": ["dist/placement/index.d.ts"],
+      "export": ["dist/export/index.d.ts"]
+    }
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "jest",
