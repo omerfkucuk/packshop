@@ -12,6 +12,16 @@ replacing it.
 Kept up to date after each shipped feature, at feature granularity (not
 one entry per commit). Newest first.
 
+- **`@dtc/layout-engine` package (implementation step 1 of §13)** — domain
+  models (`CompositionPlan`, `SemanticPlacement`, `ResolvedLayout`), the
+  size/relative/dependency-graph resolvers, and `resolveLayout()` orchestrating
+  them against real `@dtc/packaging-engine` geometry - no AI, no Constraint
+  Engine yet. `@dtc/packaging-engine/placement` gained `AnchorPoint` (9-point
+  grid) and `anchorFit()` alongside the existing center-only `fitCenter`, and
+  `DesignElementType` widened to include qr/barcode/image/icon/shape so
+  layout-engine's element vocabulary is the same type, not a parallel one.
+  23 + 5 new tests. Not wired into the storefront yet - `applyDesign()`
+  migrating onto this engine is a deliberately separate next step.
 - **AI layout engine architecture (this document)** — design-only spec for
   semantic AI placement decisions → Layout Engine → Constraint Engine →
   Vision Review, built on top of everything below. No implementation yet.
