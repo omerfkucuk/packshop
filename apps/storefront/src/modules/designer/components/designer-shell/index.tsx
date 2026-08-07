@@ -28,6 +28,7 @@ import { optionsAsKeymap } from "@modules/products/components/product-actions"
 import { Button } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import DielinePreview from "../dieline-preview"
+import { applyDesign } from "../../utils/apply-design"
 import BrandKitPanel from "../brand-kit-panel"
 import { SelectedElement } from "../../types"
 
@@ -184,6 +185,12 @@ const DesignerShell = ({
         })()
       : null
 
+  // Rule-based first pass: no real AI/text-prompt generation yet, but the
+  // selected elements are applied live to the canvas as they're picked.
+  const appliedDesign = geometryPanels
+    ? applyDesign(geometryPanels, selectedElements)
+    : undefined
+
   const filteredProducts = activeCategoryId
     ? products.filter((p) =>
         p.categories?.some((c) => c.id === activeCategoryId)
@@ -235,7 +242,7 @@ const DesignerShell = ({
     e.preventDefault()
     if (!aiPrompt.trim()) return
     setAiMessage(
-      "AI ile tasarım oluşturma özelliği yakında burada aktif olacak."
+      "Metin isteğinden tasarım üretme özelliği yakında aktif olacak. Şimdilik seçtiğiniz öğeler kutunuza doğrudan uygulanıyor - canvas'ta önizleyebilirsiniz."
     )
   }
 
@@ -561,6 +568,7 @@ const DesignerShell = ({
             {geometryPanels ? (
               <DielinePreview
                 panels={geometryPanels}
+                appliedDesign={appliedDesign}
                 className="max-h-full max-w-full"
               />
             ) : image ? (
