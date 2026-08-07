@@ -2,7 +2,13 @@
 
 import { useActionState, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { PencilSquare, Trash } from "@medusajs/icons"
+import {
+  CheckMini,
+  Link as LinkIcon,
+  PencilSquare,
+  Text as TextIcon,
+  Trash,
+} from "@medusajs/icons"
 
 import { Brand, deleteBrand, saveBrandInline } from "@lib/data/brands"
 import Input from "@modules/common/components/input"
@@ -22,12 +28,52 @@ type BrandKitPanelProps = {
   onToggleElement: (element: SelectedElement) => void
 }
 
-const chipClassName = (selected: boolean) =>
-  `h-9 min-w-9 px-2 flex items-center justify-center gap-x-1 rounded-lg border text-xs transition-colors ${
-    selected
-      ? "border-black bg-black/[0.04]"
-      : "border-black/10 hover:border-black/20"
-  }`
+const SOCIAL_FIELDS = [
+  { key: "instagram_url", label: "Instagram" },
+  { key: "facebook_url", label: "Facebook" },
+  { key: "twitter_url", label: "Twitter" },
+  { key: "tiktok_url", label: "TikTok" },
+  { key: "website_url", label: "Website" },
+] as const
+
+type ElementRowProps = {
+  icon: React.ReactNode
+  label: string
+  value?: string
+  selected: boolean
+  onClick: () => void
+}
+
+// One full-width, clearly-labeled row per selectable brand asset - a plain
+// checklist reads a lot clearer here than small icon-only chips did.
+const ElementRow = ({ icon, label, value, selected, onClick }: ElementRowProps) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`flex items-center gap-x-3 p-2 rounded-lg border w-full text-left transition-colors ${
+      selected
+        ? "border-black bg-black/[0.04]"
+        : "border-black/10 hover:border-black/20"
+    }`}
+  >
+    <span className="shrink-0 flex items-center justify-center h-8 w-8 rounded-lg border border-black/10 bg-white overflow-hidden">
+      {icon}
+    </span>
+    <span className="flex flex-col min-w-0 flex-1">
+      <span className="text-sm text-black truncate">{label}</span>
+      {value && value !== label && (
+        <span className="text-xs text-black/50 truncate">{value}</span>
+      )}
+    </span>
+    <span
+      className={`h-5 w-5 rounded-full border flex items-center justify-center shrink-0 ${
+        selected ? "bg-black border-black text-white" : "border-black/20"
+      }`}
+    >
+      {selected && <CheckMini />}
+    </span>
+  </button>
+)
 
 // Creating/editing a brand used to send the customer away to the Marka
 // Merkezi pages and back. This collects the same fields inline instead -
@@ -195,7 +241,8 @@ const BrandKitPanel = ({
       <div>
         <h2 className="text-lg font-semibold text-black">Marka Kiti</h2>
         <p className="text-xs text-black/50 mt-1">
-          Logo, renk ve yazı tipine tıklayarak aşağıdaki AI alanına ekleyin.
+          Kullanmak istediğiniz öğelere tıklayın, aşağıdaki AI alanına
+          eklensin.
         </p>
       </div>
       {brands.length === 0 ? (
@@ -240,10 +287,19 @@ const BrandKitPanel = ({
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-col gap-y-1.5">
                   {brand.logo_url && (
-                    <button
-                      type="button"
+                    <ElementRow
+                      icon={
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={brand.logo_url}
+                          alt="Logo"
+                          className="h-full w-full object-contain"
+                        />
+                      }
+                      label="Logo"
+                      selected={selectedElementIds.has(`logo-${brand.id}`)}
                       onClick={() =>
                         onToggleElement({
                           id: `logo-${brand.id}`,
@@ -252,23 +308,47 @@ const BrandKitPanel = ({
                           value: brand.logo_url!,
                         })
                       }
-                      className={chipClassName(
-                        selectedElementIds.has(`logo-${brand.id}`)
-                      )}
-                      title="Logo"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={brand.logo_url}
-                        alt="Logo"
-                        className="h-5 w-5 object-contain"
-                      />
-                    </button>
+                    />
                   )}
+                  {brand.alternate_logo_urls?.map((url, i) => (
+                    <ElementRow
+                      key={url}
+                      icon={
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={url}
+                          alt=""
+                          className="h-full w-full object-contain"
+                        />
+                      }
+                      label={`Alternatif logo ${i + 1}`}
+                      selected={selectedElementIds.has(
+                        `alt-logo-${brand.id}-${url}`
+                      )}
+                      onClick={() =>
+                        onToggleElement({
+                          id: `alt-logo-${brand.id}-${url}`,
+                          type: "logo",
+                          label: `Alternatif logo ${i + 1}`,
+                          value: url,
+                        })
+                      }
+                    />
+                  ))}
                   {brand.colors?.map((color) => (
-                    <button
+                    <ElementRow
                       key={color}
-                      type="button"
+                      icon={
+                        <span
+                          className="h-5 w-5 rounded-full border border-black/10"
+                          style={{ backgroundColor: color }}
+                        />
+                      }
+                      label="Renk"
+                      value={color}
+                      selected={selectedElementIds.has(
+                        `color-${brand.id}-${color}`
+                      )}
                       onClick={() =>
                         onToggleElement({
                           id: `color-${brand.id}-${color}`,
@@ -277,20 +357,20 @@ const BrandKitPanel = ({
                           value: color,
                         })
                       }
-                      className={chipClassName(
-                        selectedElementIds.has(`color-${brand.id}-${color}`)
-                      )}
-                      title={color}
-                    >
-                      <span
-                        className="h-4 w-4 rounded-full border border-black/10"
-                        style={{ backgroundColor: color }}
-                      />
-                    </button>
+                    />
                   ))}
                   {brand.heading_font && (
-                    <button
-                      type="button"
+                    <ElementRow
+                      icon={
+                        <span style={{ fontFamily: brand.heading_font }}>
+                          Aa
+                        </span>
+                      }
+                      label="Başlık yazı tipi"
+                      value={brand.heading_font}
+                      selected={selectedElementIds.has(
+                        `font-heading-${brand.id}`
+                      )}
                       onClick={() =>
                         onToggleElement({
                           id: `font-heading-${brand.id}`,
@@ -299,19 +379,16 @@ const BrandKitPanel = ({
                           value: brand.heading_font!,
                         })
                       }
-                      className={chipClassName(
-                        selectedElementIds.has(`font-heading-${brand.id}`)
-                      )}
-                      title={`Başlık: ${brand.heading_font}`}
-                    >
-                      <span style={{ fontFamily: brand.heading_font }}>
-                        Aa
-                      </span>
-                    </button>
+                    />
                   )}
                   {brand.body_font && (
-                    <button
-                      type="button"
+                    <ElementRow
+                      icon={
+                        <span style={{ fontFamily: brand.body_font }}>Aa</span>
+                      }
+                      label="Gövde yazı tipi"
+                      value={brand.body_font}
+                      selected={selectedElementIds.has(`font-body-${brand.id}`)}
                       onClick={() =>
                         onToggleElement({
                           id: `font-body-${brand.id}`,
@@ -320,14 +397,45 @@ const BrandKitPanel = ({
                           value: brand.body_font!,
                         })
                       }
-                      className={chipClassName(
-                        selectedElementIds.has(`font-body-${brand.id}`)
-                      )}
-                      title={`Gövde: ${brand.body_font}`}
-                    >
-                      <span style={{ fontFamily: brand.body_font }}>Aa</span>
-                    </button>
+                    />
                   )}
+                  {brand.slogan && (
+                    <ElementRow
+                      icon={<TextIcon />}
+                      label="Slogan"
+                      value={brand.slogan}
+                      selected={selectedElementIds.has(`slogan-${brand.id}`)}
+                      onClick={() =>
+                        onToggleElement({
+                          id: `slogan-${brand.id}`,
+                          type: "text",
+                          label: brand.slogan!,
+                          value: brand.slogan!,
+                        })
+                      }
+                    />
+                  )}
+                  {SOCIAL_FIELDS.map(({ key, label }) => {
+                    const url = brand[key]
+                    if (!url) return null
+                    return (
+                      <ElementRow
+                        key={key}
+                        icon={<LinkIcon />}
+                        label={label}
+                        value={url}
+                        selected={selectedElementIds.has(`${key}-${brand.id}`)}
+                        onClick={() =>
+                          onToggleElement({
+                            id: `${key}-${brand.id}`,
+                            type: "social",
+                            label: `${label}: ${url}`,
+                            value: url,
+                          })
+                        }
+                      />
+                    )
+                  })}
                 </div>
               </div>
             )

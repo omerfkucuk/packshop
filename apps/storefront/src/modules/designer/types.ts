@@ -3,7 +3,7 @@
 // DesignElement - that type is for placing a finished asset into a print
 // zone; this one is just "what's currently selected as AI context," and
 // doesn't need real dimensions or content payloads yet.
-export type SelectedElementType = "logo" | "color" | "font"
+export type SelectedElementType = "logo" | "color" | "font" | "text" | "social"
 
 export type SelectedElement = {
   id: string
