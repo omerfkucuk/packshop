@@ -1,0 +1,38 @@
+{
+  "name": "@dtc/layout-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Resolves semantic AI placement decisions (panel/anchor/relative-to) into real coordinates on top of @dtc/packaging-engine's geometry.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": "./dist/index.js",
+    "./domain": "./dist/domain/index.js",
+    "./resolvers": "./dist/resolvers/index.js"
+  },
+  "typesVersions": {
+    "*": {
+      "domain": ["dist/domain/index.d.ts"],
+      "resolvers": ["dist/resolvers/index.d.ts"]
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "jest",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@dtc/packaging-engine": "*"
+  },
+  "devDependencies": {
+    "@swc/core": "^1.5.7",
+    "@swc/jest": "^0.2.36",
+    "@types/jest": "^29.5.13",
+    "@types/node": "^20.12.11",
+    "jest": "^29.7.0",
+    "typescript": "^5.4.5"
+  }
+}

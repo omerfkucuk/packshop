@@ -3,6 +3,11 @@ import { Dimensions, Point } from "../shared/types"
 export type DesignElementType =
   | "logo"
   | "text"
+  | "qr"
+  | "barcode"
+  | "image"
+  | "icon"
+  | "shape"
   | "pattern"
   | "reference-image"
   | "ai-generated"
@@ -25,3 +30,17 @@ export interface PositionedDesign {
   size: Dimensions
   rotationDeg?: number
 }
+
+// A 9-point anchor grid within a zone, for callers (like a layout engine
+// resolving semantic AI decisions) that need more than "centered" -
+// see anchorFit in strategies.ts.
+export type AnchorPoint =
+  | "top-left"
+  | "top-center"
+  | "top-right"
+  | "center-left"
+  | "center"
+  | "center-right"
+  | "bottom-left"
+  | "bottom-center"
+  | "bottom-right"
