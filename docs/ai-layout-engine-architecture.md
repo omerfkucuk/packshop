@@ -12,6 +12,22 @@ replacing it.
 Kept up to date after each shipped feature, at feature granularity (not
 one entry per commit). Newest first.
 
+- **`applyDesign()` migrated onto `@dtc/layout-engine`** — the storefront's
+  rule-based design application no longer hand-computes logo/slogan
+  positions with `placeDesign`/`fitCenter` directly. It now builds a
+  `CompositionPlan` (logo centered on each main panel, slogan placed
+  relative-below the logo, or centered alone) and calls `resolveLayout()`
+  against a `FEFCO_0201_PANEL_SEMANTICS` map, same engine an eventual AI
+  composer will drive. `DielinePreview` correspondingly went from a
+  hardcoded logo+slogan shape to rendering any `ResolvedLayout` generically
+  (iterates every panel's elements, sorted by z-index, switches on
+  `elementType`); background color stays a separate `backgroundColors`
+  map since it's a panel-level style, not a positioned element. Caught and
+  fixed post-deploy: `@dtc/layout-engine` was never added to the
+  storefront's own `package.json` dependencies, so Vercel's isolated
+  install never symlinked it (worked locally only because an existing
+  root `node_modules` symlink papered over the gap) - first prod deploy
+  failed with `Module not found`, fixed and redeployed clean.
 - **`@dtc/layout-engine` package (implementation step 1 of §13)** — domain
   models (`CompositionPlan`, `SemanticPlacement`, `ResolvedLayout`), the
   size/relative/dependency-graph resolvers, and `resolveLayout()` orchestrating
@@ -20,8 +36,8 @@ one entry per commit). Newest first.
   grid) and `anchorFit()` alongside the existing center-only `fitCenter`, and
   `DesignElementType` widened to include qr/barcode/image/icon/shape so
   layout-engine's element vocabulary is the same type, not a parallel one.
-  23 + 5 new tests. Not wired into the storefront yet - `applyDesign()`
-  migrating onto this engine is a deliberately separate next step.
+  23 + 5 new tests. `applyDesign()` migrating onto this engine happened as
+  a deliberately separate next step - see the entry above.
 - **AI layout engine architecture (this document)** — design-only spec for
   semantic AI placement decisions → Layout Engine → Constraint Engine →
   Vision Review, built on top of everything below. No implementation yet.
