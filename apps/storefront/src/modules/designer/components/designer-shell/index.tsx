@@ -568,7 +568,8 @@ const DesignerShell = ({
             {geometryPanels ? (
               <DielinePreview
                 panels={geometryPanels}
-                appliedDesign={appliedDesign}
+                resolvedLayout={appliedDesign?.resolvedLayout}
+                backgroundColors={appliedDesign?.backgroundColors}
                 className="max-h-full max-w-full"
               />
             ) : image ? (

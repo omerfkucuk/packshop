@@ -1,26 +1,37 @@
 import type { PanelGeometry, Point } from "@dtc/packaging-engine/shared"
-import type { AppliedPanelDesign } from "../../utils/apply-design"
+import type { ResolvedLayout, ResolvedElement } from "@dtc/layout-engine"
 
 type DielinePreviewProps = {
   panels: PanelGeometry[]
-  appliedDesign?: AppliedPanelDesign[]
+  resolvedLayout?: ResolvedLayout | null
+  backgroundColors?: Record<string, string>
   className?: string
 }
 
 const toPolylinePoints = (points: Point[]) =>
   points.map((p) => `${p.x},${p.y}`).join(" ")
 
+const MIN_TEXT_SIZE = 10
+const MAX_TEXT_SIZE = 40
+
+const isImageLike = (el: ResolvedElement) =>
+  el.elementType === "logo" ||
+  el.elementType === "image" ||
+  el.elementType === "reference-image" ||
+  el.elementType === "ai-generated"
+
 // Flat 2D render of a generated dieline: cut lines solid black, crease lines
-// dashed gray, print zones lightly shaded (or the applied design's chosen
-// color). Coordinates come from @dtc/packaging-engine in a Y-up mm space;
-// SVG is Y-down, so the geometry (pure lines/polygons, safe to flip as-is)
-// renders inside a vertically-flipped <g>. Painted content - the logo image
-// and slogan text - would render upside down under that same flip, so their
-// positions are pre-flipped by hand instead and drawn in a normal, unflipped
-// <g> on top.
+// dashed gray, print zones lightly shaded (or the resolved layout's chosen
+// background color). Coordinates come from @dtc/packaging-engine/
+// @dtc/layout-engine in a Y-up mm space; SVG is Y-down, so the geometry
+// (pure lines/polygons, safe to flip as-is) renders inside a
+// vertically-flipped <g>. Painted content - images and text - would render
+// upside down under that same flip, so their positions are pre-flipped by
+// hand instead and drawn in a normal, unflipped <g> on top.
 const DielinePreview = ({
   panels,
-  appliedDesign,
+  resolvedLayout,
+  backgroundColors,
   className,
 }: DielinePreviewProps) => {
   const allPoints = panels.flatMap((panel) =>
@@ -42,8 +53,11 @@ const DielinePreview = ({
     maxX - minX + padding * 2
   } ${maxY - minY + padding * 2}`
 
-  const designByPanel = new Map(
-    (appliedDesign ?? []).map((d) => [d.panelName, d])
+  const elementsByPanel = new Map(
+    (resolvedLayout?.panels ?? []).map((p) => [
+      p.panelName,
+      [...p.elements].sort((a, b) => a.zIndex - b.zIndex),
+    ])
   )
 
   return (
@@ -54,10 +68,7 @@ const DielinePreview = ({
             <polygon
               key={zone.id}
               points={toPolylinePoints(zone.boundary)}
-              fill={
-                designByPanel.get(panel.panelName)?.backgroundColor ??
-                "rgba(0,0,0,0.04)"
-              }
+              fill={backgroundColors?.[panel.panelName] ?? "rgba(0,0,0,0.04)"}
               stroke="none"
             />
           ))
@@ -91,32 +102,54 @@ const DielinePreview = ({
 
       {/* Not inside the flipped <g> above - see the note on flipY. */}
       <g>
-        {appliedDesign?.map((design) => (
-          <g key={design.panelName}>
-            {design.logo && (
-              // eslint-disable-next-line jsx-a11y/alt-text
-              <image
-                href={design.logo.url}
-                x={design.logo.x}
-                y={flipY(design.logo.y + design.logo.h)}
-                width={design.logo.w}
-                height={design.logo.h}
-                preserveAspectRatio="xMidYMid meet"
-              />
-            )}
-            {design.slogan && (
-              <text
-                x={design.slogan.x}
-                y={flipY(design.slogan.y)}
-                fontSize={design.slogan.fontSize}
-                fontFamily={design.slogan.font ?? undefined}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill="#000"
-              >
-                {design.slogan.text}
-              </text>
-            )}
+        {Array.from(elementsByPanel.entries()).map(([panelName, elements]) => (
+          <g key={panelName}>
+            {elements.map((el) => {
+              if (isImageLike(el)) {
+                const url = el.content.url
+                if (typeof url !== "string") return null
+                return (
+                  // eslint-disable-next-line jsx-a11y/alt-text
+                  <image
+                    key={el.elementId}
+                    href={url}
+                    x={el.position.x}
+                    y={flipY(el.position.y + el.size.h)}
+                    width={el.size.w}
+                    height={el.size.h}
+                    preserveAspectRatio="xMidYMid meet"
+                  />
+                )
+              }
+
+              if (el.elementType === "text") {
+                const text = el.content.text
+                const font = el.content.font
+                if (typeof text !== "string") return null
+                const fontSize = Math.min(
+                  MAX_TEXT_SIZE,
+                  Math.max(MIN_TEXT_SIZE, el.size.h)
+                )
+                return (
+                  <text
+                    key={el.elementId}
+                    x={el.position.x + el.size.w / 2}
+                    y={flipY(el.position.y + el.size.h / 2)}
+                    fontSize={fontSize}
+                    fontFamily={typeof font === "string" ? font : undefined}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill="#000"
+                  >
+                    {text}
+                  </text>
+                )
+              }
+
+              // qr/barcode/icon/shape rendering lands with their own
+              // element-type plugins later - nothing to draw yet.
+              return null
+            })}
           </g>
         ))}
       </g>

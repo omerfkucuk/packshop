@@ -1,107 +1,109 @@
-import { placeDesign, fitCenter } from "@dtc/packaging-engine/placement"
 import type { PanelGeometry } from "@dtc/packaging-engine/shared"
+import {
+  resolveLayout,
+  type CompositionPlan,
+  type PanelSemanticsMap,
+  type ResolvedLayout,
+  type SemanticPanelName,
+  type SemanticPlacement,
+} from "@dtc/layout-engine"
 import type { SelectedElement } from "../types"
 
-export type AppliedLogo = {
-  url: string
-  x: number
-  y: number
-  w: number
-  h: number
+// Only FEFCO 0201 exists today, so this is a plain constant rather than a
+// registry - see the AI layout engine architecture doc's plugin system
+// section for when (not if a second box type shows up) this becomes one.
+const FEFCO_0201_PANEL_SEMANTICS: PanelSemanticsMap = {
+  front: "Panel-L1",
+  right: "Panel-W1",
+  back: "Panel-L2",
+  left: "Panel-W2",
 }
 
-export type AppliedSlogan = {
-  text: string
-  font: string | null
-  x: number
-  y: number
-  fontSize: number
+const MAIN_PANELS: SemanticPanelName[] = ["front", "right", "back", "left"]
+
+// Turns the customer's selected brand elements into a CompositionPlan: the
+// same logo (centered) and slogan (below it, in the selected font)
+// repeated identically across all 4 main faces. This is the "no real
+// AI/text prompt yet" default plan - once AI composition exists, it
+// produces plans through the exact same resolveLayout() call.
+function buildCompositionPlan(elements: SelectedElement[]): CompositionPlan {
+  const logo = elements.find((el) => el.type === "logo")
+  const slogan = elements.find((el) => el.type === "text")
+  const font = elements.find((el) => el.type === "font")?.value ?? null
+
+  const planElements: SemanticPlacement[] = []
+
+  for (const panel of MAIN_PANELS) {
+    const logoId = `logo-${panel}`
+
+    if (logo) {
+      planElements.push({
+        elementId: logoId,
+        elementType: "logo",
+        content: { url: logo.value },
+        placementKind: "absolute",
+        panel,
+        anchor: "center",
+        size: slogan ? "medium" : "large",
+      })
+    }
+
+    if (slogan) {
+      const base = {
+        elementId: `slogan-${panel}`,
+        elementType: "text" as const,
+        content: { text: slogan.value, font },
+        size: "medium" as const,
+      }
+
+      planElements.push(
+        logo
+          ? {
+              ...base,
+              placementKind: "relative",
+              panel,
+              relativeTo: logoId,
+              position: "below",
+              gapHint: "normal",
+            }
+          : {
+              ...base,
+              placementKind: "absolute",
+              panel,
+              anchor: "center",
+            }
+      )
+    }
+  }
+
+  return { version: "1.0", boxType: "fefco-0201", elements: planElements }
 }
 
-export type AppliedPanelDesign = {
-  panelName: string
-  backgroundColor: string | null
-  logo: AppliedLogo | null
-  slogan: AppliedSlogan | null
+export type ResolveDesignResult = {
+  resolvedLayout: ResolvedLayout
+  /** panelName -> chosen background color, applied identically to every
+   *  main panel - a panel-level style, not a positioned element, so it
+   *  doesn't go through the CompositionPlan/resolveLayout at all. */
+  backgroundColors: Record<string, string>
 }
 
-// Logo is centered in a box this fraction of the zone's size - not its real
-// size (that's not known without loading the image), but placeDesign/
-// fitCenter only need a target box to center, and SVG's own aspect-fit
-// (preserveAspectRatio) handles containing the actual image inside it.
-const LOGO_BOX_RATIO = 0.5
-const LOGO_BOX_RATIO_WITH_SLOGAN = 0.4
-
-const SLOGAN_FONT_RATIO = 0.045
-const MIN_FONT_SIZE = 10
-const MAX_FONT_SIZE = 40
-
-// Rule-based first pass at "apply the selected brand elements to the box":
-// same background color, same logo, and the slogan (in the selected font,
-// if any) repeated identically across every main panel. No real AI/text
-// prompt involved yet - see DesignerShell's AI bar.
 export function applyDesign(
   panels: PanelGeometry[],
   elements: SelectedElement[]
-): AppliedPanelDesign[] {
-  const backgroundColor =
-    elements.find((el) => el.type === "color")?.value ?? null
-  const logoUrl = elements.find((el) => el.type === "logo")?.value ?? null
-  const slogan = elements.find((el) => el.type === "text") ?? null
-  const font = elements.find((el) => el.type === "font")?.value ?? null
+): ResolveDesignResult {
+  const color = elements.find((el) => el.type === "color")?.value ?? null
+  const plan = buildCompositionPlan(elements)
 
-  return panels
-    .filter((panel) => panel.printZones.length > 0) // the 4 main faces only
-    .map((panel) => {
-      const zone = panel.printZones[0]
-      const zoneOrigin = {
-        x: Math.min(...zone.boundary.map((p) => p.x)),
-        y: Math.min(...zone.boundary.map((p) => p.y)),
-      }
+  const resolvedLayout = resolveLayout(plan, panels, {
+    panelSemantics: FEFCO_0201_PANEL_SEMANTICS,
+  })
 
-      let logo: AppliedLogo | null = null
-      if (logoUrl) {
-        const ratio = slogan ? LOGO_BOX_RATIO_WITH_SLOGAN : LOGO_BOX_RATIO
-        const naturalSize = {
-          w: zone.boundingBox.w * ratio,
-          h: zone.boundingBox.h * ratio,
-        }
-        const [placed] = placeDesign(
-          zone,
-          [{ id: "logo", type: "logo", naturalSize }],
-          fitCenter
-        )
-        // Nudge up a bit so there's clear room for the slogan underneath.
-        const yOffset = slogan ? zone.boundingBox.h * 0.08 : 0
-        logo = {
-          url: logoUrl,
-          x: placed.position.x,
-          y: placed.position.y + yOffset,
-          w: placed.size.w,
-          h: placed.size.h,
-        }
-      }
+  const backgroundColors: Record<string, string> = {}
+  if (color) {
+    for (const physicalPanelName of Object.values(FEFCO_0201_PANEL_SEMANTICS)) {
+      if (physicalPanelName) backgroundColors[physicalPanelName] = color
+    }
+  }
 
-      let sloganPlacement: AppliedSlogan | null = null
-      if (slogan) {
-        const fontSize = Math.min(
-          MAX_FONT_SIZE,
-          Math.max(MIN_FONT_SIZE, zone.boundingBox.w * SLOGAN_FONT_RATIO)
-        )
-        sloganPlacement = {
-          text: slogan.value,
-          font,
-          x: zoneOrigin.x + zone.boundingBox.w / 2,
-          y: zoneOrigin.y + zone.boundingBox.h * 0.12,
-          fontSize,
-        }
-      }
-
-      return {
-        panelName: panel.panelName,
-        backgroundColor,
-        logo,
-        slogan: sloganPlacement,
-      }
-    })
+  return { resolvedLayout, backgroundColors }
 }
