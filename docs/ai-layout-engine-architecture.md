@@ -7,6 +7,106 @@ the existing `@dtc/packaging-engine` package (dieline generation, print
 zones, `placeDesign`/`fitCenter`/`fitStretch`/`cropToFit`) rather than
 replacing it.
 
+## 0. Project history
+
+Kept up to date after each shipped feature, at feature granularity (not
+one entry per commit). Newest first.
+
+- **AI layout engine architecture (this document)** — design-only spec for
+  semantic AI placement decisions → Layout Engine → Constraint Engine →
+  Vision Review, built on top of everything below. No implementation yet.
+- **Rule-based live design application** — `applyDesign()` in the
+  storefront: takes the customer's selected brand elements (logo, color,
+  font, slogan) and uses `@dtc/packaging-engine`'s `placeDesign`/
+  `fitCenter` to center the logo and place the slogan on every main panel's
+  print zone, with the chosen color as background — live, no button click,
+  no AI. `DielinePreview` extended to render this (logo `<image>` and
+  slogan `<text>` are painted content, so their coordinates are pre-flipped
+  by hand rather than living inside the same Y-flip transform as the pure
+  geometry lines).
+- **Marka Kiti element picker** — every brand asset (logo, alternate
+  logos, each color, both fonts, slogan, each set social/website link) is
+  its own labeled, clickable row in the designer's Marka Kiti panel;
+  clicking toggles it into a removable chip above the AI prompt bar.
+  Editing a brand moved to its own pencil-icon button so it doesn't
+  conflict with element selection as the row's main click target.
+- **Google Fonts integration** — `heading_font`/`body_font` went from
+  plain text (only rendered if the typed name happened to be a system
+  font) to an `<datalist>`-backed autocomplete over ~150 curated Google
+  Font names, plus a `GoogleFontLoader` that injects the real Google Fonts
+  CSS `<link>` for whichever font a brand actually has, so it renders
+  correctly on the public share page and in the designer.
+- **Inline brand create/edit in the designer** — Marka Kiti used to send
+  the customer to the Marka Merkezi pages and back for creating or editing
+  a brand. `saveBrandInline` (create/update without the redirect) plus a
+  `BrandKitPanel` component now do this in place, including logo upload.
+- **Size variant renaming to plain mm** — box/pouch size option values and
+  variant titles across the catalog went from code-prefixed, cm-based text
+  ("K105 (45 cm x 35 cm x 25 cm)", "L (45x55 cm)") to plain
+  "LxWxH"/"WxH" in millimeters ("450x350x250", "450x550"), renamed via the
+  admin's per-value-ID endpoint so existing variant associations weren't
+  touched. Left "Baskılı Hediye Kutusu" (no numbers to convert) and
+  "Baskılı Koli Bandı" (a different parameter - tape roll width, already
+  in mm) alone.
+- **Real FEFCO 0201 geometry in the designer** — "Baskılı Koli" tagged
+  `fefco-0201`; the designer canvas renders the actual generated dieline
+  (cut lines, crease lines, print zones) instead of a product photo when
+  the active product carries that tag, using dimensions parsed from the
+  variant title or the entered custom size.
+- **`@dtc/packaging-engine` package** — new pure-TypeScript monorepo
+  package (`packages/packaging-engine`) for packaging geometry: FEFCO 0201
+  (RSC box) dieline generation (4 panels, inner/outer flaps sized off
+  board width, a thickness-scaled glue tab, 5mm-inset print zones per main
+  panel), a `placement` module (`placeDesign` + `fitCenter`/`fitStretch`/
+  `cropToFit` strategies, product-family-agnostic), and DXF export via
+  `@tarikjabiri/dxf` (Taglio/Cordone layers). Split into subpath exports
+  (`./box-styles`, `./shared`, `./placement`, `./export`) so the storefront
+  only ever bundles what it needs client-side.
+- **Custom size inputs with real constraints** — the designer's
+  Konfigürasyon panel supports "Özel ölçü" alongside standard variants:
+  Boy/En/Yükseklik in cm, min/max per product (from metadata, generic
+  5–100cm fallback), enforcing Boy ≥ En and Boy+En / En+Yükseklik ≥ 27cm
+  (real die-cutting/corrugator limits). Since there's no real formula or
+  variant for an arbitrary size yet, submitting adds the base variant to
+  the cart with the requested dimensions as line item metadata and swaps
+  "Sepete Ekle" for "Teklif İste" - pricing still needs manual follow-up.
+- **Tasarla design studio** — `/tasarla` moved into its own route group
+  (fixed full-screen shell, no site header/footer/scroll): top bar (logo,
+  product summary, price, cart/quote action), left icon rail (Ürün,
+  Konfigürasyon, Marka Kiti, Tema, Yazı, Elementler), a category-filterable
+  picker over every Custom-tagged product, and a bottom AI prompt bar.
+  Auto-advances to the next logical step once (Ürün → Konfigürasyon → Marka
+  Kiti) depending on what's already known when it opens.
+- **Custom-tagged products skip the cart, go straight to Tasarla** —
+  products tagged "Custom" in the admin show a "Tasarla" button instead of
+  (or combined with, in earlier iterations) "Sepete Ekle"; the selected
+  variant/quantity are carried via query params, and the cart is only
+  touched once a design is actually finished.
+- **Storefront cleanup pass** — mini cart dropdown and full `/cart` page
+  localized from the untouched English starter template to Turkish and
+  the site's black/10 visual language; fixed a missing product thumbnail
+  (the cart's fields query never requested `*items.product.images`, and
+  the code read from the wrong, always-empty `variant.product.images`
+  path instead); fixed cart line-item table overflow on mobile (<1024px,
+  this project's "small" breakpoint). Removed Tasarla/Keşfet/İşini Büyüt
+  from the nav (not being worked on for now, routes left in place) and
+  deleted three leftover demo-seed categories (Pants, Sweatshirts, Merch -
+  zero products, unrelated to a packaging catalog).
+- **Faturalandırma Merkezi (Billing Center)** — a page for viewing/editing
+  the single address marked as the customer's default billing address
+  (company/invoice name + address), separate from the general address book.
+- **Marka Merkezi (Brand Center)** — the first feature of this arc: a new
+  `brand` Medusa module and store API, letting a customer create one or
+  more brand profiles (logo + alternate logos, colors, fonts, social
+  links, slogan) and share a read-only public view of each. Started as
+  modal-based add/edit (mirroring the existing address book pattern), then
+  moved to dedicated `/marka-merkezi/yeni` and `/marka-merkezi/[brandId]`
+  pages once modals felt inconsistent with the rest of the flow.
+- **Account section tidy-up** (earlier in this arc, predates the above) —
+  login/register/overview/profile/addresses/orders pages brought in line
+  with the site's Base Web-inspired black/10 visual language; fixed a
+  profile page input bug.
+
 ## 1. Guiding principle
 
 **AI decides WHAT goes WHERE, in semantic terms. It never outputs x/y
