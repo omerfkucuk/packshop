@@ -29,6 +29,7 @@ import { Button } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import DielinePreview from "../dieline-preview"
 import BrandKitPanel from "../brand-kit-panel"
+import { SelectedElement } from "../../types"
 
 type Tool = "urun" | "komponent" | "marka-kiti" | "tema" | "yazi" | "elementler"
 
@@ -96,6 +97,22 @@ const DesignerShell = ({
   )
   const [aiPrompt, setAiPrompt] = useState("")
   const [aiMessage, setAiMessage] = useState<string | null>(null)
+  const [selectedElements, setSelectedElements] = useState<SelectedElement[]>(
+    []
+  )
+  const selectedElementIds = new Set(selectedElements.map((el) => el.id))
+
+  const toggleElement = (element: SelectedElement) => {
+    setSelectedElements((prev) =>
+      prev.some((el) => el.id === element.id)
+        ? prev.filter((el) => el.id !== element.id)
+        : [...prev, element]
+    )
+  }
+
+  const removeElement = (id: string) => {
+    setSelectedElements((prev) => prev.filter((el) => el.id !== id))
+  }
 
   const selectedVariant = useMemo(() => {
     return product?.variants?.find((v) =>
@@ -519,6 +536,8 @@ const DesignerShell = ({
               brands={brands}
               selectedBrandId={selectedBrandId}
               onSelectBrand={setSelectedBrandId}
+              selectedElementIds={selectedElementIds}
+              onToggleElement={toggleElement}
             />
           )}
 
@@ -563,6 +582,43 @@ const DesignerShell = ({
 
           {/* AI bar */}
           <div className="shrink-0 border-t border-black/10 p-4">
+            {selectedElements.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {selectedElements.map((el) => (
+                  <span
+                    key={el.id}
+                    className="inline-flex items-center gap-x-1.5 h-8 pl-1.5 pr-2 rounded-full border border-black/10 bg-black/[0.02] text-xs text-black"
+                  >
+                    {el.type === "logo" && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={el.value}
+                        alt="Logo"
+                        className="h-5 w-5 rounded object-contain"
+                      />
+                    )}
+                    {el.type === "color" && (
+                      <span
+                        className="h-4 w-4 rounded-full border border-black/10"
+                        style={{ backgroundColor: el.value }}
+                      />
+                    )}
+                    {el.type === "font" && (
+                      <span style={{ fontFamily: el.value }}>Aa</span>
+                    )}
+                    {el.label}
+                    <button
+                      type="button"
+                      onClick={() => removeElement(el.id)}
+                      className="text-black/40 hover:text-black"
+                      aria-label={`${el.label} öğesini kaldır`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
             <form
               onSubmit={handleAiSubmit}
               className="flex items-center gap-x-3"
@@ -575,7 +631,9 @@ const DesignerShell = ({
                   setAiMessage(null)
                 }}
                 placeholder={
-                  selectedBrand
+                  selectedElements.length > 0
+                    ? "Seçili öğeleri kullanarak bir tasarım tarif et..."
+                    : selectedBrand
                     ? `${selectedBrand.brand_name} marka kitini kullanarak bir tasarım tarif et...`
                     : "Tasarımını tarif et, seçili öğeleri kullanarak senin için oluşturalım..."
                 }
