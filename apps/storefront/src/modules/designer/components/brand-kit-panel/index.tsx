@@ -6,6 +6,7 @@ import { Trash } from "@medusajs/icons"
 
 import { Brand, deleteBrand, saveBrandInline } from "@lib/data/brands"
 import Input from "@modules/common/components/input"
+import GoogleFontInput from "@modules/common/components/google-font-input"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
 import ColorListInput from "@modules/brand-center/components/brand-card/color-list-input"
 import LogoUpload from "@modules/brand-center/components/brand-card/logo-upload"
@@ -121,12 +122,12 @@ const BrandKitPanel = ({
 
           <ColorListInput defaultColors={editingBrand?.colors || []} />
 
-          <Input
+          <GoogleFontInput
             label="Başlık yazı tipi"
             name="heading_font"
             defaultValue={editingBrand?.heading_font || undefined}
           />
-          <Input
+          <GoogleFontInput
             label="Gövde yazı tipi"
             name="body_font"
             defaultValue={editingBrand?.body_font || undefined}

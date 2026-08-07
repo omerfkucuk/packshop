@@ -7,6 +7,7 @@ import { Trash, Link as LinkIcon } from "@medusajs/icons"
 import { Brand, deleteBrand, addBrand, updateBrand } from "@lib/data/brands"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
 import Input from "@modules/common/components/input"
+import GoogleFontInput from "@modules/common/components/google-font-input"
 import Spinner from "@modules/common/icons/spinner"
 import ColorListInput from "../brand-card/color-list-input"
 import LogoUpload from "../brand-card/logo-upload"
@@ -118,17 +119,15 @@ const BrandForm = ({ countryCode, brand }: BrandFormProps) => {
         <ColorListInput defaultColors={brand?.colors || []} />
 
         <div className="grid grid-cols-2 gap-x-2">
-          <Input
+          <GoogleFontInput
             label="Başlık yazı tipi"
             name="heading_font"
             defaultValue={brand?.heading_font || undefined}
-            data-testid="heading-font-input"
           />
-          <Input
+          <GoogleFontInput
             label="Gövde yazı tipi"
             name="body_font"
             defaultValue={brand?.body_font || undefined}
-            data-testid="body-font-input"
           />
         </div>
 

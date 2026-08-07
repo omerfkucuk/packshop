@@ -1,4 +1,5 @@
 import { PublicBrand } from "@lib/data/brands"
+import GoogleFontLoader from "@modules/common/components/google-font-loader"
 
 type BrandKitViewProps = {
   brand: PublicBrand
@@ -21,6 +22,7 @@ const BrandKitView = ({ brand }: BrandKitViewProps) => {
 
   return (
     <div className="flex flex-col gap-y-10">
+      <GoogleFontLoader fonts={[brand.heading_font, brand.body_font]} />
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-black">
           {brand.brand_name}
