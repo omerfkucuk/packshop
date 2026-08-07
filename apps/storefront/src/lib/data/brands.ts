@@ -153,6 +153,42 @@ export const updateBrand = async (
   redirect(`/${countryCode}/marka-merkezi`)
 }
 
+export type SaveBrandInlineState = {
+  success: boolean
+  error: string | null
+  brand: Brand | null
+}
+
+// Same create/update logic as addBrand/updateBrand, but never redirects -
+// for callers embedding the form inline (e.g. the designer's Marka Kiti
+// panel) instead of on the dedicated Marka Merkezi pages.
+export const saveBrandInline = async (
+  _currentState: SaveBrandInlineState,
+  formData: FormData
+): Promise<SaveBrandInlineState> => {
+  const id = formData.get("brandId") as string
+  const headers = { ...(await getAuthHeaders()) }
+  const body = brandFieldsFromFormData(formData)
+
+  if (!body.brand_name) {
+    return { success: false, error: "Marka adı gereklidir.", brand: null }
+  }
+
+  try {
+    const { brand } = await sdk.client.fetch<{ brand: Brand }>(
+      id ? `/store/brands/${id}` : "/store/brands",
+      { method: "POST", headers, body }
+    )
+
+    const cacheTag = await getCacheTag("customers")
+    revalidateTag(cacheTag)
+
+    return { success: true, error: null, brand }
+  } catch (err) {
+    return { success: false, error: String(err), brand: null }
+  }
+}
+
 export const deleteBrand = async (id: string): Promise<void> => {
   const headers = { ...(await getAuthHeaders()) }
 

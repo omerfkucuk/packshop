@@ -28,6 +28,7 @@ import { optionsAsKeymap } from "@modules/products/components/product-actions"
 import { Button } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import DielinePreview from "../dieline-preview"
+import BrandKitPanel from "../brand-kit-panel"
 
 type Tool = "urun" | "komponent" | "marka-kiti" | "tema" | "yazi" | "elementler"
 
@@ -514,73 +515,11 @@ const DesignerShell = ({
           )}
 
           {activeTool === "marka-kiti" && (
-            <div className="flex flex-col gap-y-4">
-              <h2 className="text-lg font-semibold text-black">Marka Kiti</h2>
-              {brands.length === 0 ? (
-                <div className="flex flex-col gap-y-3">
-                  <p className="text-sm text-black/70">
-                    Henüz bir markanız yok. Logo, renk ve yazı tipinizi
-                    kullanmak için önce bir marka oluşturun.
-                  </p>
-                  <LocalizedClientLink
-                    href="/marka-merkezi/yeni"
-                    className="text-sm text-black underline underline-offset-2 hover:no-underline w-fit"
-                  >
-                    Marka oluştur
-                  </LocalizedClientLink>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-y-3">
-                  {brands.map((brand) => {
-                    const isSelected = brand.id === selectedBrandId
-                    return (
-                      <button
-                        key={brand.id}
-                        onClick={() => setSelectedBrandId(brand.id)}
-                        className={`flex items-center gap-x-3 p-3 rounded-lg border text-left transition-colors ${
-                          isSelected
-                            ? "border-black"
-                            : "border-black/10 hover:border-black/20"
-                        }`}
-                      >
-                        {brand.logo_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={brand.logo_url}
-                            alt={brand.brand_name}
-                            className="h-10 w-10 rounded-lg border border-black/10 object-contain shrink-0"
-                          />
-                        ) : (
-                          <div className="h-10 w-10 rounded-lg border border-black/10 bg-black/[0.02] shrink-0" />
-                        )}
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-sm font-medium text-black truncate">
-                            {brand.brand_name}
-                          </span>
-                          {!!brand.colors?.length && (
-                            <div className="flex gap-x-1 mt-1">
-                              {brand.colors.slice(0, 5).map((c) => (
-                                <span
-                                  key={c}
-                                  className="h-3 w-3 rounded-full border border-black/10"
-                                  style={{ backgroundColor: c }}
-                                />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    )
-                  })}
-                  <LocalizedClientLink
-                    href="/marka-merkezi/yeni"
-                    className="text-sm text-black underline underline-offset-2 hover:no-underline w-fit"
-                  >
-                    Yeni marka ekle
-                  </LocalizedClientLink>
-                </div>
-              )}
-            </div>
+            <BrandKitPanel
+              brands={brands}
+              selectedBrandId={selectedBrandId}
+              onSelectBrand={setSelectedBrandId}
+            />
           )}
 
           {(activeTool === "tema" ||
