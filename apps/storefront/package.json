@@ -15,6 +15,7 @@
     "analyze": "ANALYZE=true next build"
   },
   "dependencies": {
+    "@dtc/ai-composer": "*",
     "@dtc/layout-engine": "*",
     "@dtc/packaging-engine": "*",
     "@headlessui/react": "^2.2.0",

@@ -17,6 +17,7 @@ import {
 // so client bundles never pull in export/dxf.ts's @tarikjabiri/dxf
 // dependency, which is only ever needed server-side.
 import { generateFefco0201 } from "@dtc/packaging-engine/box-styles"
+import { listThemes, type ThemeId } from "@dtc/ai-composer"
 
 import { Brand } from "@lib/data/brands"
 import { addToCart } from "@lib/data/cart"
@@ -28,7 +29,8 @@ import { optionsAsKeymap } from "@modules/products/components/product-actions"
 import { Button } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import DielinePreview from "../dieline-preview"
-import { applyDesign } from "../../utils/apply-design"
+import { applyDesign, type ResolveDesignResult } from "../../utils/apply-design"
+import { generateAiDesign } from "../../utils/compose-design"
 import BrandKitPanel from "../brand-kit-panel"
 import { SelectedElement } from "../../types"
 
@@ -98,12 +100,20 @@ const DesignerShell = ({
   )
   const [aiPrompt, setAiPrompt] = useState("")
   const [aiMessage, setAiMessage] = useState<string | null>(null)
+  const [isGeneratingAiDesign, setIsGeneratingAiDesign] = useState(false)
+  const [selectedTheme, setSelectedTheme] = useState<ThemeId | null>(null)
+  // Once set, this takes over the canvas from the live rule-based default
+  // (applyDesign) - cleared any time the inputs it was generated from
+  // change, so the customer never sees a stale AI result silently applied
+  // to a different selection.
+  const [aiDesign, setAiDesign] = useState<ResolveDesignResult | null>(null)
   const [selectedElements, setSelectedElements] = useState<SelectedElement[]>(
     []
   )
   const selectedElementIds = new Set(selectedElements.map((el) => el.id))
 
   const toggleElement = (element: SelectedElement) => {
+    setAiDesign(null)
     setSelectedElements((prev) =>
       prev.some((el) => el.id === element.id)
         ? prev.filter((el) => el.id !== element.id)
@@ -112,7 +122,13 @@ const DesignerShell = ({
   }
 
   const removeElement = (id: string) => {
+    setAiDesign(null)
     setSelectedElements((prev) => prev.filter((el) => el.id !== id))
+  }
+
+  const handleSelectTheme = (theme: ThemeId) => {
+    setAiDesign(null)
+    setSelectedTheme((prev) => (prev === theme ? null : theme))
   }
 
   const selectedVariant = useMemo(() => {
@@ -185,10 +201,11 @@ const DesignerShell = ({
         })()
       : null
 
-  // Rule-based first pass: no real AI/text-prompt generation yet, but the
-  // selected elements are applied live to the canvas as they're picked.
+  // The AI-generated layout (once requested) takes over from the live
+  // rule-based default - see the resets in toggleElement/removeElement/
+  // handleSelectTheme for why it can't just linger after its inputs change.
   const appliedDesign = geometryPanels
-    ? applyDesign(geometryPanels, selectedElements)
+    ? aiDesign ?? applyDesign(geometryPanels, selectedElements)
     : undefined
 
   const filteredProducts = activeCategoryId
@@ -238,12 +255,41 @@ const DesignerShell = ({
     router.push(`/${countryCode}/cart`)
   }
 
-  const handleAiSubmit = (e: React.FormEvent) => {
+  const handleAiSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!aiPrompt.trim()) return
-    setAiMessage(
-      "Metin isteğinden tasarım üretme özelliği yakında aktif olacak. Şimdilik seçtiğiniz öğeler kutunuza doğrudan uygulanıyor - canvas'ta önizleyebilirsiniz."
-    )
+
+    if (!geometryPanels) {
+      setAiMessage("Önce bir ürün ve ölçü seçin.")
+      return
+    }
+    if (selectedElements.length === 0) {
+      setAiMessage("Önce Marka Kiti'nden en az bir logo veya slogan seçin.")
+      return
+    }
+
+    setIsGeneratingAiDesign(true)
+    try {
+      const result = await generateAiDesign(
+        geometryPanels,
+        selectedElements,
+        aiPrompt,
+        selectedTheme
+      )
+      setAiDesign(result)
+      const themeLabel = selectedTheme
+        ? listThemes().find((t) => t.id === selectedTheme)?.label
+        : null
+      setAiMessage(
+        themeLabel
+          ? `${themeLabel} temasıyla bir tasarım önerisi oluşturuldu.`
+          : "Bir tasarım önerisi oluşturuldu."
+      )
+    } catch {
+      setAiMessage("Tasarım oluşturulurken bir sorun oluştu, tekrar deneyin.")
+    } finally {
+      setIsGeneratingAiDesign(false)
+    }
   }
 
   return (
@@ -548,9 +594,42 @@ const DesignerShell = ({
             />
           )}
 
-          {(activeTool === "tema" ||
-            activeTool === "yazi" ||
-            activeTool === "elementler") && (
+          {activeTool === "tema" && (
+            <div className="flex flex-col gap-y-4">
+              <div>
+                <h2 className="text-lg font-semibold text-black">Tema</h2>
+                <p className="text-sm text-black/50 mt-1">
+                  AI ile oluştururken kullanılacak stili seçin.
+                </p>
+              </div>
+              <div className="flex flex-col gap-y-2">
+                {listThemes().map((theme) => {
+                  const isSelected = selectedTheme === theme.id
+                  return (
+                    <button
+                      key={theme.id}
+                      onClick={() => handleSelectTheme(theme.id)}
+                      className={`flex flex-col gap-y-1 p-3 rounded-lg border text-left transition-colors ${
+                        isSelected
+                          ? "border-black bg-black/[0.03]"
+                          : "border-black/10 hover:border-black/20"
+                      }`}
+                      data-testid={`designer-theme-${theme.id}`}
+                    >
+                      <span className="text-sm font-medium text-black">
+                        {theme.label}
+                      </span>
+                      <span className="text-xs text-black/50">
+                        {theme.description}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {(activeTool === "yazi" || activeTool === "elementler") && (
             <div className="flex flex-col gap-y-2">
               <h2 className="text-lg font-semibold text-black">
                 {TOOLS.find((t) => t.id === activeTool)?.label}
@@ -649,7 +728,13 @@ const DesignerShell = ({
                 className="flex-1 h-11 px-4 border border-black/10 rounded-lg text-sm focus:outline-none focus:border-black transition-colors"
                 data-testid="designer-ai-input"
               />
-              <Button type="submit" className="h-11 shrink-0" data-testid="designer-ai-submit">
+              <Button
+                type="submit"
+                isLoading={isGeneratingAiDesign}
+                disabled={isGeneratingAiDesign}
+                className="h-11 shrink-0"
+                data-testid="designer-ai-submit"
+              >
                 AI ile Oluştur
               </Button>
             </form>

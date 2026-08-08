@@ -2,24 +2,13 @@ import type { PanelGeometry } from "@dtc/packaging-engine/shared"
 import {
   resolveLayout,
   type CompositionPlan,
-  type PanelSemanticsMap,
   type ResolvedLayout,
-  type SemanticPanelName,
   type SemanticPlacement,
 } from "@dtc/layout-engine"
 import type { SelectedElement } from "../types"
+import { FEFCO_0201_PANEL_SEMANTICS, MAIN_PANELS } from "./panel-semantics"
 
-// Only FEFCO 0201 exists today, so this is a plain constant rather than a
-// registry - see the AI layout engine architecture doc's plugin system
-// section for when (not if a second box type shows up) this becomes one.
-const FEFCO_0201_PANEL_SEMANTICS: PanelSemanticsMap = {
-  front: "Panel-L1",
-  right: "Panel-W1",
-  back: "Panel-L2",
-  left: "Panel-W2",
-}
-
-const MAIN_PANELS: SemanticPanelName[] = ["front", "right", "back", "left"]
+export { FEFCO_0201_PANEL_SEMANTICS, MAIN_PANELS }
 
 // Turns the customer's selected brand elements into a CompositionPlan: the
 // same logo (centered) and slogan (below it, in the selected font)
@@ -87,23 +76,32 @@ export type ResolveDesignResult = {
   backgroundColors: Record<string, string>
 }
 
-export function applyDesign(
-  panels: PanelGeometry[],
+// Background color is a panel-level style, not a positioned element, so it
+// never goes through the CompositionPlan/resolveLayout - shared by both
+// the rule-based default and the AI composer path, since a chosen brand
+// color applies identically either way.
+export function computeBackgroundColors(
   elements: SelectedElement[]
-): ResolveDesignResult {
+): Record<string, string> {
   const color = elements.find((el) => el.type === "color")?.value ?? null
-  const plan = buildCompositionPlan(elements)
-
-  const resolvedLayout = resolveLayout(plan, panels, {
-    panelSemantics: FEFCO_0201_PANEL_SEMANTICS,
-  })
-
   const backgroundColors: Record<string, string> = {}
   if (color) {
     for (const physicalPanelName of Object.values(FEFCO_0201_PANEL_SEMANTICS)) {
       if (physicalPanelName) backgroundColors[physicalPanelName] = color
     }
   }
+  return backgroundColors
+}
 
-  return { resolvedLayout, backgroundColors }
+export function applyDesign(
+  panels: PanelGeometry[],
+  elements: SelectedElement[]
+): ResolveDesignResult {
+  const plan = buildCompositionPlan(elements)
+
+  const resolvedLayout = resolveLayout(plan, panels, {
+    panelSemantics: FEFCO_0201_PANEL_SEMANTICS,
+  })
+
+  return { resolvedLayout, backgroundColors: computeBackgroundColors(elements) }
 }

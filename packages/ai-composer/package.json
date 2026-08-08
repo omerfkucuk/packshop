@@ -1,0 +1,38 @@
+{
+  "name": "@dtc/ai-composer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Turns a free-text prompt + selected brand elements + theme into a CompositionPlan, via a swappable LlmProvider.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": "./dist/index.js",
+    "./domain": "./dist/domain/index.js",
+    "./providers": "./dist/providers/index.js"
+  },
+  "typesVersions": {
+    "*": {
+      "domain": ["dist/domain/index.d.ts"],
+      "providers": ["dist/providers/index.d.ts"]
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "jest",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@dtc/layout-engine": "*"
+  },
+  "devDependencies": {
+    "@swc/core": "^1.5.7",
+    "@swc/jest": "^0.2.36",
+    "@types/jest": "^29.5.13",
+    "@types/node": "^20.12.11",
+    "jest": "^29.7.0",
+    "typescript": "^5.4.5"
+  }
+}
