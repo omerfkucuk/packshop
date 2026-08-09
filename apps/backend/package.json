@@ -22,6 +22,9 @@
     "test:unit": "TEST_TYPE=unit NODE_OPTIONS=--experimental-vm-modules jest --silent --runInBand --forceExit"
   },
   "dependencies": {
+    "@dtc/ai-composer": "*",
+    "@dtc/layout-engine": "*",
+    "@dtc/packaging-engine": "*",
     "@medusajs/admin-sdk": "2.17.2",
     "@medusajs/admin-shared": "2.17.2",
     "@medusajs/caching": "2.17.2",

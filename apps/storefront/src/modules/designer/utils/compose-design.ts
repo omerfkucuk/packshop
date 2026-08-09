@@ -1,22 +1,12 @@
 import type { PanelGeometry } from "@dtc/packaging-engine/shared"
-import { resolveLayout } from "@dtc/layout-engine"
-import {
-  composeDesign,
-  MockLlmProvider,
-  type ThemeId,
-} from "@dtc/ai-composer"
+import type { ThemeId } from "@dtc/ai-composer/domain"
+import { composeAiDesign } from "@lib/data/designs"
 import type { SelectedElement } from "../types"
 import {
   computeBackgroundColors,
   type ResolveDesignResult,
 } from "./apply-design"
 import { FEFCO_0201_PANEL_SEMANTICS, MAIN_PANELS } from "./panel-semantics"
-
-// No API key needed yet - MockLlmProvider builds a CompositionPlan from
-// the theme's defaults plus a simple keyword scan of the prompt (see
-// packages/ai-composer). Swapping in a real provider only touches this
-// one line; every caller of generateAiDesign is unaffected.
-const provider = new MockLlmProvider()
 
 function toComposerElements(elements: SelectedElement[]) {
   const logo = elements.find((el) => el.type === "logo")
@@ -29,27 +19,35 @@ function toComposerElements(elements: SelectedElement[]) {
   return inputs
 }
 
+export type GenerateAiDesignResult = ResolveDesignResult & {
+  /** Set when the backend's constraint engine couldn't fully clear every
+   *  issue within its retry budget (e.g. two elements still overlap) - the
+   *  layout is still shown (soft-fail), but the customer sees a heads-up. */
+  warningMessage?: string
+}
+
 export async function generateAiDesign(
   panels: PanelGeometry[],
   elements: SelectedElement[],
   prompt: string,
   theme: ThemeId | null
-): Promise<ResolveDesignResult> {
-  const plan = await composeDesign(
-    {
-      prompt,
-      locale: "tr",
-      boxType: "fefco-0201",
-      availablePanels: MAIN_PANELS,
-      selectedElements: toComposerElements(elements),
-      theme: theme ?? undefined,
-    },
-    provider
-  )
-
-  const resolvedLayout = resolveLayout(plan, panels, {
+): Promise<GenerateAiDesignResult> {
+  const { resolvedLayout, constraintReport } = await composeAiDesign({
+    prompt,
+    locale: "tr",
+    boxType: "fefco-0201",
+    availablePanels: MAIN_PANELS,
+    selectedElements: toComposerElements(elements),
+    theme: theme ?? undefined,
+    panels,
     panelSemantics: FEFCO_0201_PANEL_SEMANTICS,
   })
 
-  return { resolvedLayout, backgroundColors: computeBackgroundColors(elements) }
+  return {
+    resolvedLayout,
+    backgroundColors: computeBackgroundColors(elements),
+    warningMessage: constraintReport.valid
+      ? undefined
+      : "Tasarımda küçük bir yerleşim sorunu olabilir, gözden geçirin.",
+  }
 }

@@ -17,7 +17,12 @@ import {
 // so client bundles never pull in export/dxf.ts's @tarikjabiri/dxf
 // dependency, which is only ever needed server-side.
 import { generateFefco0201 } from "@dtc/packaging-engine/box-styles"
-import { listThemes, type ThemeId } from "@dtc/ai-composer"
+// Subpath import, not the package root - the root barrel also re-exports
+// ./providers (including OpenAiProvider, which pulls in the `openai` SDK).
+// This is a "use client" component, so a root import would bundle that
+// server-only dependency into the browser. listThemes/ThemeId live in
+// ./domain, which has no dependency on providers.
+import { listThemes, type ThemeId } from "@dtc/ai-composer/domain"
 
 import { Brand } from "@lib/data/brands"
 import { addToCart } from "@lib/data/cart"
@@ -280,10 +285,11 @@ const DesignerShell = ({
       const themeLabel = selectedTheme
         ? listThemes().find((t) => t.id === selectedTheme)?.label
         : null
+      const baseMessage = themeLabel
+        ? `${themeLabel} temasıyla bir tasarım önerisi oluşturuldu.`
+        : "Bir tasarım önerisi oluşturuldu."
       setAiMessage(
-        themeLabel
-          ? `${themeLabel} temasıyla bir tasarım önerisi oluşturuldu.`
-          : "Bir tasarım önerisi oluşturuldu."
+        result.warningMessage ? `${baseMessage} ${result.warningMessage}` : baseMessage
       )
     } catch {
       setAiMessage("Tasarım oluşturulurken bir sorun oluştu, tekrar deneyin.")

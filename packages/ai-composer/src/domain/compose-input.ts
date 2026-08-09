@@ -1,4 +1,9 @@
-import type { ElementType, SemanticPanelName } from "@dtc/layout-engine"
+import type {
+  CompositionPlan,
+  ConstraintViolation,
+  ElementType,
+  SemanticPanelName,
+} from "@dtc/layout-engine"
 import type { ThemeId } from "./theme"
 
 export interface SelectedElementInput {
@@ -14,4 +19,13 @@ export interface ComposeInput {
   availablePanels: SemanticPanelName[]
   selectedElements: SelectedElementInput[]
   theme?: ThemeId
+  /** Present on retries: the previous attempt's plan plus what was wrong
+   *  with it (schema validation, layout resolution, or constraint
+   *  violations), so a real LlmProvider can fix specifically that instead
+   *  of guessing again from scratch. MockLlmProvider ignores this - its
+   *  output never fails validation. */
+  priorAttempt?: {
+    plan: CompositionPlan
+    violations: ConstraintViolation[]
+  }
 }

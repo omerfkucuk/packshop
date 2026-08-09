@@ -25,7 +25,9 @@
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@dtc/layout-engine": "*"
+    "@dtc/layout-engine": "*",
+    "@dtc/packaging-engine": "*",
+    "openai": "^4.104.0"
   },
   "devDependencies": {
     "@swc/core": "^1.5.7",

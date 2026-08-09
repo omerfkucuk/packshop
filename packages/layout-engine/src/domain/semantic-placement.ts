@@ -22,6 +22,17 @@ export interface SemanticElementBase {
   /** Whatever the element-type plugin needs to render it (image URL, text +
    *  font, QR target, ...). The layout engine never inspects this. */
   content: Record<string, unknown>
+  /** Set when this placement reuses one of the customer's selected brand
+   *  elements (e.g. repeating a logo across panels needs a fresh elementId
+   *  per repeat, but the same source asset) - the elementId from
+   *  ComposeInput.selectedElements. An LlmProvider is unreliable at
+   *  faithfully copying `content` forward on its own (observed: a real
+   *  model round-tripped a logo placement with `content: {}`, silently
+   *  dropping the URL), so composeDesign() overwrites `content` from the
+   *  authoritative selectedElements list whenever this is set, rather than
+   *  trusting whatever the provider echoed back. Omitted for elements the
+   *  plan invents itself (e.g. a decorative shape with no source asset). */
+  sourceElementId?: string
 }
 
 export interface AbsolutePlacement extends SemanticElementBase {

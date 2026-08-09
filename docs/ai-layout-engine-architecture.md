@@ -12,6 +12,50 @@ replacing it.
 Kept up to date after each shipped feature, at feature granularity (not
 one entry per commit). Newest first.
 
+- **Real `OpenAiProvider` + Constraint Engine v1 + backend AI orchestration**
+  — `MockLlmProvider` is no longer the only `LlmProvider`: `OpenAiProvider`
+  (Chat Completions, `json_object` mode, prompt spells out the
+  `CompositionPlan` shape in prose rather than fighting OpenAI's stricter
+  `json_schema` strict mode against a discriminated union) now exists
+  alongside it in `@dtc/ai-composer`. A `CompositionPlanSchema` (zod, in
+  `@dtc/layout-engine/schema`) validates every provider's raw output before
+  it's trusted. A first Constraint Engine (`@dtc/layout-engine/constraints`)
+  ships with one rule, `no-element-overlap` (pairwise AABB check between
+  foreground elements on the same panel; background-tier `shape`/`pattern`
+  elements are deliberately exempt) - `minimum-margin`/`barcode-printable`/
+  etc. from §6's table are still unbuilt. `composeDesign()` is now the real
+  retry-with-feedback loop from §7: validate → resolve → constrain →, on
+  failure, re-prompt with the specific violations attached, up to 3
+  attempts, soft-failing with the last attempt's layout (and its remaining
+  warnings) rather than blocking the customer. AI orchestration moved to
+  the backend as designed (`POST /store/designs/compose`, customer-authed,
+  a thin wrapper around `composeDesign()`) so the OPENAI_API_KEY never
+  reaches the browser; the storefront now calls that route (via a
+  `"use server"` wrapper, `lib/data/designs.ts`) instead of instantiating a
+  provider client-side. If `OPENAI_API_KEY` is unset the route falls back
+  to `MockLlmProvider`, so local dev keeps working without a key. One real
+  bundling trap hit and fixed along the way: the designer shell (a client
+  component) originally imported `listThemes`/`ThemeId` from
+  `@dtc/ai-composer`'s package root, which also barrels `./providers` -
+  since `OpenAiProvider` `require`s the `openai` SDK, that would have
+  pulled a server-only dependency into the browser bundle. Fixed by
+  importing from the `@dtc/ai-composer/domain` subpath instead, which has
+  no dependency on `./providers`. Not yet done: the Vision Review Pipeline
+  (§8) and the remaining constraint rules.
+
+  A real bug surfaced the first time this actually ran against the live
+  OpenAI API (not caught by any test, since `MockLlmProvider` never has
+  this failure mode): the prompt asked the model to "copy `content`
+  verbatim" from a selected element, and it silently didn't - a logo
+  placement came back with `content: {}`, which would have rendered no
+  image at all. Fixed by no longer trusting the model with `content` for
+  reused elements at all: `SemanticElementBase` gained an optional
+  `sourceElementId`, the model is now told to reference the selected
+  element by id instead of echoing its content, and `composeDesign()`
+  overwrites `content` from the authoritative `selectedElements` list
+  whenever `sourceElementId` is set (an unresolvable reference is itself a
+  retried violation, `unknown-source-element`). Confirmed fixed by
+  re-running the same real-API prompt.
 - **`applyDesign()` migrated onto `@dtc/layout-engine`** — the storefront's
   rule-based design application no longer hand-computes logo/slogan
   positions with `placeDesign`/`fitCenter` directly. It now builds a

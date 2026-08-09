@@ -11,12 +11,16 @@
   "exports": {
     ".": "./dist/index.js",
     "./domain": "./dist/domain/index.js",
-    "./resolvers": "./dist/resolvers/index.js"
+    "./resolvers": "./dist/resolvers/index.js",
+    "./constraints": "./dist/constraints/index.js",
+    "./schema": "./dist/schema/index.js"
   },
   "typesVersions": {
     "*": {
       "domain": ["dist/domain/index.d.ts"],
-      "resolvers": ["dist/resolvers/index.d.ts"]
+      "resolvers": ["dist/resolvers/index.d.ts"],
+      "constraints": ["dist/constraints/index.d.ts"],
+      "schema": ["dist/schema/index.d.ts"]
     }
   },
   "scripts": {
@@ -25,7 +29,8 @@
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@dtc/packaging-engine": "*"
+    "@dtc/packaging-engine": "*",
+    "zod": "^4.2.0"
   },
   "devDependencies": {
     "@swc/core": "^1.5.7",

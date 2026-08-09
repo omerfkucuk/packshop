@@ -39,5 +39,10 @@ export default defineMiddlewares({
       matcher: "/store/brands/:id/alternate-logos",
       middlewares: [authenticate("customer", ["session", "bearer"])],
     },
+    {
+      method: ["POST"],
+      matcher: "/store/designs/compose",
+      middlewares: [authenticate("customer", ["session", "bearer"])],
+    },
   ],
 })

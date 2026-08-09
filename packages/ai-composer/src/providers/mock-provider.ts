@@ -57,6 +57,7 @@ export class MockLlmProvider implements LlmProvider {
           elementId: logoId,
           elementType: "logo",
           content: logo.content,
+          sourceElementId: logo.elementId,
           placementKind: "absolute",
           panel,
           anchor,
@@ -69,6 +70,7 @@ export class MockLlmProvider implements LlmProvider {
           elementId: `slogan-${panel}`,
           elementType: "text" as const,
           content: slogan.content,
+          sourceElementId: slogan.elementId,
           size: "medium" as const,
         }
 
