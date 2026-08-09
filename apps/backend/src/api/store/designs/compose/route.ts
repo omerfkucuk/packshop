@@ -3,15 +3,8 @@ import {
   composeDesign,
   MockLlmProvider,
   OpenAiProvider,
-  type ComposeInput,
+  type ComposeDesignRequestBody,
 } from "@dtc/ai-composer"
-import type { PanelSemanticsMap } from "@dtc/layout-engine"
-import type { PanelGeometry } from "@dtc/packaging-engine/shared"
-
-type ComposeRequestBody = Omit<ComposeInput, "priorAttempt"> & {
-  panels: PanelGeometry[]
-  panelSemantics: PanelSemanticsMap
-}
 
 // AI orchestration lives here (not the storefront) so the OpenAI API key
 // never reaches the browser - see docs/ai-layout-engine-architecture.md
@@ -19,7 +12,7 @@ type ComposeRequestBody = Omit<ComposeInput, "priorAttempt"> & {
 // live rule-based preview, so it's cheaper to have it send that geometry
 // along than to regenerate it here.
 export async function POST(req: AuthenticatedMedusaRequest, res: MedusaResponse) {
-  const body = req.body as ComposeRequestBody
+  const body = req.body as ComposeDesignRequestBody
 
   if (!body?.prompt?.trim()) {
     res.status(400).json({ message: "prompt is required" })

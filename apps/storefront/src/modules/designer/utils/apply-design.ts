@@ -8,8 +8,6 @@ import {
 import type { SelectedElement } from "../types"
 import { FEFCO_0201_PANEL_SEMANTICS, MAIN_PANELS } from "./panel-semantics"
 
-export { FEFCO_0201_PANEL_SEMANTICS, MAIN_PANELS }
-
 // Turns the customer's selected brand elements into a CompositionPlan: the
 // same logo (centered) and slogan (below it, in the selected font)
 // repeated identically across all 4 main faces. This is the "no real

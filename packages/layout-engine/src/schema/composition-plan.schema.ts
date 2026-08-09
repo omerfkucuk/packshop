@@ -100,5 +100,3 @@ export const CompositionPlanSchema = z.object({
     })
     .optional(),
 })
-
-export type CompositionPlanParseResult = z.infer<typeof CompositionPlanSchema>
