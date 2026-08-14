@@ -11,12 +11,27 @@ export interface ThemeDefinition {
    *  generation, not to replace it with rules. */
   styleGuidance: string
   /** What a provider with no better judgement (e.g. MockLlmProvider,
-   *  or a real one before it learns better) falls back to. */
+   *  or a real one before it learns better) falls back to - and, since
+   *  resolveThemeTemplate() builds a CompositionPlan from exactly this same
+   *  data, also what an instant, AI-free "apply this theme" preview
+   *  renders. Kept as one source of truth deliberately: a separate,
+   *  hand-authored template per theme would duplicate this same
+   *  logo/slogan shape four times, with only the scalars differing, and
+   *  risk silently drifting from what the AI is biased toward. */
   defaults: {
     logoAnchor: AnchorPoint
     logoSize: SizeHint
     gapHint: SpacingHint
     sloganOnEveryPanel: boolean
+    /** A library element repeated on every main panel, optionally recolored
+     *  with the brand's primary color - the caller resolves
+     *  `libraryElementId` against its own catalog (ai-composer never
+     *  imports one, stays catalog-agnostic). Omitted = no decorative
+     *  element for this theme. */
+    decorativeElement?: { libraryElementId: string; anchor: AnchorPoint; size: SizeHint }
+    /** Places the brand's first available social link on the first main
+     *  panel only. Omitted/false = no social slot for this theme. */
+    includeSocialLink?: boolean
   }
 }
 
@@ -75,6 +90,12 @@ export const THEMES: Record<ThemeId, ThemeDefinition> = {
       logoSize: "medium",
       gapHint: "tight",
       sloganOnEveryPanel: true,
+      decorativeElement: {
+        libraryElementId: "three-circles",
+        anchor: "top-right",
+        size: "small",
+      },
+      includeSocialLink: true,
     },
   },
 }

@@ -13,8 +13,10 @@ export type PlacementStrategy = (
 
 // The zone's own axis-aligned origin, derived from its boundary polygon -
 // strategies size/position against `zone.boundingBox`, but still need this
-// to know where that box actually sits.
-const zoneOrigin = (zone: PrintZone): Point => ({
+// to know where that box actually sits. Exported so callers that need to
+// clamp a position into the zone (e.g. the designer's manual drag) reuse
+// this instead of re-deriving it by hand.
+export const zoneOrigin = (zone: PrintZone): Point => ({
   x: Math.min(...zone.boundary.map((p) => p.x)),
   y: Math.min(...zone.boundary.map((p) => p.y)),
 })

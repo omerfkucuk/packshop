@@ -11,12 +11,14 @@
   "exports": {
     ".": "./dist/index.js",
     "./domain": "./dist/domain/index.js",
-    "./providers": "./dist/providers/index.js"
+    "./providers": "./dist/providers/index.js",
+    "./use-cases": "./dist/use-cases/index.js"
   },
   "typesVersions": {
     "*": {
       "domain": ["dist/domain/index.d.ts"],
-      "providers": ["dist/providers/index.d.ts"]
+      "providers": ["dist/providers/index.d.ts"],
+      "use-cases": ["dist/use-cases/index.d.ts"]
     }
   },
   "scripts": {

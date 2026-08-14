@@ -7,6 +7,7 @@ import {
 } from "@dtc/layout-engine"
 import type { SelectedElement } from "../types"
 import { FEFCO_0201_PANEL_SEMANTICS, MAIN_PANELS } from "./panel-semantics"
+import { getLibraryElement } from "./element-library"
 
 // Turns the customer's selected brand elements into a CompositionPlan: the
 // same logo (centered) and slogan (below it, in the selected font)
@@ -17,6 +18,8 @@ function buildCompositionPlan(elements: SelectedElement[]): CompositionPlan {
   const logo = elements.find((el) => el.type === "logo")
   const slogan = elements.find((el) => el.type === "text")
   const font = elements.find((el) => el.type === "font")?.value ?? null
+  const color = elements.find((el) => el.type === "color")?.value ?? null
+  const libraryElements = elements.filter((el) => el.type === "library-element")
 
   const planElements: SemanticPlacement[] = []
 
@@ -60,6 +63,33 @@ function buildCompositionPlan(elements: SelectedElement[]): CompositionPlan {
               anchor: "center",
             }
       )
+    }
+
+    for (const selected of libraryElements) {
+      const entry = getLibraryElement(selected.value)
+      if (!entry) continue
+
+      // shape/pattern are the background tier (exempt from the
+      // no-element-overlap rule, see constraints/rules/no-element-overlap.ts)
+      // so they can sit centered under the logo; icon is foreground and
+      // would clash with a centered logo, so it gets a corner instead.
+      const isBackgroundTier = entry.category === "shape" || entry.category === "pattern"
+
+      planElements.push({
+        elementId: `element-${entry.id}-${panel}`,
+        elementType: entry.category,
+        content: {
+          libraryElementId: entry.id,
+          color: entry.recolorable && color ? color : undefined,
+        },
+        placementKind: "absolute",
+        panel,
+        anchor: isBackgroundTier ? "center" : "bottom-right",
+        // "large" (a square-ish bucket), not "full-width" (a wide-but-short
+        // one) - these library symbols have square viewBoxes, and a wide
+        // box just letterboxes a square symbol down to its short axis.
+        size: isBackgroundTier ? "large" : "small",
+      })
     }
   }
 

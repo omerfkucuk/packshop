@@ -22,7 +22,8 @@ import { generateFefco0201 } from "@dtc/packaging-engine/box-styles"
 // This is a "use client" component, so a root import would bundle that
 // server-only dependency into the browser. listThemes/ThemeId live in
 // ./domain, which has no dependency on providers.
-import { listThemes, type ThemeId } from "@dtc/ai-composer/domain"
+import { listThemes, THEMES, type ThemeId } from "@dtc/ai-composer/domain"
+import { applyManualOverrides, type ManualOverrides } from "@dtc/layout-engine"
 
 import { Brand } from "@lib/data/brands"
 import { addToCart } from "@lib/data/cart"
@@ -35,8 +36,11 @@ import { Button } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import DielinePreview from "../dieline-preview"
 import { applyDesign, type ResolveDesignResult } from "../../utils/apply-design"
+import { applyTheme } from "../../utils/apply-theme"
 import { generateAiDesign } from "../../utils/compose-design"
 import BrandKitPanel from "../brand-kit-panel"
+import ElementLibraryPanel from "../element-library-panel"
+import { getLibraryElement } from "../../utils/element-library"
 import { SelectedElement } from "../../types"
 
 type Tool = "urun" | "komponent" | "marka-kiti" | "tema" | "yazi" | "elementler"
@@ -116,6 +120,13 @@ const DesignerShell = ({
     []
   )
   const selectedElementIds = new Set(selectedElements.map((el) => el.id))
+  // Elements the customer has dragged to a new spot on the canvas. Not
+  // reset in toggleElement/removeElement/handleSelectTheme like aiDesign -
+  // element IDs here are deterministic (e.g. "logo-front"), so an override
+  // naturally keeps applying across unrelated edits and naturally drops
+  // out (see the `currentIds` filter below) the moment its element
+  // genuinely stops existing in the newly-derived base design.
+  const [manualOverrides, setManualOverrides] = useState<ManualOverrides>({})
 
   const toggleElement = (element: SelectedElement) => {
     setAiDesign(null)
@@ -206,12 +217,61 @@ const DesignerShell = ({
         })()
       : null
 
-  // The AI-generated layout (once requested) takes over from the live
-  // rule-based default - see the resets in toggleElement/removeElement/
-  // handleSelectTheme for why it can't just linger after its inputs change.
-  const appliedDesign = geometryPanels
-    ? aiDesign ?? applyDesign(geometryPanels, selectedElements)
+  // A theme applies instantly (no AI, no network call) once a brand is
+  // selected - resolveThemeTemplate() + resolveLayout() only, the same
+  // deterministic engine applyDesign() already uses. Free to recompute
+  // every render, same as applyDesign() below.
+  const themedDesign =
+    geometryPanels && selectedTheme && selectedBrand
+      ? applyTheme(geometryPanels, THEMES[selectedTheme], selectedBrand)
+      : null
+
+  // The AI-generated layout (once requested) takes over from both the
+  // theme and the live rule-based default - see the resets in
+  // toggleElement/removeElement/handleSelectTheme for why it can't just
+  // linger after its inputs change.
+  const baseDesign = geometryPanels
+    ? aiDesign ?? themedDesign ?? applyDesign(geometryPanels, selectedElements)
     : undefined
+
+  // Manual drag overrides layer on top of whichever base design won above -
+  // filtered (not blanket-reset) to whatever elementIds still exist in that
+  // base design, so an unrelated edit elsewhere never silently discards a
+  // drag the customer already made. See the manualOverrides state comment.
+  const currentElementIds = new Set(
+    (baseDesign?.resolvedLayout.panels ?? []).flatMap((p) =>
+      p.elements.map((el) => el.elementId)
+    )
+  )
+  const activeOverrides = Object.fromEntries(
+    Object.entries(manualOverrides).filter(([id]) => currentElementIds.has(id))
+  )
+  const appliedDesign =
+    baseDesign && Object.keys(activeOverrides).length > 0
+      ? {
+          ...baseDesign,
+          resolvedLayout: applyManualOverrides(baseDesign.resolvedLayout, activeOverrides),
+        }
+      : baseDesign
+
+  const handleElementDragEnd = (elementId: string, position: { x: number; y: number }) => {
+    setManualOverrides((prev) => ({ ...prev, [elementId]: position }))
+  }
+
+  // geometryPanels changing (custom-size edit, product/variant swap) is a
+  // new dieline, not a nudge - stale AI results and drag overrides computed
+  // against the old geometry shouldn't silently carry over onto it.
+  const geometryFingerprint = geometryDimensionsMm
+    ? `${geometryDimensionsMm.length}x${geometryDimensionsMm.width}x${geometryDimensionsMm.height}`
+    : null
+  const lastGeometryFingerprint = useRef(geometryFingerprint)
+  useEffect(() => {
+    if (lastGeometryFingerprint.current !== geometryFingerprint) {
+      lastGeometryFingerprint.current = geometryFingerprint
+      setAiDesign(null)
+      setManualOverrides({})
+    }
+  }, [geometryFingerprint])
 
   const filteredProducts = activeCategoryId
     ? products.filter((p) =>
@@ -635,11 +695,16 @@ const DesignerShell = ({
             </div>
           )}
 
-          {(activeTool === "yazi" || activeTool === "elementler") && (
+          {activeTool === "elementler" && (
+            <ElementLibraryPanel
+              selectedElementIds={selectedElementIds}
+              onToggleElement={toggleElement}
+            />
+          )}
+
+          {activeTool === "yazi" && (
             <div className="flex flex-col gap-y-2">
-              <h2 className="text-lg font-semibold text-black">
-                {TOOLS.find((t) => t.id === activeTool)?.label}
-              </h2>
+              <h2 className="text-lg font-semibold text-black">Yazı</h2>
               <p className="text-sm text-black/50">
                 Bu araç yakında burada aktif olacak.
               </p>
@@ -655,6 +720,7 @@ const DesignerShell = ({
                 panels={geometryPanels}
                 resolvedLayout={appliedDesign?.resolvedLayout}
                 backgroundColors={appliedDesign?.backgroundColors}
+                onDragEnd={handleElementDragEnd}
                 className="max-h-full max-w-full"
               />
             ) : image ? (
@@ -673,6 +739,14 @@ const DesignerShell = ({
               </span>
             )}
           </div>
+
+          {themedDesign && !aiDesign && selectedElements.length > 0 && (
+            <p className="shrink-0 px-4 py-2 text-xs text-black/50 border-t border-black/10">
+              Şu an &quot;{listThemes().find((t) => t.id === selectedTheme)?.label}&quot; teması
+              gösteriliyor - Marka Kiti&apos;nden seçtiğiniz öğeler AI ile Oluştur&apos;a
+              basana kadar kanvasa yansımaz.
+            </p>
+          )}
 
           {/* AI bar */}
           <div className="shrink-0 border-t border-black/10 p-4">
@@ -700,6 +774,15 @@ const DesignerShell = ({
                     {el.type === "font" && (
                       <span style={{ fontFamily: el.value }}>Aa</span>
                     )}
+                    {el.type === "library-element" &&
+                      (() => {
+                        const entry = getLibraryElement(el.value)
+                        return entry ? (
+                          <svg viewBox={entry.viewBox} className="h-4 w-4">
+                            {entry.markup}
+                          </svg>
+                        ) : null
+                      })()}
                     {el.label}
                     <button
                       type="button"
