@@ -1,4 +1,4 @@
-import type { PanelGeometry } from "@dtc/packaging-engine/shared"
+import type { Dimensions, PanelGeometry } from "@dtc/packaging-engine/shared"
 import { resolveLayout } from "@dtc/layout-engine"
 import {
   resolveThemeTemplate,
@@ -8,7 +8,7 @@ import type { ThemeDefinition } from "@dtc/ai-composer/domain"
 import type { Brand } from "@lib/data/brands"
 import { getLibraryElement } from "./element-library"
 import { FEFCO_0201_PANEL_SEMANTICS, MAIN_PANELS } from "./panel-semantics"
-import type { ResolveDesignResult } from "./apply-design"
+import { computeAspectPreservingSize, type ResolveDesignResult } from "./apply-design"
 
 const SOCIAL_URL_FIELDS = [
   "instagram_url",
@@ -56,12 +56,14 @@ function buildSlotResolver(brand: Brand): SlotResolver {
 export function applyTheme(
   panels: PanelGeometry[],
   theme: ThemeDefinition,
-  brand: Brand
+  brand: Brand,
+  imageNaturalSizes: Record<string, Dimensions> = {}
 ): ResolveDesignResult {
   const plan = resolveThemeTemplate(theme, "fefco-0201", MAIN_PANELS, buildSlotResolver(brand))
 
   const resolvedLayout = resolveLayout(plan, panels, {
     panelSemantics: FEFCO_0201_PANEL_SEMANTICS,
+    computeNaturalSize: (el) => computeAspectPreservingSize(el, panels, imageNaturalSizes),
   })
 
   const backgroundColors: Record<string, string> = {}

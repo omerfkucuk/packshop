@@ -1,6 +1,7 @@
-import type { PanelGeometry } from "@dtc/packaging-engine/shared"
+import type { Dimensions, PanelGeometry } from "@dtc/packaging-engine/shared"
 import {
   resolveLayout,
+  DEFAULT_SQUARE_BUCKETS,
   type AnchorPoint,
   type CompositionPlan,
   type ResolvedLayout,
@@ -151,6 +152,44 @@ function buildCompositionPlan(elements: SelectedElement[]): CompositionPlan {
   return { version: "1.0", boxType: "fefco-0201", elements: planElements }
 }
 
+// A "small"/"medium"/"large" SizeHint normally resolves to a SQUARE box
+// (fraction of the zone's smaller dimension, both axes) - fine for the
+// hand-drawn library shapes, wrong for a real uploaded logo, whose actual
+// pixel aspect ratio is rarely square (e.g. a wordmark like "LC Waikiki" is
+// wide and short). Without this, the logo still rendered at the square
+// bucket's size and got letterboxed inside it (image kept its own aspect
+// ratio via preserveAspectRatio, just with visible empty space top/bottom
+// or left/right - looking like an oversized, padded frame around the
+// actual artwork). Targets the SAME longest-edge fraction the square
+// bucket would have, just distributed across width/height by the image's
+// real aspect ratio instead of forced 1:1.
+// Exported for apply-theme.ts, which places a brand logo through the exact
+// same resolveLayout() call and needs the identical fix.
+export function computeAspectPreservingSize(
+  el: SemanticPlacement,
+  panels: PanelGeometry[],
+  imageNaturalSizes: Record<string, Dimensions>
+): Dimensions | null {
+  const url = typeof el.content?.url === "string" ? el.content.url : null
+  const natural = url ? imageNaturalSizes[url] : null
+  if (!natural || natural.w <= 0 || natural.h <= 0) return null // not probed yet - square bucket fallback
+
+  const physicalPanelName = FEFCO_0201_PANEL_SEMANTICS[el.panel]
+  const zone = panels.find((p) => p.panelName === physicalPanelName)?.printZones[0]
+  if (!zone) return null
+
+  const minDim = Math.min(zone.boundingBox.w, zone.boundingBox.h)
+  const fraction =
+    DEFAULT_SQUARE_BUCKETS[el.size as keyof typeof DEFAULT_SQUARE_BUCKETS] ??
+    DEFAULT_SQUARE_BUCKETS.medium
+  const targetLongEdge = minDim * fraction
+  const aspect = natural.w / natural.h
+
+  return aspect >= 1
+    ? { w: targetLongEdge, h: targetLongEdge / aspect }
+    : { w: targetLongEdge * aspect, h: targetLongEdge }
+}
+
 export type ResolveDesignResult = {
   resolvedLayout: ResolvedLayout
   /** panelName -> chosen background color, applied identically to every
@@ -178,12 +217,14 @@ export function computeBackgroundColors(
 
 export function applyDesign(
   panels: PanelGeometry[],
-  elements: SelectedElement[]
+  elements: SelectedElement[],
+  imageNaturalSizes: Record<string, Dimensions> = {}
 ): ResolveDesignResult {
   const plan = buildCompositionPlan(elements)
 
   const resolvedLayout = resolveLayout(plan, panels, {
     panelSemantics: FEFCO_0201_PANEL_SEMANTICS,
+    computeNaturalSize: (el) => computeAspectPreservingSize(el, panels, imageNaturalSizes),
   })
 
   return { resolvedLayout, backgroundColors: computeBackgroundColors(elements) }

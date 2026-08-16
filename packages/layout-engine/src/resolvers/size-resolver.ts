@@ -4,8 +4,11 @@ import type { SizeHint } from "../domain/semantic-placement"
 
 // Fraction of the zone's smaller dimension a "small"/"medium"/"large"
 // element should target - a starting point tuned per box type via
-// SizeBucketOverrides, not a hard rule.
-const DEFAULT_SQUARE_BUCKETS: Record<"small" | "medium" | "large", number> = {
+// SizeBucketOverrides, not a hard rule. Exported so callers computing their
+// own aspect-ratio-preserving natural size (e.g. a real uploaded logo) can
+// target the same fraction the square bucket would have, instead of
+// hand-copying these numbers.
+export const DEFAULT_SQUARE_BUCKETS: Record<"small" | "medium" | "large", number> = {
   small: 0.25,
   medium: 0.4,
   large: 0.6,

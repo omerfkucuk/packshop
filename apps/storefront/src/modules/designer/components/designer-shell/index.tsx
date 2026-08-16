@@ -17,6 +17,7 @@ import {
 // so client bundles never pull in export/dxf.ts's @tarikjabiri/dxf
 // dependency, which is only ever needed server-side.
 import { generateFefco0201 } from "@dtc/packaging-engine/box-styles"
+import type { Dimensions } from "@dtc/packaging-engine/shared"
 // Subpath import, not the package root - the root barrel also re-exports
 // ./providers (including OpenAiProvider, which pulls in the `openai` SDK).
 // This is a "use client" component, so a root import would bundle that
@@ -190,6 +191,41 @@ const DesignerShell = ({
 
   const selectedBrand = brands.find((b) => b.id === selectedBrandId) ?? null
 
+  // Real uploaded logos rarely have a square pixel aspect ratio (a wordmark
+  // is wide and short) - without their real dimensions, applyDesign/
+  // applyTheme fall back to a forced-square size bucket, and the logo gets
+  // letterboxed inside it (own aspect ratio kept, but with visible empty
+  // space on two sides - looks like a padded/stretched frame around the
+  // artwork). Probed once per URL via a plain <img> load (resolveLayout()
+  // itself must stay synchronous) and cached here, keyed by URL so a brand
+  // reused across multiple selections/themes only loads once.
+  const [imageNaturalSizes, setImageNaturalSizes] = useState<Record<string, Dimensions>>({})
+  useEffect(() => {
+    const urls = new Set<string>()
+    for (const el of selectedElements) {
+      if (el.type === "logo" && el.value) urls.add(el.value)
+    }
+    if (selectedBrand?.logo_url) urls.add(selectedBrand.logo_url)
+
+    const missing = Array.from(urls).filter((url) => !(url in imageNaturalSizes))
+    if (missing.length === 0) return
+
+    let cancelled = false
+    missing.forEach((url) => {
+      const img = new Image()
+      img.onload = () => {
+        if (cancelled) return
+        setImageNaturalSizes((prev) =>
+          url in prev ? prev : { ...prev, [url]: { w: img.naturalWidth, h: img.naturalHeight } }
+        )
+      }
+      img.src = url
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedElements, selectedBrand, imageNaturalSizes])
+
   const price = product
     ? getProductPrice({ product, variantId: selectedVariant?.id })
     : null
@@ -245,7 +281,7 @@ const DesignerShell = ({
   // every render, same as applyDesign() below.
   const themedDesign =
     geometryPanels && selectedTheme && selectedBrand
-      ? applyTheme(geometryPanels, THEMES[selectedTheme], selectedBrand)
+      ? applyTheme(geometryPanels, THEMES[selectedTheme], selectedBrand, imageNaturalSizes)
       : null
 
   // The AI-generated layout (once requested) takes over from both the
@@ -253,7 +289,7 @@ const DesignerShell = ({
   // toggleElement/removeElement/handleSelectTheme for why it can't just
   // linger after its inputs change.
   const baseDesign = geometryPanels
-    ? aiDesign ?? themedDesign ?? applyDesign(geometryPanels, selectedElements)
+    ? aiDesign ?? themedDesign ?? applyDesign(geometryPanels, selectedElements, imageNaturalSizes)
     : undefined
 
   // Manual drag overrides layer on top of whichever base design won above -

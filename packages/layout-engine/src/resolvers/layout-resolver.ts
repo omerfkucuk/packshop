@@ -90,13 +90,24 @@ export function resolveLayout(
     let size: Dimensions
 
     if (el.placementKind === "absolute") {
-      size = resolveSize(el.size, zone.boundingBox, options.sizeBucketOverrides, naturalSize)
+      const requestedSize = resolveSize(
+        el.size,
+        zone.boundingBox,
+        options.sizeBucketOverrides,
+        naturalSize
+      )
       const [placed] = placeDesign(
         zone,
-        [{ id: el.elementId, type: el.elementType, naturalSize: size }],
+        [{ id: el.elementId, type: el.elementType, naturalSize: requestedSize }],
         anchorFit(el.anchor)
       )
+      // anchorFit scales requestedSize DOWN (never up) so it's fully
+      // contained in the zone - using placed.size (not requestedSize)
+      // keeps that guarantee for a computeNaturalSize that's larger than
+      // the zone, instead of silently discarding the fit and rendering the
+      // untouched, potentially oversized request.
       position = placed.position
+      size = placed.size
     } else {
       const reference = resolvedById.get(el.relativeTo)
       if (!reference) {
