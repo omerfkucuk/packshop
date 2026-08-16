@@ -10,6 +10,13 @@ export interface ResolvedElement {
   rotationDeg?: number
   zIndex: number
   content: Record<string, unknown>
+  /** Carried over from SemanticPlacement.sourceElementId when the plan set
+   *  it (see semantic-placement.ts's doc comment) - lets a caller that
+   *  placed the same selected element on multiple panels (e.g. a slogan
+   *  repeated on every main face) trace any one physical placement back to
+   *  the single logical selection it came from, e.g. to remove all of them
+   *  together regardless of which one the customer interacted with. */
+  sourceElementId?: string
 }
 
 export interface ResolvedPanelLayout {

@@ -116,6 +116,7 @@ export function resolveLayout(
       size,
       zIndex: DEFAULT_Z_INDEX[el.elementType] ?? 50,
       content: el.content,
+      sourceElementId: el.sourceElementId,
     }
 
     resolvedById.set(el.elementId, resolvedElement)

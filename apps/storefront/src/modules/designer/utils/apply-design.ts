@@ -47,6 +47,7 @@ function buildCompositionPlan(elements: SelectedElement[]): CompositionPlan {
       elementId: logoEl.id,
       elementType: "logo",
       content: { url: logoEl.value },
+      sourceElementId: logoEl.id,
       placementKind: "absolute",
       panel: "front",
       anchor: LOGO_ANCHOR_CYCLE[index % LOGO_ANCHOR_CYCLE.length],
@@ -65,6 +66,7 @@ function buildCompositionPlan(elements: SelectedElement[]): CompositionPlan {
         elementId: `slogan-${panel}`,
         elementType: "text" as const,
         content: { text: slogan.value, font },
+        sourceElementId: slogan.id,
         size: "medium" as const,
       }
 
@@ -104,6 +106,7 @@ function buildCompositionPlan(elements: SelectedElement[]): CompositionPlan {
           libraryElementId: entry.id,
           color: entry.recolorable && color ? color : undefined,
         },
+        sourceElementId: selected.id,
         placementKind: "absolute",
         panel,
         anchor: isBackgroundTier ? "center" : "bottom-right",

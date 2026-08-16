@@ -752,6 +752,7 @@ const DesignerShell = ({
                 backgroundColors={appliedDesign?.backgroundColors}
                 onDragEnd={handleElementDragEnd}
                 onResize={handleElementResize}
+                onDeleteElement={removeElement}
                 className="max-h-full max-w-full"
               />
             ) : image ? (

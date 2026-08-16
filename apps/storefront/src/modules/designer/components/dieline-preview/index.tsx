@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { PanelGeometry, Point } from "@dtc/packaging-engine/shared"
 import { zoneOrigin } from "@dtc/packaging-engine/placement"
 import type { ResolvedLayout, ResolvedElement } from "@dtc/layout-engine"
@@ -26,6 +26,11 @@ type DielinePreviewProps = {
    *  size. Selecting an element (which shows the handles) piggybacks on
    *  the same pointer interaction as drag, so pass both together. */
   onResize?: (elementId: string, position: Point, size: { w: number; h: number }) => void
+  /** Fires when the selected element's delete button is clicked, or
+   *  Delete/Backspace is pressed while it's selected (and no text input
+   *  elsewhere on the page has focus). Selecting an element requires
+   *  onDragEnd; showing the delete affordance additionally requires this. */
+  onDeleteElement?: (elementId: string) => void
 }
 
 type DragState = {
@@ -109,6 +114,7 @@ const DielinePreview = ({
   className,
   onDragEnd,
   onResize,
+  onDeleteElement,
 }: DielinePreviewProps) => {
   const svgRef = useRef<SVGSVGElement>(null)
   const [dragState, setDragState] = useState<DragState | null>(null)
@@ -117,6 +123,37 @@ const DielinePreview = ({
   // stale id here is harmless - the render loop below only shows resize
   // handles for elements it's actually iterating over).
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
+
+  // Delete/Backspace deletes the selected element, unless some other text
+  // input on the page currently has focus (editing a brand name, typing
+  // the AI prompt, ...) - a global keydown listener would otherwise delete
+  // canvas content while the customer is just trying to hit backspace in a
+  // form field.
+  useEffect(() => {
+    if (!selectedElementId || !onDeleteElement) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Delete" && e.key !== "Backspace") return
+      const active = document.activeElement
+      const isEditableFocused =
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement ||
+        (active instanceof HTMLElement && active.isContentEditable)
+      if (isEditableFocused) return
+
+      e.preventDefault()
+      // Same sourceElementId lookup as the on-canvas delete button - see
+      // its comment below for why elementId alone isn't always right.
+      const selectedEl = (resolvedLayout?.panels ?? [])
+        .flatMap((p) => p.elements)
+        .find((el) => el.elementId === selectedElementId)
+      onDeleteElement(selectedEl?.sourceElementId ?? selectedElementId)
+      setSelectedElementId(null)
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [selectedElementId, onDeleteElement, resolvedLayout])
 
   const allPoints = panels.flatMap((panel) =>
     [...panel.cutLines, ...panel.creaseLines].flat()
@@ -452,7 +489,7 @@ const DielinePreview = ({
               const x = position.x
               const y = flipY(position.y + size.h)
               const isOverlapping = overlappingElementIds.has(el.elementId)
-              const isSelected = onResize && selectedElementId === el.elementId
+              const isSelected = selectedElementId === el.elementId
 
               let visual: React.ReactNode = null
 
@@ -563,42 +600,80 @@ const DielinePreview = ({
                         vectorEffect="non-scaling-stroke"
                         pointerEvents="none"
                       />
-                      {(
-                        [
-                          ["tl", x, y],
-                          ["tr", x + size.w, y],
-                          ["bl", x, y + size.h],
-                          ["br", x + size.w, y + size.h],
-                        ] as const
-                      ).map(([handle, cx, cy]) => (
-                        <g key={handle}>
-                          {/* Larger invisible circle so the dot stays easy
-                              to grab (mouse or touch) even though the
-                              visible marker itself is small. */}
+                      {onResize &&
+                        (
+                          [
+                            ["tl", x, y],
+                            ["tr", x + size.w, y],
+                            ["bl", x, y + size.h],
+                            ["br", x + size.w, y + size.h],
+                          ] as const
+                        ).map(([handle, cx, cy]) => (
+                          <g key={handle}>
+                            {/* Larger invisible circle so the dot stays
+                                easy to grab (mouse or touch) even though
+                                the visible marker itself is small. */}
+                            <circle
+                              cx={cx}
+                              cy={cy}
+                              r={handleRadius * 2.5}
+                              fill="transparent"
+                              pointerEvents="all"
+                              style={{
+                                cursor:
+                                  handle === "tl" || handle === "br"
+                                    ? "nwse-resize"
+                                    : "nesw-resize",
+                                touchAction: "none",
+                              }}
+                              onPointerDown={handleCornerPointerDown(el, handle)}
+                            />
+                            <circle
+                              cx={cx}
+                              cy={cy}
+                              r={handleRadius}
+                              fill="#2563eb"
+                              pointerEvents="none"
+                            />
+                          </g>
+                        ))}
+                      {onDeleteElement && (
+                        <g
+                          style={{ cursor: "pointer" }}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            // Falls back to elementId when there's no
+                            // sourceElementId (e.g. AI-composed elements
+                            // don't set one) - deletes just this one
+                            // placement in that case, which is the only
+                            // sensible fallback without a logical
+                            // selection to trace back to.
+                            onDeleteElement(el.sourceElementId ?? el.elementId)
+                            setSelectedElementId(null)
+                          }}
+                        >
+                          {/* Above the top edge, centered - clear of the
+                              tl/tr resize handles which sit right on it. */}
                           <circle
-                            cx={cx}
-                            cy={cy}
-                            r={handleRadius * 2.5}
-                            fill="transparent"
-                            pointerEvents="all"
-                            style={{
-                              cursor:
-                                handle === "tl" || handle === "br"
-                                  ? "nwse-resize"
-                                  : "nesw-resize",
-                              touchAction: "none",
-                            }}
-                            onPointerDown={handleCornerPointerDown(el, handle)}
+                            cx={x + size.w / 2}
+                            cy={y - handleRadius * 2.6}
+                            r={handleRadius * 1.5}
+                            fill="#ef4444"
                           />
-                          <circle
-                            cx={cx}
-                            cy={cy}
-                            r={handleRadius}
-                            fill="#2563eb"
-                            pointerEvents="none"
-                          />
+                          <text
+                            x={x + size.w / 2}
+                            y={y - handleRadius * 2.6}
+                            fontSize={handleRadius * 1.8}
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            fill="#fff"
+                            style={{ userSelect: "none" }}
+                          >
+                            ×
+                          </text>
                         </g>
-                      ))}
+                      )}
                     </>
                   )}
                 </g>
