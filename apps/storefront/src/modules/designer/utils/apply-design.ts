@@ -28,6 +28,26 @@ const LOGO_ANCHOR_CYCLE: AnchorPoint[] = [
   "bottom-center",
 ]
 
+// Same "one instance per add, not one per panel" treatment as logos (see
+// LOGO_ANCHOR_CYCLE above) - split into two cycles because shape/pattern
+// (background tier, exempt from the no-element-overlap rule) and icon
+// (foreground) read best starting from different anchors.
+const BACKGROUND_ELEMENT_ANCHOR_CYCLE: AnchorPoint[] = [
+  "center",
+  "top-left",
+  "bottom-right",
+  "top-right",
+  "bottom-left",
+]
+const FOREGROUND_ELEMENT_ANCHOR_CYCLE: AnchorPoint[] = [
+  "bottom-right",
+  "top-left",
+  "top-right",
+  "bottom-left",
+  "center-right",
+  "center-left",
+]
+
 // Turns the customer's selected brand elements into a CompositionPlan: each
 // selected logo placed once (front panel), the slogan (below the first
 // logo, in the selected font) repeated across all 4 main faces. This is
@@ -88,34 +108,44 @@ function buildCompositionPlan(elements: SelectedElement[]): CompositionPlan {
             }
       )
     }
+  }
 
-    for (const selected of libraryElements) {
-      const entry = getLibraryElement(selected.value)
-      if (!entry) continue
+  // Each selected library element (Elementler tab) is its own individually
+  // placeable instance too, front panel by default - same "one per add,
+  // not one per panel" fix as logos above.
+  let backgroundElementIndex = 0
+  let foregroundElementIndex = 0
+  for (const selected of libraryElements) {
+    const entry = getLibraryElement(selected.value)
+    if (!entry) continue
 
-      // shape/pattern are the background tier (exempt from the
-      // no-element-overlap rule, see constraints/rules/no-element-overlap.ts)
-      // so they can sit centered under the logo; icon is foreground and
-      // would clash with a centered logo, so it gets a corner instead.
-      const isBackgroundTier = entry.category === "shape" || entry.category === "pattern"
+    // shape/pattern are the background tier (exempt from the
+    // no-element-overlap rule, see constraints/rules/no-element-overlap.ts).
+    const isBackgroundTier = entry.category === "shape" || entry.category === "pattern"
+    const anchor = isBackgroundTier
+      ? BACKGROUND_ELEMENT_ANCHOR_CYCLE[
+          backgroundElementIndex++ % BACKGROUND_ELEMENT_ANCHOR_CYCLE.length
+        ]
+      : FOREGROUND_ELEMENT_ANCHOR_CYCLE[
+          foregroundElementIndex++ % FOREGROUND_ELEMENT_ANCHOR_CYCLE.length
+        ]
 
-      planElements.push({
-        elementId: `element-${entry.id}-${panel}`,
-        elementType: entry.category,
-        content: {
-          libraryElementId: entry.id,
-          color: entry.recolorable && color ? color : undefined,
-        },
-        sourceElementId: selected.id,
-        placementKind: "absolute",
-        panel,
-        anchor: isBackgroundTier ? "center" : "bottom-right",
-        // "large" (a square-ish bucket), not "full-width" (a wide-but-short
-        // one) - these library symbols have square viewBoxes, and a wide
-        // box just letterboxes a square symbol down to its short axis.
-        size: isBackgroundTier ? "large" : "small",
-      })
-    }
+    planElements.push({
+      elementId: selected.id,
+      elementType: entry.category,
+      content: {
+        libraryElementId: entry.id,
+        color: entry.recolorable && color ? color : undefined,
+      },
+      sourceElementId: selected.id,
+      placementKind: "absolute",
+      panel: "front",
+      anchor,
+      // "large" (a square-ish bucket), not "full-width" (a wide-but-short
+      // one) - these library symbols have square viewBoxes, and a wide
+      // box just letterboxes a square symbol down to its short axis.
+      size: isBackgroundTier ? "large" : "small",
+    })
   }
 
   return { version: "1.0", boxType: "fefco-0201", elements: planElements }

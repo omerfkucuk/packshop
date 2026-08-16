@@ -140,12 +140,12 @@ const DesignerShell = ({
 
   const toggleElement = (element: SelectedElement) => {
     setAiDesign(null)
-    if (element.type === "logo") {
-      // A logo is an individually placeable instance on the canvas, not a
-      // single on/off toggle - each click on its Marka Kiti row adds one
-      // more (placed on the front panel by default, dragged wherever from
-      // there); removing one happens via its own chip's "x" in the AI bar
-      // below, same as every other selected element.
+    if (element.type === "logo" || element.type === "library-element") {
+      // Both are individually placeable instances on the canvas, not a
+      // single on/off toggle - each click on the row adds one more (placed
+      // on the front panel by default, dragged wherever from there);
+      // removing one happens via its own chip's "x" in the AI bar below,
+      // same as every other selected element.
       setSelectedElements((prev) => [
         ...prev,
         { ...element, id: `${element.id}-${crypto.randomUUID()}` },

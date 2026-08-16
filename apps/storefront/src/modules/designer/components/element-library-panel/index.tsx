@@ -24,15 +24,22 @@ const ElementLibraryPanel = ({
       </div>
       <div className="grid grid-cols-2 gap-3">
         {ELEMENT_LIBRARY.map((entry) => {
-          const id = `element-${entry.id}`
-          const selected = selectedElementIds.has(id)
+          const idPrefix = `element-${entry.id}`
+          // Every click adds a fresh, uniquely-id'd instance (see
+          // designer-shell's toggleElement) - "selected" here just means
+          // "at least one is already on the canvas," a prefix match rather
+          // than an exact one, same reasoning as the logo row in
+          // BrandKitPanel.
+          const selected = Array.from(selectedElementIds).some((id) =>
+            id.startsWith(`${idPrefix}-`)
+          )
           return (
             <button
               key={entry.id}
               type="button"
               onClick={() =>
                 onToggleElement({
-                  id,
+                  id: idPrefix,
                   type: "library-element",
                   label: entry.label,
                   value: entry.id,
