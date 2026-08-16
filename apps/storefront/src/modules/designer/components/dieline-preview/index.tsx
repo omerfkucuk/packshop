@@ -88,12 +88,11 @@ const isImageLike = (el: ResolvedElement) =>
   el.elementType === "reference-image" ||
   el.elementType === "ai-generated"
 
-// Same background/foreground split as noElementOverlapRule (layout-engine) -
-// background-tier elements are allowed to bleed to the panel's true
-// physical edge (see fullPanelBounds below), foreground elements keep the
-// print-safe margin.
-const isBackgroundTier = (elementType: ElementType) =>
-  elementType === "shape" || elementType === "pattern"
+// Everything except text is allowed to bleed to the panel's true physical
+// edge (see fullPanelBounds below) - a logo/shape/pattern/icon/image
+// printed right up to the cut line is normal, but text that close risks
+// being clipped or folded through, so it keeps the print-safe margin.
+const canBleedToPanelEdge = (elementType: ElementType) => elementType !== "text"
 
 type Bounds = { minX: number; minY: number; maxX: number; maxY: number }
 
@@ -314,7 +313,7 @@ const DielinePreview = ({
       )
       let maxScale = Infinity
       if (zone) {
-        const bounds = isBackgroundTier(resizeState.elementType)
+        const bounds = canBleedToPanelEdge(resizeState.elementType)
           ? fullPanelBounds(zone)
           : zoneBounds(zone)
         // The anchor is fixed; only the FAR corner (the one being dragged)
@@ -364,7 +363,7 @@ const DielinePreview = ({
     const targetPanel = findPanelAt(rawCenter) ?? panels.find((p) => p.panelName === dragState.panelName)
     const zone = targetPanel?.printZones[0]
     const bounds = zone
-      ? isBackgroundTier(dragState.elementType)
+      ? canBleedToPanelEdge(dragState.elementType)
         ? fullPanelBounds(zone)
         : zoneBounds(zone)
       : null
