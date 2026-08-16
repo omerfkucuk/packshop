@@ -44,5 +44,10 @@ export default defineMiddlewares({
       matcher: "/store/designs/compose",
       middlewares: [authenticate("customer", ["session", "bearer"])],
     },
+    {
+      method: ["GET", "PUT"],
+      matcher: "/store/designs/draft",
+      middlewares: [authenticate("customer", ["session", "bearer"])],
+    },
   ],
 })

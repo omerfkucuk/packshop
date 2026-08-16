@@ -6,6 +6,7 @@ import { listCategories } from "@lib/data/categories"
 import { getRegion } from "@lib/data/regions"
 import { retrieveCustomer } from "@lib/data/customer"
 import { listBrands } from "@lib/data/brands"
+import { getDesignDraft } from "@lib/data/designs"
 import { isCustomProduct } from "@lib/util/product"
 import DesignerShell from "@modules/designer/components/designer-shell"
 
@@ -55,6 +56,11 @@ export default async function TasarlaPage(props: Props) {
   ])
   const customProducts = response.products.filter(isCustomProduct)
 
+  // Only fetched once the product itself is known - a saved draft is keyed
+  // by product id, so there's nothing to look up before then.
+  const designDraft =
+    customer && product ? await getDesignDraft(product.id) : null
+
   return (
     <DesignerShell
       // Force a remount when switching products from inside the designer -
@@ -69,6 +75,7 @@ export default async function TasarlaPage(props: Props) {
       brands={brands}
       products={customProducts}
       categories={categories}
+      initialDesignDraft={designDraft}
     />
   )
 }

@@ -27,6 +27,7 @@ import { applyManualOverrides, type ManualOverrides } from "@dtc/layout-engine"
 
 import { Brand } from "@lib/data/brands"
 import { addToCart } from "@lib/data/cart"
+import { saveDesignDraft, type DesignDraft } from "@lib/data/designs"
 import { getProductPrice } from "@lib/util/get-product-price"
 import { getCustomSizeRanges } from "@lib/util/custom-size"
 import { getGeometryType } from "@lib/util/product"
@@ -68,6 +69,10 @@ type DesignerShellProps = {
   brands: Brand[]
   products: HttpTypes.StoreProduct[]
   categories: HttpTypes.StoreProductCategory[]
+  /** The customer's auto-saved canvas state for this exact product, if
+   *  they've ever edited one before - null for a fresh product, or when
+   *  nobody's logged in (see page.tsx's `customer && product` guard). */
+  initialDesignDraft: DesignDraft | null
 }
 
 const DesignerShell = ({
@@ -79,6 +84,7 @@ const DesignerShell = ({
   brands,
   products,
   categories,
+  initialDesignDraft,
 }: DesignerShellProps) => {
   const router = useRouter()
 
@@ -105,19 +111,21 @@ const DesignerShell = ({
   const [customHeight, setCustomHeight] = useState(sizeRanges?.height.min ?? 5)
   const [customDepth, setCustomDepth] = useState(sizeRanges?.depth.min ?? 5)
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(
-    brands[0]?.id ?? null
+    initialDesignDraft?.brand_id ?? brands[0]?.id ?? null
   )
   const [aiPrompt, setAiPrompt] = useState("")
   const [aiMessage, setAiMessage] = useState<string | null>(null)
   const [isGeneratingAiDesign, setIsGeneratingAiDesign] = useState(false)
-  const [selectedTheme, setSelectedTheme] = useState<ThemeId | null>(null)
+  const [selectedTheme, setSelectedTheme] = useState<ThemeId | null>(
+    initialDesignDraft?.selected_theme ?? null
+  )
   // Once set, this takes over the canvas from the live rule-based default
   // (applyDesign) - cleared any time the inputs it was generated from
   // change, so the customer never sees a stale AI result silently applied
   // to a different selection.
   const [aiDesign, setAiDesign] = useState<ResolveDesignResult | null>(null)
   const [selectedElements, setSelectedElements] = useState<SelectedElement[]>(
-    []
+    initialDesignDraft?.selected_elements ?? []
   )
   const selectedElementIds = new Set(selectedElements.map((el) => el.id))
   // Elements the customer has dragged to a new spot on the canvas. Not
@@ -126,7 +134,9 @@ const DesignerShell = ({
   // naturally keeps applying across unrelated edits and naturally drops
   // out (see the `currentIds` filter below) the moment its element
   // genuinely stops existing in the newly-derived base design.
-  const [manualOverrides, setManualOverrides] = useState<ManualOverrides>({})
+  const [manualOverrides, setManualOverrides] = useState<ManualOverrides>(
+    initialDesignDraft?.manual_overrides ?? {}
+  )
 
   const toggleElement = (element: SelectedElement) => {
     setAiDesign(null)
@@ -297,11 +307,50 @@ const DesignerShell = ({
   const lastGeometryFingerprint = useRef(geometryFingerprint)
   useEffect(() => {
     if (lastGeometryFingerprint.current !== geometryFingerprint) {
+      // null -> a real fingerprint is "the customer just picked a size for
+      // the first time this session," not "the size changed" - on a fresh
+      // page load, geometryFingerprint starts null (no variant/size chosen
+      // yet) even when a saved draft already restored manualOverrides, so
+      // treating this transition as a reset would immediately wipe a
+      // draft's positions the moment the customer re-picks the same size
+      // they'd already configured before. Only an actual OLD -> NEW
+      // fingerprint change (a genuinely different size) still resets.
+      const isFirstRealGeometry =
+        lastGeometryFingerprint.current === null && geometryFingerprint !== null
       lastGeometryFingerprint.current = geometryFingerprint
-      setAiDesign(null)
-      setManualOverrides({})
+      if (!isFirstRealGeometry) {
+        setAiDesign(null)
+        setManualOverrides({})
+      }
     }
   }, [geometryFingerprint])
+
+  // Auto-saves the customer's current brand/theme/element selection and
+  // manual drag/resize edits, 1.2s after the last change - the very first
+  // render is skipped so it doesn't immediately re-save the exact same
+  // data initialDesignDraft just loaded. Best-effort and silent by design
+  // (saveDesignDraft never throws) - an auto-save failing mid-edit should
+  // never interrupt the customer or need their attention.
+  const isFirstRenderForAutoSave = useRef(true)
+  useEffect(() => {
+    if (isFirstRenderForAutoSave.current) {
+      isFirstRenderForAutoSave.current = false
+      return
+    }
+    if (!product) return
+
+    const timeout = setTimeout(() => {
+      saveDesignDraft({
+        product_id: product.id,
+        brand_id: selectedBrandId,
+        selected_theme: selectedTheme,
+        selected_elements: selectedElements,
+        manual_overrides: manualOverrides,
+      })
+    }, 1200)
+
+    return () => clearTimeout(timeout)
+  }, [product, selectedBrandId, selectedTheme, selectedElements, manualOverrides])
 
   const filteredProducts = activeCategoryId
     ? products.filter((p) =>
