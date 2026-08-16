@@ -135,7 +135,7 @@ const DielinePreview = ({
   // A fixed mm size would render as a speck on a large box and a boulder on
   // a small one - sized relative to the overall diagram instead, same idea
   // as `padding` above.
-  const handleSize = padding * 0.7
+  const handleRadius = padding * 0.15
 
   const elementsByPanel = new Map(
     (resolvedLayout?.panels ?? []).map((p) => [
@@ -537,24 +537,33 @@ const DielinePreview = ({
                           ["br", x + size.w, y + size.h],
                         ] as const
                       ).map(([handle, cx, cy]) => (
-                        <rect
-                          key={handle}
-                          x={cx - handleSize / 2}
-                          y={cy - handleSize / 2}
-                          width={handleSize}
-                          height={handleSize}
-                          fill="#fff"
-                          stroke="#2563eb"
-                          strokeWidth={1.5}
-                          vectorEffect="non-scaling-stroke"
-                          pointerEvents="all"
-                          style={{
-                            cursor:
-                              handle === "tl" || handle === "br" ? "nwse-resize" : "nesw-resize",
-                            touchAction: "none",
-                          }}
-                          onPointerDown={handleCornerPointerDown(el, handle)}
-                        />
+                        <g key={handle}>
+                          {/* Larger invisible circle so the dot stays easy
+                              to grab (mouse or touch) even though the
+                              visible marker itself is small. */}
+                          <circle
+                            cx={cx}
+                            cy={cy}
+                            r={handleRadius * 2.5}
+                            fill="transparent"
+                            pointerEvents="all"
+                            style={{
+                              cursor:
+                                handle === "tl" || handle === "br"
+                                  ? "nwse-resize"
+                                  : "nesw-resize",
+                              touchAction: "none",
+                            }}
+                            onPointerDown={handleCornerPointerDown(el, handle)}
+                          />
+                          <circle
+                            cx={cx}
+                            cy={cy}
+                            r={handleRadius}
+                            fill="#2563eb"
+                            pointerEvents="none"
+                          />
+                        </g>
                       ))}
                     </>
                   )}
