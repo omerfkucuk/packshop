@@ -17,11 +17,10 @@ type DielinePreviewProps = {
    *  it doesn't need to round-trip through the parent's render on every
    *  frame). Omit to render a non-interactive preview. */
   onDragEnd?: (elementId: string, position: Point) => void
-  /** Fires when the +/- resize buttons on a selected element are clicked,
-   *  with the recentered position and new (aspect-ratio-preserved, zone-
-   *  clamped) size. Selecting an element only works when onDragEnd is also
-   *  provided (selection piggybacks on the same pointer interaction as
-   *  drag), so pass both together. */
+  /** Fires once, on release, after dragging a corner handle - the
+   *  recentered position and new (aspect-ratio-preserved, zone-clamped)
+   *  size. Selecting an element (which shows the handles) piggybacks on
+   *  the same pointer interaction as drag, so pass both together. */
   onResize?: (elementId: string, position: Point, size: { w: number; h: number }) => void
 }
 
@@ -32,6 +31,38 @@ type DragState = {
   pointerStart: Point // root <svg> user space (mm-numeric, Y-down)
   elementStart: Point // mm space, Y-up - same convention as ResolvedElement.position
   current: Point // mm space, Y-up - the live, clamped drag position
+}
+
+type CornerHandle = "tl" | "tr" | "bl" | "br"
+
+type ResizeState = {
+  elementId: string
+  panelName: string
+  handle: CornerHandle
+  anchor: Point // mm - the opposite corner, fixed for the whole gesture
+  originalSize: { w: number; h: number } // mm, at gesture start - defines the aspect ratio kept throughout
+  current: { position: Point; size: { w: number; h: number } }
+}
+
+// The corner diagonally opposite each handle - it's what stays fixed while
+// that handle is dragged (position/size describe the ORIGINAL box, at
+// gesture start).
+const CORNER_ANCHOR: Record<
+  CornerHandle,
+  (position: Point, size: { w: number; h: number }) => Point
+> = {
+  tl: (position, size) => ({ x: position.x + size.w, y: position.y }), // bottom-right
+  tr: (position, size) => ({ x: position.x, y: position.y }), // bottom-left
+  bl: (position, size) => ({ x: position.x + size.w, y: position.y + size.h }), // top-right
+  br: (position, size) => ({ x: position.x, y: position.y + size.h }), // top-left
+}
+
+// Which mm direction (away from the anchor) each handle grows toward.
+const CORNER_GROWTH_SIGN: Record<CornerHandle, { dx: 1 | -1; dy: 1 | -1 }> = {
+  tl: { dx: -1, dy: 1 },
+  tr: { dx: 1, dy: 1 },
+  bl: { dx: -1, dy: -1 },
+  br: { dx: 1, dy: -1 },
 }
 
 const toPolylinePoints = (points: Point[]) =>
@@ -49,10 +80,10 @@ const isImageLike = (el: ResolvedElement) =>
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max)
 
-// Below this mm-space movement, a pointerdown->pointerup is treated as a
-// click (toggling selection) rather than a drag commit.
+// Below this mm-space movement, a pointerdown->pointerup on the element
+// body is treated as a click (toggling selection) rather than a drag
+// commit.
 const CLICK_THRESHOLD_MM = 1.5
-const RESIZE_STEP_FACTOR = 1.15
 const MIN_ELEMENT_SIZE_MM = 8
 
 // Flat 2D render of a generated dieline: cut lines solid black, crease lines
@@ -77,6 +108,7 @@ const DielinePreview = ({
 }: DielinePreviewProps) => {
   const svgRef = useRef<SVGSVGElement>(null)
   const [dragState, setDragState] = useState<DragState | null>(null)
+  const [resizeState, setResizeState] = useState<ResizeState | null>(null)
   // Not cleared when the element disappears from a new resolvedLayout (a
   // stale id here is harmless - the render loop below only shows resize
   // handles for elements it's actually iterating over).
@@ -100,10 +132,10 @@ const DielinePreview = ({
   const viewBox = `${minX - padding} ${minY - padding} ${
     maxX - minX + padding * 2
   } ${maxY - minY + padding * 2}`
-  // A fixed mm radius would render as a speck on a large box and a
-  // boulder on a small one - sized relative to the overall diagram instead,
-  // same idea as `padding` above.
-  const handleRadius = padding * 0.6
+  // A fixed mm size would render as a speck on a large box and a boulder on
+  // a small one - sized relative to the overall diagram instead, same idea
+  // as `padding` above.
+  const handleSize = padding * 0.7
 
   const elementsByPanel = new Map(
     (resolvedLayout?.panels ?? []).map((p) => [
@@ -140,7 +172,82 @@ const DielinePreview = ({
       })
     }
 
+  const handleCornerPointerDown =
+    (el: ResolvedElement, handle: CornerHandle) => (e: React.PointerEvent<SVGElement>) => {
+      e.stopPropagation()
+      if (!onResize) return
+      e.currentTarget.setPointerCapture(e.pointerId)
+      setResizeState({
+        elementId: el.elementId,
+        panelName: el.panelName,
+        handle,
+        anchor: CORNER_ANCHOR[handle](el.position, el.size),
+        originalSize: el.size,
+        current: { position: el.position, size: el.size },
+      })
+    }
+
   const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (resizeState) {
+      const svgPoint = toSvgPoint(e.clientX, e.clientY)
+      // svgPoint.x maps 1:1 to mm x; svgPoint.y is flipY(mmY) (an
+      // involution), so flipping it back recovers mm y directly - unlike
+      // the position-drag below, a corner handle's scale is naturally
+      // computed from the pointer's ABSOLUTE distance to the fixed anchor,
+      // not a delta, so there's no grab-offset to preserve.
+      const pointerMm = { x: svgPoint.x, y: flipY(svgPoint.y) }
+
+      const originalDiag = Math.hypot(resizeState.originalSize.w, resizeState.originalSize.h)
+      let scale =
+        originalDiag > 0
+          ? Math.hypot(
+              pointerMm.x - resizeState.anchor.x,
+              pointerMm.y - resizeState.anchor.y
+            ) / originalDiag
+          : 1
+
+      const { dx, dy } = CORNER_GROWTH_SIGN[resizeState.handle]
+      const zone = zoneFor(resizeState.panelName)
+      const minScale = Math.max(
+        MIN_ELEMENT_SIZE_MM / resizeState.originalSize.w,
+        MIN_ELEMENT_SIZE_MM / resizeState.originalSize.h
+      )
+      let maxScale = Infinity
+      if (zone) {
+        const origin = zoneOrigin(zone)
+        const zoneMinX = origin.x
+        const zoneMaxX = origin.x + zone.boundingBox.w
+        const zoneMinY = origin.y
+        const zoneMaxY = origin.y + zone.boundingBox.h
+        // The anchor is fixed; only the FAR corner (the one being dragged)
+        // needs to stay inside the zone as the box grows away from it.
+        const maxScaleX =
+          dx === 1
+            ? (zoneMaxX - resizeState.anchor.x) / resizeState.originalSize.w
+            : (resizeState.anchor.x - zoneMinX) / resizeState.originalSize.w
+        const maxScaleY =
+          dy === 1
+            ? (zoneMaxY - resizeState.anchor.y) / resizeState.originalSize.h
+            : (resizeState.anchor.y - zoneMinY) / resizeState.originalSize.h
+        maxScale = Math.min(maxScaleX, maxScaleY)
+      }
+      scale = clamp(scale, minScale, Math.max(minScale, maxScale))
+
+      const newSize = {
+        w: resizeState.originalSize.w * scale,
+        h: resizeState.originalSize.h * scale,
+      }
+      const newPosition = {
+        x: dx === 1 ? resizeState.anchor.x : resizeState.anchor.x - newSize.w,
+        y: dy === 1 ? resizeState.anchor.y : resizeState.anchor.y - newSize.h,
+      }
+
+      setResizeState((prev) =>
+        prev ? { ...prev, current: { position: newPosition, size: newSize } } : prev
+      )
+      return
+    }
+
     if (!dragState) return
     const current = toSvgPoint(e.clientX, e.clientY)
     const dxSvg = current.x - dragState.pointerStart.x
@@ -186,57 +293,49 @@ const DielinePreview = ({
     setDragState(null)
   }
 
-  // Uniform (aspect-ratio-preserving) scale around the element's own
-  // center, clamped so it never shrinks past MIN_ELEMENT_SIZE_MM or grows
-  // past the panel's print zone - mirrors @dtc/packaging-engine's own
-  // fitCenter/anchorFit pattern of computing one limiting scale factor
-  // rather than clamping width/height independently (which would distort
-  // the aspect ratio).
-  const handleResize = (el: ResolvedElement, factor: number) => {
-    if (!onResize) return
-    const zone = zoneFor(el.panelName)
-
-    let scale = factor
-    if (zone) {
-      const maxScale = Math.min(
-        zone.boundingBox.w / el.size.w,
-        zone.boundingBox.h / el.size.h
-      )
-      const minScale = Math.max(
-        MIN_ELEMENT_SIZE_MM / el.size.w,
-        MIN_ELEMENT_SIZE_MM / el.size.h
-      )
-      scale = clamp(factor, minScale, maxScale)
+  const endResize = () => {
+    if (resizeState && onResize) {
+      onResize(resizeState.elementId, resizeState.current.position, resizeState.current.size)
     }
+    setResizeState(null)
+  }
 
-    const newSize = { w: el.size.w * scale, h: el.size.h * scale }
-    const centerX = el.position.x + el.size.w / 2
-    const centerY = el.position.y + el.size.h / 2
-    let newPosition = { x: centerX - newSize.w / 2, y: centerY - newSize.h / 2 }
-
-    if (zone) {
-      const origin = zoneOrigin(zone)
-      newPosition = {
-        x: clamp(newPosition.x, origin.x, origin.x + zone.boundingBox.w - newSize.w),
-        y: clamp(newPosition.y, origin.y, origin.y + zone.boundingBox.h - newSize.h),
-      }
-    }
-
-    onResize(el.elementId, newPosition, newSize)
+  const handlePointerUp = () => {
+    endResize()
+    endDrag()
   }
 
   // Cheap, soft, informational reuse of the already-built constraint engine
-  // rule - never blocks the drag, just outlines the elements it flags.
+  // rule - never blocks the interaction, just outlines the elements it
+  // flags. Substitutes whichever element is currently being dragged OR
+  // resized with its live (position, size) before checking.
   const overlappingElementIds = new Set<string>()
-  if (dragState) {
-    const panelElements = elementsByPanel.get(dragState.panelName) ?? []
-    const withLiveDragPosition = panelElements.map((el) =>
-      el.elementId === dragState.elementId ? { ...el, position: dragState.current } : el
+  const liveOverride = dragState
+    ? {
+        elementId: dragState.elementId,
+        panelName: dragState.panelName,
+        position: dragState.current,
+        size: dragState.size,
+      }
+    : resizeState
+    ? {
+        elementId: resizeState.elementId,
+        panelName: resizeState.panelName,
+        position: resizeState.current.position,
+        size: resizeState.current.size,
+      }
+    : null
+  if (liveOverride) {
+    const panelElements = elementsByPanel.get(liveOverride.panelName) ?? []
+    const withLiveOverride = panelElements.map((el) =>
+      el.elementId === liveOverride.elementId
+        ? { ...el, position: liveOverride.position, size: liveOverride.size }
+        : el
     )
-    const panelGeometry = panels.find((p) => p.panelName === dragState.panelName)
+    const panelGeometry = panels.find((p) => p.panelName === liveOverride.panelName)
     if (panelGeometry && resolvedLayout) {
       for (const violation of noElementOverlapRule.check(
-        withLiveDragPosition,
+        withLiveOverride,
         resolvedLayout,
         panelGeometry
       )) {
@@ -251,12 +350,12 @@ const DielinePreview = ({
       viewBox={viewBox}
       className={className}
       data-testid="dieline-preview"
-      // Dragging near the <text> elements would otherwise trigger the
-      // browser's native text selection mid-drag.
-      style={dragState ? { userSelect: "none" } : undefined}
+      // Dragging/resizing near the <text> elements would otherwise trigger
+      // the browser's native text selection mid-gesture.
+      style={dragState || resizeState ? { userSelect: "none" } : undefined}
       onPointerMove={handlePointerMove}
-      onPointerUp={endDrag}
-      onPointerCancel={endDrag}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
     >
       <defs>
         {ELEMENT_LIBRARY.map((item) => (
@@ -309,9 +408,15 @@ const DielinePreview = ({
           <g key={panelName}>
             {elements.map((el) => {
               const isDragging = dragState?.elementId === el.elementId
-              const position = isDragging ? dragState.current : el.position
+              const isResizing = resizeState?.elementId === el.elementId
+              const position = isDragging
+                ? dragState.current
+                : isResizing
+                ? resizeState.current.position
+                : el.position
+              const size = isResizing ? resizeState.current.size : el.size
               const x = position.x
-              const y = flipY(position.y + el.size.h)
+              const y = flipY(position.y + size.h)
               const isOverlapping = overlappingElementIds.has(el.elementId)
               const isSelected = onResize && selectedElementId === el.elementId
 
@@ -326,8 +431,8 @@ const DielinePreview = ({
                       href={url}
                       x={x}
                       y={y}
-                      width={el.size.w}
-                      height={el.size.h}
+                      width={size.w}
+                      height={size.h}
                       preserveAspectRatio="xMidYMid meet"
                     />
                   )
@@ -336,14 +441,11 @@ const DielinePreview = ({
                 const text = el.content.text
                 const font = el.content.font
                 if (typeof text === "string") {
-                  const fontSize = Math.min(
-                    MAX_TEXT_SIZE,
-                    Math.max(MIN_TEXT_SIZE, el.size.h)
-                  )
+                  const fontSize = Math.min(MAX_TEXT_SIZE, Math.max(MIN_TEXT_SIZE, size.h))
                   visual = (
                     <text
-                      x={position.x + el.size.w / 2}
-                      y={flipY(position.y + el.size.h / 2)}
+                      x={position.x + size.w / 2}
+                      y={flipY(position.y + size.h / 2)}
                       fontSize={fontSize}
                       fontFamily={typeof font === "string" ? font : undefined}
                       textAnchor="middle"
@@ -372,8 +474,8 @@ const DielinePreview = ({
                       href={`#library-element-${entry.id}`}
                       x={x}
                       y={y}
-                      width={el.size.w}
-                      height={el.size.h}
+                      width={size.w}
+                      height={size.h}
                       style={entry.recolorable && color ? { color } : undefined}
                     />
                   )
@@ -391,8 +493,8 @@ const DielinePreview = ({
                     <rect
                       x={x}
                       y={y}
-                      width={el.size.w}
-                      height={el.size.h}
+                      width={size.w}
+                      height={size.h}
                       fill="none"
                       stroke="#ef4444"
                       strokeWidth={2}
@@ -405,8 +507,8 @@ const DielinePreview = ({
                     <rect
                       x={x}
                       y={y}
-                      width={el.size.w}
-                      height={el.size.h}
+                      width={size.w}
+                      height={size.h}
                       fill="transparent"
                       pointerEvents="all"
                       style={{ touchAction: "none", cursor: "grab" }}
@@ -418,8 +520,8 @@ const DielinePreview = ({
                       <rect
                         x={x}
                         y={y}
-                        width={el.size.w}
-                        height={el.size.h}
+                        width={size.w}
+                        height={size.h}
                         fill="none"
                         stroke="#2563eb"
                         strokeWidth={1.5}
@@ -429,37 +531,31 @@ const DielinePreview = ({
                       />
                       {(
                         [
-                          ["+", RESIZE_STEP_FACTOR],
-                          ["-", 1 / RESIZE_STEP_FACTOR],
+                          ["tl", x, y],
+                          ["tr", x + size.w, y],
+                          ["bl", x, y + size.h],
+                          ["br", x + size.w, y + size.h],
                         ] as const
-                      ).map(([label, factor], index) => {
-                        const cx = x + el.size.w + handleRadius * 1.3
-                        const cy = y + handleRadius * 1.3 + index * handleRadius * 2.6
-                        return (
-                          <g
-                            key={label}
-                            style={{ cursor: "pointer" }}
-                            onPointerDown={(e) => e.stopPropagation()}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleResize(el, factor)
-                            }}
-                          >
-                            <circle cx={cx} cy={cy} r={handleRadius} fill="#2563eb" />
-                            <text
-                              x={cx}
-                              y={cy}
-                              fontSize={handleRadius * 1.2}
-                              textAnchor="middle"
-                              dominantBaseline="central"
-                              fill="#fff"
-                              style={{ userSelect: "none" }}
-                            >
-                              {label}
-                            </text>
-                          </g>
-                        )
-                      })}
+                      ).map(([handle, cx, cy]) => (
+                        <rect
+                          key={handle}
+                          x={cx - handleSize / 2}
+                          y={cy - handleSize / 2}
+                          width={handleSize}
+                          height={handleSize}
+                          fill="#fff"
+                          stroke="#2563eb"
+                          strokeWidth={1.5}
+                          vectorEffect="non-scaling-stroke"
+                          pointerEvents="all"
+                          style={{
+                            cursor:
+                              handle === "tl" || handle === "br" ? "nwse-resize" : "nesw-resize",
+                            touchAction: "none",
+                          }}
+                          onPointerDown={handleCornerPointerDown(el, handle)}
+                        />
+                      ))}
                     </>
                   )}
                 </g>
