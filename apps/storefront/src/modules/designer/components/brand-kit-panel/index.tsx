@@ -310,7 +310,13 @@ const BrandKitPanel = ({
                         />
                       }
                       label="Logo"
-                      selected={selectedElementIds.has(`logo-${brand.id}`)}
+                      // Every click adds a fresh, uniquely-id'd instance
+                      // (see designer-shell's toggleElement) - "selected"
+                      // here just means "at least one is already on the
+                      // canvas," a prefix match rather than an exact one.
+                      selected={Array.from(selectedElementIds).some((id) =>
+                        id.startsWith(`logo-${brand.id}-`)
+                      )}
                       onClick={() =>
                         onToggleElement({
                           id: `logo-${brand.id}`,

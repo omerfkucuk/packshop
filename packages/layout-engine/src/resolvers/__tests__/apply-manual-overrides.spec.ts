@@ -80,4 +80,28 @@ describe("applyManualOverrides", () => {
   it("returns the exact same layout reference when overrides is empty", () => {
     expect(applyManualOverrides(layout, {})).toBe(layout)
   })
+
+  it("moves an element to a different panel, including one with no prior elements", () => {
+    // Panel-W1 (right) has no elements in the base layout at all - not even
+    // an empty entry in layout.panels (resolveLayout only ever creates one
+    // per panel that actually resolved an element).
+    expect(layout.panels.some((p) => p.panelName === "Panel-W1")).toBe(false)
+
+    const overridden = applyManualOverrides(layout, {
+      logo: { x: 5, y: 5, panelName: "Panel-W1" },
+    })
+
+    const rightPanel = overridden.panels.find((p) => p.panelName === "Panel-W1")
+    expect(rightPanel?.elements.map((el) => el.elementId)).toEqual(["logo"])
+    expect(rightPanel?.elements[0].position).toEqual({ x: 5, y: 5 })
+
+    const frontPanel = overridden.panels.find((p) => p.panelName === "Panel-L1")
+    expect(frontPanel?.elements.map((el) => el.elementId)).toEqual(["slogan"])
+  })
+
+  it("keeps an element on its current panel when panelName is omitted", () => {
+    const overridden = applyManualOverrides(layout, { logo: { x: 5, y: 5 } })
+    const frontPanel = overridden.panels.find((p) => p.panelName === "Panel-L1")
+    expect(frontPanel?.elements.map((el) => el.elementId).sort()).toEqual(["logo", "slogan"])
+  })
 })

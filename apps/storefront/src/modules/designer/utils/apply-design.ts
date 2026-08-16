@@ -1,6 +1,7 @@
 import type { PanelGeometry } from "@dtc/packaging-engine/shared"
 import {
   resolveLayout,
+  type AnchorPoint,
   type CompositionPlan,
   type ResolvedLayout,
   type SemanticPlacement,
@@ -9,13 +10,31 @@ import type { SelectedElement } from "../types"
 import { FEFCO_0201_PANEL_SEMANTICS, MAIN_PANELS } from "./panel-semantics"
 import { getLibraryElement } from "./element-library"
 
-// Turns the customer's selected brand elements into a CompositionPlan: the
-// same logo (centered) and slogan (below it, in the selected font)
-// repeated identically across all 4 main faces. This is the "no real
-// AI/text prompt yet" default plan - once AI composition exists, it
-// produces plans through the exact same resolveLayout() call.
+// Each selected logo is its own individually placeable instance (not
+// baked once per panel) - the customer adds one via Marka Kiti, then
+// drags it wherever they want, including across panels. A fresh instance
+// always starts on the front panel; successive instances cycle through
+// these anchors so repeated adds don't land perfectly stacked (which
+// would otherwise immediately flag as an unhelpful red overlap outline).
+const LOGO_ANCHOR_CYCLE: AnchorPoint[] = [
+  "center",
+  "top-left",
+  "top-right",
+  "bottom-left",
+  "bottom-right",
+  "center-left",
+  "center-right",
+  "top-center",
+  "bottom-center",
+]
+
+// Turns the customer's selected brand elements into a CompositionPlan: each
+// selected logo placed once (front panel), the slogan (below the first
+// logo, in the selected font) repeated across all 4 main faces. This is
+// the "no real AI/text prompt yet" default plan - once AI composition
+// exists, it produces plans through the exact same resolveLayout() call.
 function buildCompositionPlan(elements: SelectedElement[]): CompositionPlan {
-  const logo = elements.find((el) => el.type === "logo")
+  const logos = elements.filter((el) => el.type === "logo")
   const slogan = elements.find((el) => el.type === "text")
   const font = elements.find((el) => el.type === "font")?.value ?? null
   const color = elements.find((el) => el.type === "color")?.value ?? null
@@ -23,21 +42,24 @@ function buildCompositionPlan(elements: SelectedElement[]): CompositionPlan {
 
   const planElements: SemanticPlacement[] = []
 
+  logos.forEach((logoEl, index) => {
+    planElements.push({
+      elementId: logoEl.id,
+      elementType: "logo",
+      content: { url: logoEl.value },
+      placementKind: "absolute",
+      panel: "front",
+      anchor: LOGO_ANCHOR_CYCLE[index % LOGO_ANCHOR_CYCLE.length],
+      size: slogan ? "medium" : "large",
+    })
+  })
+
+  // Only the first logo instance (if any) gets a slogan tucked below it -
+  // with logos now individually placeable, there's no single "the logo"
+  // per panel to pair every slogan repeat against.
+  const firstLogoId = logos[0]?.id ?? null
+
   for (const panel of MAIN_PANELS) {
-    const logoId = `logo-${panel}`
-
-    if (logo) {
-      planElements.push({
-        elementId: logoId,
-        elementType: "logo",
-        content: { url: logo.value },
-        placementKind: "absolute",
-        panel,
-        anchor: "center",
-        size: slogan ? "medium" : "large",
-      })
-    }
-
     if (slogan) {
       const base = {
         elementId: `slogan-${panel}`,
@@ -47,12 +69,12 @@ function buildCompositionPlan(elements: SelectedElement[]): CompositionPlan {
       }
 
       planElements.push(
-        logo
+        firstLogoId && panel === "front"
           ? {
               ...base,
               placementKind: "relative",
               panel,
-              relativeTo: logoId,
+              relativeTo: firstLogoId,
               position: "below",
               gapHint: "normal",
             }

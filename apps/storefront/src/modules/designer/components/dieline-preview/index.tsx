@@ -12,11 +12,15 @@ type DielinePreviewProps = {
   resolvedLayout?: ResolvedLayout | null
   backgroundColors?: Record<string, string>
   className?: string
-  /** Fires once, on release, with the element's final mm position - not on
-   *  every pointermove (the live drag preview is local component state, so
-   *  it doesn't need to round-trip through the parent's render on every
-   *  frame). Omit to render a non-interactive preview. */
-  onDragEnd?: (elementId: string, position: Point) => void
+  /** Fires once, on release, with the element's final mm position and the
+   *  (physical) panel it ends up on - not on every pointermove (the live
+   *  drag preview is local component state, so it doesn't need to
+   *  round-trip through the parent's render on every frame). The panel can
+   *  differ from the one the element started on: dragging past a panel's
+   *  edge moves it onto whichever panel the pointer is over, since every
+   *  main panel sits side by side in this same flat mm space. Omit to
+   *  render a non-interactive preview. */
+  onDragEnd?: (elementId: string, position: Point, panelName: string) => void
   /** Fires once, on release, after dragging a corner handle - the
    *  recentered position and new (aspect-ratio-preserved, zone-clamped)
    *  size. Selecting an element (which shows the handles) piggybacks on
@@ -147,6 +151,25 @@ const DielinePreview = ({
   const zoneFor = (panelName: string) =>
     panels.find((p) => p.panelName === panelName)?.printZones[0]
 
+  // Which physical panel's print zone a raw (unclamped) mm point falls
+  // inside - every main panel of this box sits side by side in the same
+  // flat mm space (confirmed by this file's own viewBox spanning all of
+  // them at once), so "dragged onto a different panel" is just "the point
+  // is now inside a different zone's bounding box," no per-panel transform
+  // math needed.
+  const findPanelAt = (point: Point): PanelGeometry | undefined =>
+    panels.find((panel) => {
+      const zone = panel.printZones[0]
+      if (!zone) return false
+      const origin = zoneOrigin(zone)
+      return (
+        point.x >= origin.x &&
+        point.x <= origin.x + zone.boundingBox.w &&
+        point.y >= origin.y &&
+        point.y <= origin.y + zone.boundingBox.h
+      )
+    })
+
   const toSvgPoint = (clientX: number, clientY: number): Point => {
     const svg = svgRef.current
     const ctm = svg?.getScreenCTM()
@@ -257,7 +280,14 @@ const DielinePreview = ({
     const rawX = dragState.elementStart.x + dxSvg
     const rawY = dragState.elementStart.y - dySvg
 
-    const zone = zoneFor(dragState.panelName)
+    // Which panel to clamp against is decided by the element's own
+    // (unclamped) CENTER point, not dragState.panelName - crossing into
+    // another panel's zone re-targets the drag onto it. Falls back to
+    // whichever panel it's currently on if the pointer strays over a
+    // crease/flap/margin between zones, so it doesn't jump erratically.
+    const rawCenter = { x: rawX + dragState.size.w / 2, y: rawY + dragState.size.h / 2 }
+    const targetPanel = findPanelAt(rawCenter) ?? panels.find((p) => p.panelName === dragState.panelName)
+    const zone = targetPanel?.printZones[0]
     const clamped = zone
       ? {
           x: clamp(
@@ -273,7 +303,11 @@ const DielinePreview = ({
         }
       : { x: rawX, y: rawY }
 
-    setDragState((prev) => (prev ? { ...prev, current: clamped } : prev))
+    setDragState((prev) =>
+      prev
+        ? { ...prev, current: clamped, panelName: targetPanel?.panelName ?? prev.panelName }
+        : prev
+    )
   }
 
   const endDrag = () => {
@@ -287,7 +321,7 @@ const DielinePreview = ({
           prev === dragState.elementId ? null : dragState.elementId
         )
       } else if (onDragEnd) {
-        onDragEnd(dragState.elementId, dragState.current)
+        onDragEnd(dragState.elementId, dragState.current, dragState.panelName)
       }
     }
     setDragState(null)

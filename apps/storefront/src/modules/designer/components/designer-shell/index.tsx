@@ -130,6 +130,18 @@ const DesignerShell = ({
 
   const toggleElement = (element: SelectedElement) => {
     setAiDesign(null)
+    if (element.type === "logo") {
+      // A logo is an individually placeable instance on the canvas, not a
+      // single on/off toggle - each click on its Marka Kiti row adds one
+      // more (placed on the front panel by default, dragged wherever from
+      // there); removing one happens via its own chip's "x" in the AI bar
+      // below, same as every other selected element.
+      setSelectedElements((prev) => [
+        ...prev,
+        { ...element, id: `${element.id}-${crypto.randomUUID()}` },
+      ])
+      return
+    }
     setSelectedElements((prev) =>
       prev.some((el) => el.id === element.id)
         ? prev.filter((el) => el.id !== element.id)
@@ -254,13 +266,17 @@ const DesignerShell = ({
         }
       : baseDesign
 
-  const handleElementDragEnd = (elementId: string, position: { x: number; y: number }) => {
+  const handleElementDragEnd = (
+    elementId: string,
+    position: { x: number; y: number },
+    panelName: string
+  ) => {
     // Merge, not replace - if this element already has a resize override
     // (w/h), a plain `[elementId]: position` would silently drop it back
     // to its original size the next time it's dragged.
     setManualOverrides((prev) => ({
       ...prev,
-      [elementId]: { ...prev[elementId], ...position },
+      [elementId]: { ...prev[elementId], ...position, panelName },
     }))
   }
 
