@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import type { PanelGeometry, Point } from "@dtc/packaging-engine/shared"
+import type { PanelGeometry, Point, PrintZone } from "@dtc/packaging-engine/shared"
 import { zoneOrigin } from "@dtc/packaging-engine/placement"
-import type { ResolvedLayout, ResolvedElement } from "@dtc/layout-engine"
+import type { ElementType, ResolvedLayout, ResolvedElement } from "@dtc/layout-engine"
 import { noElementOverlapRule } from "@dtc/layout-engine/constraints"
 import { ELEMENT_LIBRARY, getLibraryElement } from "../../utils/element-library"
 
@@ -35,6 +35,7 @@ type DielinePreviewProps = {
 
 type DragState = {
   elementId: string
+  elementType: ElementType
   panelName: string
   size: { w: number; h: number }
   pointerStart: Point // root <svg> user space (mm-numeric, Y-down)
@@ -46,6 +47,7 @@ type CornerHandle = "tl" | "tr" | "bl" | "br"
 
 type ResizeState = {
   elementId: string
+  elementType: ElementType
   panelName: string
   handle: CornerHandle
   anchor: Point // mm - the opposite corner, fixed for the whole gesture
@@ -85,6 +87,42 @@ const isImageLike = (el: ResolvedElement) =>
   el.elementType === "image" ||
   el.elementType === "reference-image" ||
   el.elementType === "ai-generated"
+
+// Same background/foreground split as noElementOverlapRule (layout-engine) -
+// background-tier elements are allowed to bleed to the panel's true
+// physical edge (see fullPanelBounds below), foreground elements keep the
+// print-safe margin.
+const isBackgroundTier = (elementType: ElementType) =>
+  elementType === "shape" || elementType === "pattern"
+
+type Bounds = { minX: number; minY: number; maxX: number; maxY: number }
+
+const zoneBounds = (zone: PrintZone): Bounds => {
+  const origin = zoneOrigin(zone)
+  return {
+    minX: origin.x,
+    minY: origin.y,
+    maxX: origin.x + zone.boundingBox.w,
+    maxY: origin.y + zone.boundingBox.h,
+  }
+}
+
+// Expands a print zone's (already safety-inset) bounds back out to the
+// panel's true physical edge, using the same insets that were subtracted
+// to build the zone in the first place (see PRINT_SAFE_MARGIN_MM in
+// fefco-0201.ts). Falls back to the zone's own bounds if a zone has no
+// safeInsets recorded.
+const fullPanelBounds = (zone: PrintZone): Bounds => {
+  const bounds = zoneBounds(zone)
+  const insets = zone.safeInsets
+  if (!insets) return bounds
+  return {
+    minX: bounds.minX - insets.left,
+    minY: bounds.minY - insets.bottom,
+    maxX: bounds.maxX + insets.right,
+    maxY: bounds.maxY + insets.top,
+  }
+}
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max)
@@ -224,6 +262,7 @@ const DielinePreview = ({
       e.currentTarget.setPointerCapture(e.pointerId)
       setDragState({
         elementId: el.elementId,
+        elementType: el.elementType,
         panelName: el.panelName,
         size: el.size,
         pointerStart: toSvgPoint(e.clientX, e.clientY),
@@ -239,6 +278,7 @@ const DielinePreview = ({
       e.currentTarget.setPointerCapture(e.pointerId)
       setResizeState({
         elementId: el.elementId,
+        elementType: el.elementType,
         panelName: el.panelName,
         handle,
         anchor: CORNER_ANCHOR[handle](el.position, el.size),
@@ -274,21 +314,19 @@ const DielinePreview = ({
       )
       let maxScale = Infinity
       if (zone) {
-        const origin = zoneOrigin(zone)
-        const zoneMinX = origin.x
-        const zoneMaxX = origin.x + zone.boundingBox.w
-        const zoneMinY = origin.y
-        const zoneMaxY = origin.y + zone.boundingBox.h
+        const bounds = isBackgroundTier(resizeState.elementType)
+          ? fullPanelBounds(zone)
+          : zoneBounds(zone)
         // The anchor is fixed; only the FAR corner (the one being dragged)
-        // needs to stay inside the zone as the box grows away from it.
+        // needs to stay inside the bounds as the box grows away from it.
         const maxScaleX =
           dx === 1
-            ? (zoneMaxX - resizeState.anchor.x) / resizeState.originalSize.w
-            : (resizeState.anchor.x - zoneMinX) / resizeState.originalSize.w
+            ? (bounds.maxX - resizeState.anchor.x) / resizeState.originalSize.w
+            : (resizeState.anchor.x - bounds.minX) / resizeState.originalSize.w
         const maxScaleY =
           dy === 1
-            ? (zoneMaxY - resizeState.anchor.y) / resizeState.originalSize.h
-            : (resizeState.anchor.y - zoneMinY) / resizeState.originalSize.h
+            ? (bounds.maxY - resizeState.anchor.y) / resizeState.originalSize.h
+            : (resizeState.anchor.y - bounds.minY) / resizeState.originalSize.h
         maxScale = Math.min(maxScaleX, maxScaleY)
       }
       scale = clamp(scale, minScale, Math.max(minScale, maxScale))
@@ -325,18 +363,15 @@ const DielinePreview = ({
     const rawCenter = { x: rawX + dragState.size.w / 2, y: rawY + dragState.size.h / 2 }
     const targetPanel = findPanelAt(rawCenter) ?? panels.find((p) => p.panelName === dragState.panelName)
     const zone = targetPanel?.printZones[0]
-    const clamped = zone
+    const bounds = zone
+      ? isBackgroundTier(dragState.elementType)
+        ? fullPanelBounds(zone)
+        : zoneBounds(zone)
+      : null
+    const clamped = bounds
       ? {
-          x: clamp(
-            rawX,
-            zoneOrigin(zone).x,
-            zoneOrigin(zone).x + zone.boundingBox.w - dragState.size.w
-          ),
-          y: clamp(
-            rawY,
-            zoneOrigin(zone).y,
-            zoneOrigin(zone).y + zone.boundingBox.h - dragState.size.h
-          ),
+          x: clamp(rawX, bounds.minX, bounds.maxX - dragState.size.w),
+          y: clamp(rawY, bounds.minY, bounds.maxY - dragState.size.h),
         }
       : { x: rawX, y: rawY }
 
