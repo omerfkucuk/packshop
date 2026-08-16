@@ -255,7 +255,21 @@ const DesignerShell = ({
       : baseDesign
 
   const handleElementDragEnd = (elementId: string, position: { x: number; y: number }) => {
-    setManualOverrides((prev) => ({ ...prev, [elementId]: position }))
+    // Merge, not replace - if this element already has a resize override
+    // (w/h), a plain `[elementId]: position` would silently drop it back
+    // to its original size the next time it's dragged.
+    setManualOverrides((prev) => ({
+      ...prev,
+      [elementId]: { ...prev[elementId], ...position },
+    }))
+  }
+
+  const handleElementResize = (
+    elementId: string,
+    position: { x: number; y: number },
+    size: { w: number; h: number }
+  ) => {
+    setManualOverrides((prev) => ({ ...prev, [elementId]: { ...position, ...size } }))
   }
 
   // geometryPanels changing (custom-size edit, product/variant swap) is a
@@ -721,6 +735,7 @@ const DesignerShell = ({
                 resolvedLayout={appliedDesign?.resolvedLayout}
                 backgroundColors={appliedDesign?.backgroundColors}
                 onDragEnd={handleElementDragEnd}
+                onResize={handleElementResize}
                 className="max-h-full max-w-full"
               />
             ) : image ? (

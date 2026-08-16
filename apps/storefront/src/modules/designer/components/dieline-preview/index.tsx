@@ -17,6 +17,12 @@ type DielinePreviewProps = {
    *  it doesn't need to round-trip through the parent's render on every
    *  frame). Omit to render a non-interactive preview. */
   onDragEnd?: (elementId: string, position: Point) => void
+  /** Fires when the +/- resize buttons on a selected element are clicked,
+   *  with the recentered position and new (aspect-ratio-preserved, zone-
+   *  clamped) size. Selecting an element only works when onDragEnd is also
+   *  provided (selection piggybacks on the same pointer interaction as
+   *  drag), so pass both together. */
+  onResize?: (elementId: string, position: Point, size: { w: number; h: number }) => void
 }
 
 type DragState = {
@@ -43,6 +49,12 @@ const isImageLike = (el: ResolvedElement) =>
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max)
 
+// Below this mm-space movement, a pointerdown->pointerup is treated as a
+// click (toggling selection) rather than a drag commit.
+const CLICK_THRESHOLD_MM = 1.5
+const RESIZE_STEP_FACTOR = 1.15
+const MIN_ELEMENT_SIZE_MM = 8
+
 // Flat 2D render of a generated dieline: cut lines solid black, crease lines
 // dashed gray, print zones lightly shaded (or the resolved layout's chosen
 // background color). Coordinates come from @dtc/packaging-engine/
@@ -61,9 +73,14 @@ const DielinePreview = ({
   backgroundColors,
   className,
   onDragEnd,
+  onResize,
 }: DielinePreviewProps) => {
   const svgRef = useRef<SVGSVGElement>(null)
   const [dragState, setDragState] = useState<DragState | null>(null)
+  // Not cleared when the element disappears from a new resolvedLayout (a
+  // stale id here is harmless - the render loop below only shows resize
+  // handles for elements it's actually iterating over).
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
 
   const allPoints = panels.flatMap((panel) =>
     [...panel.cutLines, ...panel.creaseLines].flat()
@@ -83,6 +100,10 @@ const DielinePreview = ({
   const viewBox = `${minX - padding} ${minY - padding} ${
     maxX - minX + padding * 2
   } ${maxY - minY + padding * 2}`
+  // A fixed mm radius would render as a speck on a large box and a
+  // boulder on a small one - sized relative to the overall diagram instead,
+  // same idea as `padding` above.
+  const handleRadius = padding * 0.6
 
   const elementsByPanel = new Map(
     (resolvedLayout?.panels ?? []).map((p) => [
@@ -149,10 +170,59 @@ const DielinePreview = ({
   }
 
   const endDrag = () => {
-    if (dragState && onDragEnd) {
-      onDragEnd(dragState.elementId, dragState.current)
+    if (dragState) {
+      const dx = dragState.current.x - dragState.elementStart.x
+      const dy = dragState.current.y - dragState.elementStart.y
+      if (Math.hypot(dx, dy) < CLICK_THRESHOLD_MM) {
+        // Barely moved (or didn't) - a click/tap, not a drag. Toggle
+        // selection instead of committing a no-op position change.
+        setSelectedElementId((prev) =>
+          prev === dragState.elementId ? null : dragState.elementId
+        )
+      } else if (onDragEnd) {
+        onDragEnd(dragState.elementId, dragState.current)
+      }
     }
     setDragState(null)
+  }
+
+  // Uniform (aspect-ratio-preserving) scale around the element's own
+  // center, clamped so it never shrinks past MIN_ELEMENT_SIZE_MM or grows
+  // past the panel's print zone - mirrors @dtc/packaging-engine's own
+  // fitCenter/anchorFit pattern of computing one limiting scale factor
+  // rather than clamping width/height independently (which would distort
+  // the aspect ratio).
+  const handleResize = (el: ResolvedElement, factor: number) => {
+    if (!onResize) return
+    const zone = zoneFor(el.panelName)
+
+    let scale = factor
+    if (zone) {
+      const maxScale = Math.min(
+        zone.boundingBox.w / el.size.w,
+        zone.boundingBox.h / el.size.h
+      )
+      const minScale = Math.max(
+        MIN_ELEMENT_SIZE_MM / el.size.w,
+        MIN_ELEMENT_SIZE_MM / el.size.h
+      )
+      scale = clamp(factor, minScale, maxScale)
+    }
+
+    const newSize = { w: el.size.w * scale, h: el.size.h * scale }
+    const centerX = el.position.x + el.size.w / 2
+    const centerY = el.position.y + el.size.h / 2
+    let newPosition = { x: centerX - newSize.w / 2, y: centerY - newSize.h / 2 }
+
+    if (zone) {
+      const origin = zoneOrigin(zone)
+      newPosition = {
+        x: clamp(newPosition.x, origin.x, origin.x + zone.boundingBox.w - newSize.w),
+        y: clamp(newPosition.y, origin.y, origin.y + zone.boundingBox.h - newSize.h),
+      }
+    }
+
+    onResize(el.elementId, newPosition, newSize)
   }
 
   // Cheap, soft, informational reuse of the already-built constraint engine
@@ -243,6 +313,7 @@ const DielinePreview = ({
               const x = position.x
               const y = flipY(position.y + el.size.h)
               const isOverlapping = overlappingElementIds.has(el.elementId)
+              const isSelected = onResize && selectedElementId === el.elementId
 
               let visual: React.ReactNode = null
 
@@ -341,6 +412,55 @@ const DielinePreview = ({
                       style={{ touchAction: "none", cursor: "grab" }}
                       onPointerDown={handlePointerDown(el)}
                     />
+                  )}
+                  {isSelected && (
+                    <>
+                      <rect
+                        x={x}
+                        y={y}
+                        width={el.size.w}
+                        height={el.size.h}
+                        fill="none"
+                        stroke="#2563eb"
+                        strokeWidth={1.5}
+                        strokeDasharray="5 3"
+                        vectorEffect="non-scaling-stroke"
+                        pointerEvents="none"
+                      />
+                      {(
+                        [
+                          ["+", RESIZE_STEP_FACTOR],
+                          ["-", 1 / RESIZE_STEP_FACTOR],
+                        ] as const
+                      ).map(([label, factor], index) => {
+                        const cx = x + el.size.w + handleRadius * 1.3
+                        const cy = y + handleRadius * 1.3 + index * handleRadius * 2.6
+                        return (
+                          <g
+                            key={label}
+                            style={{ cursor: "pointer" }}
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleResize(el, factor)
+                            }}
+                          >
+                            <circle cx={cx} cy={cy} r={handleRadius} fill="#2563eb" />
+                            <text
+                              x={cx}
+                              y={cy}
+                              fontSize={handleRadius * 1.2}
+                              textAnchor="middle"
+                              dominantBaseline="central"
+                              fill="#fff"
+                              style={{ userSelect: "none" }}
+                            >
+                              {label}
+                            </text>
+                          </g>
+                        )
+                      })}
+                    </>
                   )}
                 </g>
               )

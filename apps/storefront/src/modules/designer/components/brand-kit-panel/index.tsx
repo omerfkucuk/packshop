@@ -88,7 +88,18 @@ const BrandKitPanel = ({
 }: BrandKitPanelProps) => {
   const router = useRouter()
   const [mode, setMode] = useState<"list" | "form">("list")
-  const [editingBrand, setEditingBrand] = useState<Brand | null>(null)
+  // Only the id, not the Brand object itself - LogoUpload's router.refresh()
+  // after a successful upload re-fetches `brands` from the server, and
+  // deriving editingBrand from that fresh prop on every render (instead of
+  // snapshotting it once in state) is what makes the logo preview below
+  // actually pick up the new logo_url. A separate `editingBrand` state
+  // would go stale the moment router.refresh() lands, since nothing here
+  // would ever re-sync it - the customer would see "Yükleniyor..." finish
+  // with no visible preview, looking like the upload silently failed.
+  const [editingBrandId, setEditingBrandId] = useState<string | null>(null)
+  const editingBrand = editingBrandId
+    ? brands.find((b) => b.id === editingBrandId) ?? null
+    : null
   const [removingId, setRemovingId] = useState<string | null>(null)
 
   const [formState, formAction] = useActionState(saveBrandInline, {
@@ -109,12 +120,12 @@ const BrandKitPanel = ({
   }, [formState])
 
   const openCreate = () => {
-    setEditingBrand(null)
+    setEditingBrandId(null)
     setMode("form")
   }
 
   const openEdit = (brand: Brand) => {
-    setEditingBrand(brand)
+    setEditingBrandId(brand.id)
     onSelectBrand(brand.id)
     setMode("form")
   }
