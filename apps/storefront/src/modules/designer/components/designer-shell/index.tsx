@@ -315,23 +315,33 @@ const DesignerShell = ({
   const handleElementDragEnd = (
     elementId: string,
     position: { x: number; y: number },
-    panelName: string
+    panelName: string,
+    secondaryPanelName: string | undefined
   ) => {
     // Merge, not replace - if this element already has a resize override
     // (w/h), a plain `[elementId]: position` would silently drop it back
-    // to its original size the next time it's dragged.
+    // to its original size the next time it's dragged. panelName and
+    // secondaryPanelName are always written explicitly here (never left to
+    // the `...prev[elementId]` spread), so dragging an already-wrapped
+    // element back off its seam actually clears the wrap instead of the
+    // stale value lingering from a previous drag.
     setManualOverrides((prev) => ({
       ...prev,
-      [elementId]: { ...prev[elementId], ...position, panelName },
+      [elementId]: { ...prev[elementId], ...position, panelName, secondaryPanelName },
     }))
   }
 
   const handleElementResize = (
     elementId: string,
     position: { x: number; y: number },
-    size: { w: number; h: number }
+    size: { w: number; h: number },
+    panelName: string,
+    secondaryPanelName: string | undefined
   ) => {
-    setManualOverrides((prev) => ({ ...prev, [elementId]: { ...position, ...size } }))
+    setManualOverrides((prev) => ({
+      ...prev,
+      [elementId]: { ...position, ...size, panelName, secondaryPanelName },
+    }))
   }
 
   // geometryPanels changing (custom-size edit, product/variant swap) is a

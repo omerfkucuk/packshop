@@ -23,12 +23,13 @@ export interface Material {
   thicknessMm: number
 }
 
-// A single allowed print area on a panel. `boundary` is the actual usable
-// polygon (already inset from the panel's crease lines by any safety
-// margin); `boundingBox` is a convenience axis-aligned size derived from it.
-export interface PrintZone {
-  id: string
-  panelName: string
+// The subset of a print zone's shape that placement math actually needs -
+// a bounded polygon plus its axis-aligned box, optionally with per-edge
+// safety insets. Extracted so callers that build a zone-shaped area without
+// a single real physical panel behind it (e.g. a WrapZone spanning two
+// panels, see placement/wrap-zone.ts) can reuse the same placement/bounds
+// helpers as a real PrintZone, without faking an `id`/`panelName`.
+export interface ZoneLike {
   boundary: Point[]
   boundingBox: Dimensions
   safeInsets?: {
@@ -37,6 +38,14 @@ export interface PrintZone {
     left: number
     right: number
   }
+}
+
+// A single allowed print area on a panel. `boundary` is the actual usable
+// polygon (already inset from the panel's crease lines by any safety
+// margin); `boundingBox` is a convenience axis-aligned size derived from it.
+export interface PrintZone extends ZoneLike {
+  id: string
+  panelName: string
 }
 
 // One physical piece of the dieline (e.g. one side panel plus the flaps

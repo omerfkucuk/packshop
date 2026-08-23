@@ -104,4 +104,21 @@ describe("applyManualOverrides", () => {
     const frontPanel = overridden.panels.find((p) => p.panelName === "Panel-L1")
     expect(frontPanel?.elements.map((el) => el.elementId).sort()).toEqual(["logo", "slogan"])
   })
+
+  it("records a wrap's second touched panel", () => {
+    const overridden = applyManualOverrides(layout, {
+      logo: { x: 290, y: 5, secondaryPanelName: "Panel-W1" },
+    })
+    const logo = overridden.panels[0].elements.find((el) => el.elementId === "logo")!
+    expect(logo.secondaryPanelName).toBe("Panel-W1")
+  })
+
+  it("clears a wrap once a later override for the same element omits secondaryPanelName", () => {
+    const wrapped = applyManualOverrides(layout, {
+      logo: { x: 290, y: 5, secondaryPanelName: "Panel-W1" },
+    })
+    const unwrapped = applyManualOverrides(wrapped, { logo: { x: 5, y: 5 } })
+    const logo = unwrapped.panels[0].elements.find((el) => el.elementId === "logo")!
+    expect(logo.secondaryPanelName).toBeUndefined()
+  })
 })

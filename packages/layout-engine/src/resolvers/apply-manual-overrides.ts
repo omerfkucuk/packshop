@@ -9,6 +9,13 @@ export interface ManualOverride {
    *  the element onto a different panel than the one it originally
    *  resolved to. Omitted/unchanged means it stays on its current panel. */
   panelName?: string
+  /** Second physical panel the element now also touches (a wrap across a
+   *  valid seam - see WrapZone in @dtc/packaging-engine). Explicitly
+   *  `undefined` (as opposed to simply omitted from a partial patch) is how
+   *  "the customer dragged this back off the seam, stop wrapping" is
+   *  encoded - see applyManualOverrides below for why that distinction
+   *  matters here. */
+  secondaryPanelName?: string
 }
 
 export type ManualOverrides = Record<string, ManualOverride> // elementId -> override
@@ -46,6 +53,13 @@ export function applyManualOverrides(
                 ? { w: override.w, h: override.h }
                 : el.size,
             panelName: override.panelName ?? el.panelName,
+            // Deliberately NOT `?? el.secondaryPanelName` - once an
+            // override exists for this element, it's the sole authority on
+            // whether a wrap is still active. An override that no longer
+            // sets this field means the customer dragged the element back
+            // off the seam; falling back to the stale value would leave it
+            // wrapped forever.
+            secondaryPanelName: override.secondaryPanelName,
           }
         : el
 

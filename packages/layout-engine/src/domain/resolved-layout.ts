@@ -17,6 +17,12 @@ export interface ResolvedElement {
    *  the single logical selection it came from, e.g. to remove all of them
    *  together regardless of which one the customer interacted with. */
   sourceElementId?: string
+  /** Real physical panel name of a second panel this element also visually
+   *  touches - set when the customer manually drags/resizes it across a
+   *  valid wrap seam (see @dtc/packaging-engine's WrapZone). Only ever
+   *  produced by applyManualOverrides in the current iteration; resolveLayout
+   *  (the AI/rule-based/theme path) never sets it. */
+  secondaryPanelName?: string
 }
 
 export interface ResolvedPanelLayout {

@@ -12,6 +12,34 @@ replacing it.
 Kept up to date after each shipped feature, at feature granularity (not
 one entry per commit). Newest first.
 
+- **Cross-panel "wrap" design elements (manual canvas only)** — a design
+  element (logo/image/shape/pattern/icon/text - qr/barcode excluded, can't
+  be scanned across a fold) can now be dragged/resized so it visually
+  continues across the crease between two adjacent MAIN panels ("wrap-around
+  print"), free-drag: crossing a valid seam by enough of the element's own
+  size (~15% to enter, ~8% to stay, a hysteresis band so it doesn't flicker
+  right at the boundary) extends it, no separate toggle. New
+  `@dtc/packaging-engine/placement` export `deriveWrapZones(geometry)`
+  derives every valid adjacent-panel pair generically (both panels need a
+  real print zone AND a real shared crease - excludes flaps/glue tab
+  automatically, no FEFCO-specific constants) - for FEFCO 0201 that's
+  exactly front↔right, right↔back, back↔left; front↔left is deliberately
+  NOT wrap-eligible even though those faces are visually adjacent on the
+  assembled box, since that seam is the glue-tab joint, hidden once glued.
+  `ResolvedElement`/`ManualOverride` gained an optional `secondaryPanelName`
+  (the second touched panel); a new `elementsTouchingPanel()` helper feeds
+  `RuleRegistry.runAll` (which was fixed along the way to iterate the
+  authoritative `geometry` list instead of `layout.panels`, otherwise a
+  panel that only ever received a wrap element's secondary touch was never
+  constraint-checked at all) and the designer's own live overlap indicator,
+  so a wrap element's footprint is checked against both panels it touches,
+  not just one. Manual drag overrides already bypass the whole
+  `CompositionPlan`/AI/theme pipeline, so this shipped as a self-contained
+  addition along that one path - `AbsolutePlacement`, the zod schema, and
+  `resolveLayout()` are untouched. Deliberately out of scope for this pass:
+  `@dtc/ai-composer` (the AI can't suggest a wrap placement yet),
+  `applyDesign()`/`apply-theme.ts` (never auto-generate one), and DXF export
+  (dieline-only, never drew placed elements, unaffected either way).
 - **Real `OpenAiProvider` + Constraint Engine v1 + backend AI orchestration**
   — `MockLlmProvider` is no longer the only `LlmProvider`: `OpenAiProvider`
   (Chat Completions, `json_object` mode, prompt spells out the

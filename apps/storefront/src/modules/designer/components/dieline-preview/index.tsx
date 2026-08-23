@@ -1,10 +1,10 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import type { PanelGeometry, Point, PrintZone } from "@dtc/packaging-engine/shared"
-import { zoneOrigin } from "@dtc/packaging-engine/placement"
+import type { PanelGeometry, Point, ZoneLike } from "@dtc/packaging-engine/shared"
+import { zoneOrigin, deriveWrapZones, type WrapZone } from "@dtc/packaging-engine/placement"
 import type { ElementType, ResolvedLayout, ResolvedElement } from "@dtc/layout-engine"
-import { noElementOverlapRule } from "@dtc/layout-engine/constraints"
+import { noElementOverlapRule, elementsTouchingPanel } from "@dtc/layout-engine/constraints"
 import { ELEMENT_LIBRARY, getLibraryElement } from "../../utils/element-library"
 
 type DielinePreviewProps = {
@@ -18,14 +18,33 @@ type DielinePreviewProps = {
    *  round-trip through the parent's render on every frame). The panel can
    *  differ from the one the element started on: dragging past a panel's
    *  edge moves it onto whichever panel the pointer is over, since every
-   *  main panel sits side by side in this same flat mm space. Omit to
-   *  render a non-interactive preview. */
-  onDragEnd?: (elementId: string, position: Point, panelName: string) => void
+   *  main panel sits side by side in this same flat mm space.
+   *  `secondaryPanelName` is a REQUIRED argument (not optional/omittable),
+   *  always `undefined` when not wrapping - passing it explicitly on every
+   *  call is what lets dragging back off a valid seam (see
+   *  @dtc/packaging-engine's WrapZone) actually clear a previous wrap,
+   *  rather than a spread-merge silently keeping it stale. Omit onDragEnd
+   *  entirely to render a non-interactive preview. */
+  onDragEnd?: (
+    elementId: string,
+    position: Point,
+    panelName: string,
+    secondaryPanelName: string | undefined
+  ) => void
   /** Fires once, on release, after dragging a corner handle - the
-   *  recentered position and new (aspect-ratio-preserved, zone-clamped)
-   *  size. Selecting an element (which shows the handles) piggybacks on
-   *  the same pointer interaction as drag, so pass both together. */
-  onResize?: (elementId: string, position: Point, size: { w: number; h: number }) => void
+   *  recentered position, new (aspect-ratio-preserved, zone-clamped) size,
+   *  the panel the resize happened on, and (same non-optional semantics as
+   *  onDragEnd's secondaryPanelName) whether growing across a valid seam
+   *  turned it into a wrap. Selecting an element (which shows the handles)
+   *  piggybacks on the same pointer interaction as drag, so pass both
+   *  together. */
+  onResize?: (
+    elementId: string,
+    position: Point,
+    size: { w: number; h: number },
+    panelName: string,
+    secondaryPanelName: string | undefined
+  ) => void
   /** Fires when the selected element's delete button is clicked, or
    *  Delete/Backspace is pressed while it's selected (and no text input
    *  elsewhere on the page has focus). Selecting an element requires
@@ -37,6 +56,13 @@ type DragState = {
   elementId: string
   elementType: ElementType
   panelName: string
+  /** The second panel this drag currently wraps onto, if any - see
+   *  resolveWrapClamp below. Seeded from the element's already-committed
+   *  ResolvedElement.secondaryPanelName at pointerdown, so re-dragging an
+   *  already-wrapped element starts the hysteresis in the right state
+   *  instead of snapping back to single-panel for the gesture's first
+   *  frame. */
+  secondaryPanelName?: string
   size: { w: number; h: number }
   pointerStart: Point // root <svg> user space (mm-numeric, Y-down)
   elementStart: Point // mm space, Y-up - same convention as ResolvedElement.position
@@ -49,6 +75,11 @@ type ResizeState = {
   elementId: string
   elementType: ElementType
   panelName: string
+  /** Same meaning as DragState.secondaryPanelName. Unlike drag, `panelName`
+   *  itself never changes mid-gesture (the anchor corner is fixed, so only
+   *  the growing far corner can ever reach a neighbor) - only this field
+   *  toggles as the gesture crosses the enter/exit hysteresis band. */
+  secondaryPanelName?: string
   handle: CornerHandle
   anchor: Point // mm - the opposite corner, fixed for the whole gesture
   originalSize: { w: number; h: number } // mm, at gesture start - defines the aspect ratio kept throughout
@@ -94,9 +125,16 @@ const isImageLike = (el: ResolvedElement) =>
 // being clipped or folded through, so it keeps the print-safe margin.
 const canBleedToPanelEdge = (elementType: ElementType) => elementType !== "text"
 
+// qr/barcode physically can't be scanned once split across a fold -
+// excluded from wrapping onto a neighbor panel regardless of how far
+// they're dragged/resized. Everything else (logo/image/reference-image/
+// ai-generated/shape/pattern/icon/text) is wrap-eligible.
+const canWrapAcrossPanels = (elementType: ElementType) =>
+  elementType !== "qr" && elementType !== "barcode"
+
 type Bounds = { minX: number; minY: number; maxX: number; maxY: number }
 
-const zoneBounds = (zone: PrintZone): Bounds => {
+const zoneBounds = (zone: ZoneLike): Bounds => {
   const origin = zoneOrigin(zone)
   return {
     minX: origin.x,
@@ -111,7 +149,7 @@ const zoneBounds = (zone: PrintZone): Bounds => {
 // to build the zone in the first place (see PRINT_SAFE_MARGIN_MM in
 // fefco-0201.ts). Falls back to the zone's own bounds if a zone has no
 // safeInsets recorded.
-const fullPanelBounds = (zone: PrintZone): Bounds => {
+const fullPanelBounds = (zone: ZoneLike): Bounds => {
   const bounds = zoneBounds(zone)
   const insets = zone.safeInsets
   if (!insets) return bounds
@@ -244,6 +282,97 @@ const DielinePreview = ({
       )
     })
 
+  // Every valid adjacent-main-panel seam this box supports, keyed by its
+  // sorted panel-name pair - recomputed each render like elementsByPanel/
+  // zoneFor above (cheap: O(panels^2) over ~5 panels).
+  const pairKey = (a: string, b: string) => [a, b].sort().join("|")
+  const wrapZoneByPair = new Map<string, WrapZone>(
+    deriveWrapZones(panels).map((wz) => [pairKey(wz.panels[0], wz.panels[1]), wz])
+  )
+
+  // Every main panel whose print zone the raw (unclamped) box's full AABB
+  // overlaps at all - unlike findPanelAt (a single point), this is how a
+  // box that's now straddling a seam gets detected as touching TWO panels
+  // at once.
+  const findOverlappingPanels = (box: Bounds): PanelGeometry[] =>
+    panels.filter((panel) => {
+      const zone = panel.printZones[0]
+      if (!zone) return false
+      const b = zoneBounds(zone)
+      return box.minX < b.maxX && box.maxX > b.minX && box.minY < b.maxY && box.maxY > b.minY
+    })
+
+  // Fraction of the box's own extent along a WrapZone's seam axis that
+  // must already sit over the NEIGHBOR panel to (a) start wrapping, or
+  // stay above to (b) keep an active wrap alive. Two different thresholds
+  // (rather than one) are the hysteresis band: a small pointer jitter
+  // right at a single fixed boundary can't flip the state every frame.
+  // Expressed as a fraction of the box's own size (not an absolute mm
+  // value) so a small icon and a large banner both need to travel "the
+  // same relative amount" onto the neighbor to feel consistent.
+  const WRAP_ENTER_OVERLAP_FRACTION = 0.15
+  const WRAP_EXIT_OVERLAP_FRACTION = 0.08
+
+  // Decides whether a raw (unclamped) candidate box should clamp against a
+  // single panel (today's long-standing behavior) or against a WrapZone
+  // spanning `primaryPanelName` and a neighbor - and if the latter, which
+  // panel is the "secondary" one. `primaryPanelName` is the element's panel
+  // identity for this gesture: drag re-picks it every pointermove (via
+  // findPanelAt on the box's center, same as before this feature existed),
+  // while resize keeps it fixed to the panel the gesture started on, since
+  // only the growing far corner can ever reach into a neighbor.
+  const resolveWrapClamp = (
+    rawBox: Bounds,
+    elementType: ElementType,
+    primaryPanelName: string,
+    currentSecondaryPanelName: string | undefined
+  ): { secondaryPanelName: string | undefined; bounds: Bounds } => {
+    const singlePanel = (panelName: string) => {
+      const zone = zoneFor(panelName)
+      const bounds = zone
+        ? canBleedToPanelEdge(elementType)
+          ? fullPanelBounds(zone)
+          : zoneBounds(zone)
+        : rawBox
+      return { secondaryPanelName: undefined, bounds }
+    }
+
+    if (!canWrapAcrossPanels(elementType)) return singlePanel(primaryPanelName)
+
+    const overlapping = findOverlappingPanels(rawBox)
+    if (overlapping.length !== 2) return singlePanel(primaryPanelName)
+
+    const primaryCandidate = overlapping.find((p) => p.panelName === primaryPanelName)
+    if (!primaryCandidate) {
+      // The box no longer touches its nominal primary panel at all - fall
+      // back to single-panel against whichever panel it's actually over,
+      // same as the always-single-panel path already did.
+      return singlePanel(overlapping[0].panelName)
+    }
+
+    const other = overlapping.find((p) => p.panelName !== primaryPanelName)!
+    const wrapZone = wrapZoneByPair.get(pairKey(primaryCandidate.panelName, other.panelName))
+    if (!wrapZone) return singlePanel(primaryPanelName)
+
+    const axisIsVertical = wrapZone.seamAxis === "vertical"
+    const boxExtent = axisIsVertical ? rawBox.maxX - rawBox.minX : rawBox.maxY - rawBox.minY
+    const overlapFraction = (panel: PanelGeometry) => {
+      const b = zoneBounds(panel.printZones[0])
+      const overlapMin = axisIsVertical ? Math.max(rawBox.minX, b.minX) : Math.max(rawBox.minY, b.minY)
+      const overlapMax = axisIsVertical ? Math.min(rawBox.maxX, b.maxX) : Math.min(rawBox.maxY, b.maxY)
+      return boxExtent > 0 ? Math.max(0, overlapMax - overlapMin) / boxExtent : 0
+    }
+
+    const wasWrapped = currentSecondaryPanelName === other.panelName
+    const threshold = wasWrapped ? WRAP_EXIT_OVERLAP_FRACTION : WRAP_ENTER_OVERLAP_FRACTION
+    const smallerFraction = Math.min(overlapFraction(primaryCandidate), overlapFraction(other))
+
+    if (smallerFraction < threshold) return singlePanel(primaryPanelName)
+
+    const bounds = canBleedToPanelEdge(elementType) ? fullPanelBounds(wrapZone) : zoneBounds(wrapZone)
+    return { secondaryPanelName: other.panelName, bounds }
+  }
+
   const toSvgPoint = (clientX: number, clientY: number): Point => {
     const svg = svgRef.current
     const ctm = svg?.getScreenCTM()
@@ -263,6 +392,7 @@ const DielinePreview = ({
         elementId: el.elementId,
         elementType: el.elementType,
         panelName: el.panelName,
+        secondaryPanelName: el.secondaryPanelName,
         size: el.size,
         pointerStart: toSvgPoint(e.clientX, e.clientY),
         elementStart: el.position,
@@ -279,6 +409,7 @@ const DielinePreview = ({
         elementId: el.elementId,
         elementType: el.elementType,
         panelName: el.panelName,
+        secondaryPanelName: el.secondaryPanelName,
         handle,
         anchor: CORNER_ANCHOR[handle](el.position, el.size),
         originalSize: el.size,
@@ -306,28 +437,47 @@ const DielinePreview = ({
           : 1
 
       const { dx, dy } = CORNER_GROWTH_SIGN[resizeState.handle]
-      const zone = zoneFor(resizeState.panelName)
       const minScale = Math.max(
         MIN_ELEMENT_SIZE_MM / resizeState.originalSize.w,
         MIN_ELEMENT_SIZE_MM / resizeState.originalSize.h
       )
-      let maxScale = Infinity
-      if (zone) {
-        const bounds = canBleedToPanelEdge(resizeState.elementType)
-          ? fullPanelBounds(zone)
-          : zoneBounds(zone)
-        // The anchor is fixed; only the FAR corner (the one being dragged)
-        // needs to stay inside the bounds as the box grows away from it.
-        const maxScaleX =
-          dx === 1
-            ? (bounds.maxX - resizeState.anchor.x) / resizeState.originalSize.w
-            : (resizeState.anchor.x - bounds.minX) / resizeState.originalSize.w
-        const maxScaleY =
-          dy === 1
-            ? (bounds.maxY - resizeState.anchor.y) / resizeState.originalSize.h
-            : (resizeState.anchor.y - bounds.minY) / resizeState.originalSize.h
-        maxScale = Math.min(maxScaleX, maxScaleY)
+
+      // A naive (pre-clamp) candidate box from the raw pointer-driven
+      // scale - used only to decide whether this gesture has crossed into
+      // wrap territory, before maxScale below actually constrains it. The
+      // anchor corner never moves during a resize, so `resizeState.panelName`
+      // stays fixed for the whole gesture - only whether the growing far
+      // corner has reached a valid neighbor toggles.
+      const naiveScale = Math.max(scale, minScale)
+      const candidateSize = {
+        w: resizeState.originalSize.w * naiveScale,
+        h: resizeState.originalSize.h * naiveScale,
       }
+      const candidateBox: Bounds = {
+        minX: dx === 1 ? resizeState.anchor.x : resizeState.anchor.x - candidateSize.w,
+        minY: dy === 1 ? resizeState.anchor.y : resizeState.anchor.y - candidateSize.h,
+        maxX: dx === 1 ? resizeState.anchor.x + candidateSize.w : resizeState.anchor.x,
+        maxY: dy === 1 ? resizeState.anchor.y + candidateSize.h : resizeState.anchor.y,
+      }
+
+      const { secondaryPanelName, bounds } = resolveWrapClamp(
+        candidateBox,
+        resizeState.elementType,
+        resizeState.panelName,
+        resizeState.secondaryPanelName
+      )
+
+      // The anchor is fixed; only the FAR corner (the one being dragged)
+      // needs to stay inside the bounds as the box grows away from it.
+      const maxScaleX =
+        dx === 1
+          ? (bounds.maxX - resizeState.anchor.x) / resizeState.originalSize.w
+          : (resizeState.anchor.x - bounds.minX) / resizeState.originalSize.w
+      const maxScaleY =
+        dy === 1
+          ? (bounds.maxY - resizeState.anchor.y) / resizeState.originalSize.h
+          : (resizeState.anchor.y - bounds.minY) / resizeState.originalSize.h
+      const maxScale = Math.min(maxScaleX, maxScaleY)
       scale = clamp(scale, minScale, Math.max(minScale, maxScale))
 
       const newSize = {
@@ -340,7 +490,9 @@ const DielinePreview = ({
       }
 
       setResizeState((prev) =>
-        prev ? { ...prev, current: { position: newPosition, size: newSize } } : prev
+        prev
+          ? { ...prev, current: { position: newPosition, size: newSize }, secondaryPanelName }
+          : prev
       )
       return
     }
@@ -361,23 +513,27 @@ const DielinePreview = ({
     // crease/flap/margin between zones, so it doesn't jump erratically.
     const rawCenter = { x: rawX + dragState.size.w / 2, y: rawY + dragState.size.h / 2 }
     const targetPanel = findPanelAt(rawCenter) ?? panels.find((p) => p.panelName === dragState.panelName)
-    const zone = targetPanel?.printZones[0]
-    const bounds = zone
-      ? canBleedToPanelEdge(dragState.elementType)
-        ? fullPanelBounds(zone)
-        : zoneBounds(zone)
-      : null
-    const clamped = bounds
-      ? {
-          x: clamp(rawX, bounds.minX, bounds.maxX - dragState.size.w),
-          y: clamp(rawY, bounds.minY, bounds.maxY - dragState.size.h),
-        }
-      : { x: rawX, y: rawY }
+    const primaryPanelName = targetPanel?.panelName ?? dragState.panelName
+    const rawBox: Bounds = {
+      minX: rawX,
+      minY: rawY,
+      maxX: rawX + dragState.size.w,
+      maxY: rawY + dragState.size.h,
+    }
+
+    const { secondaryPanelName, bounds } = resolveWrapClamp(
+      rawBox,
+      dragState.elementType,
+      primaryPanelName,
+      dragState.secondaryPanelName
+    )
+    const clamped = {
+      x: clamp(rawX, bounds.minX, bounds.maxX - dragState.size.w),
+      y: clamp(rawY, bounds.minY, bounds.maxY - dragState.size.h),
+    }
 
     setDragState((prev) =>
-      prev
-        ? { ...prev, current: clamped, panelName: targetPanel?.panelName ?? prev.panelName }
-        : prev
+      prev ? { ...prev, current: clamped, panelName: primaryPanelName, secondaryPanelName } : prev
     )
   }
 
@@ -392,7 +548,7 @@ const DielinePreview = ({
           prev === dragState.elementId ? null : dragState.elementId
         )
       } else if (onDragEnd) {
-        onDragEnd(dragState.elementId, dragState.current, dragState.panelName)
+        onDragEnd(dragState.elementId, dragState.current, dragState.panelName, dragState.secondaryPanelName)
       }
     }
     setDragState(null)
@@ -400,7 +556,13 @@ const DielinePreview = ({
 
   const endResize = () => {
     if (resizeState && onResize) {
-      onResize(resizeState.elementId, resizeState.current.position, resizeState.current.size)
+      onResize(
+        resizeState.elementId,
+        resizeState.current.position,
+        resizeState.current.size,
+        resizeState.panelName,
+        resizeState.secondaryPanelName
+      )
     }
     setResizeState(null)
   }
@@ -419,6 +581,7 @@ const DielinePreview = ({
     ? {
         elementId: dragState.elementId,
         panelName: dragState.panelName,
+        secondaryPanelName: dragState.secondaryPanelName,
         position: dragState.current,
         size: dragState.size,
       }
@@ -426,25 +589,42 @@ const DielinePreview = ({
     ? {
         elementId: resizeState.elementId,
         panelName: resizeState.panelName,
+        secondaryPanelName: resizeState.secondaryPanelName,
         position: resizeState.current.position,
         size: resizeState.current.size,
       }
     : null
-  if (liveOverride) {
-    const panelElements = elementsByPanel.get(liveOverride.panelName) ?? []
-    const withLiveOverride = panelElements.map((el) =>
-      el.elementId === liveOverride.elementId
-        ? { ...el, position: liveOverride.position, size: liveOverride.size }
-        : el
-    )
-    const panelGeometry = panels.find((p) => p.panelName === liveOverride.panelName)
-    if (panelGeometry && resolvedLayout) {
-      for (const violation of noElementOverlapRule.check(
-        withLiveOverride,
-        resolvedLayout,
-        panelGeometry
-      )) {
-        overlappingElementIds.add(violation.elementId)
+  if (liveOverride && resolvedLayout) {
+    // A wrap element's live footprint occupies two panels' worth of space -
+    // check it against whichever real elements sit on EITHER touched
+    // panel, not just the one it started this gesture on, so the on-canvas
+    // overlap warning doesn't silently miss a collision on the far side.
+    const touchedPanelNames = liveOverride.secondaryPanelName
+      ? [liveOverride.panelName, liveOverride.secondaryPanelName]
+      : [liveOverride.panelName]
+
+    for (const panelName of touchedPanelNames) {
+      const panelElements = elementsTouchingPanel(resolvedLayout, panelName)
+      const withLiveOverride = panelElements.map((el) =>
+        el.elementId === liveOverride.elementId
+          ? {
+              ...el,
+              position: liveOverride.position,
+              size: liveOverride.size,
+              panelName: liveOverride.panelName,
+              secondaryPanelName: liveOverride.secondaryPanelName,
+            }
+          : el
+      )
+      const panelGeometry = panels.find((p) => p.panelName === panelName)
+      if (panelGeometry) {
+        for (const violation of noElementOverlapRule.check(
+          withLiveOverride,
+          resolvedLayout,
+          panelGeometry
+        )) {
+          overlappingElementIds.add(violation.elementId)
+        }
       }
     }
   }

@@ -1,4 +1,4 @@
-import { Dimensions, Point, PrintZone } from "../shared/types"
+import { Dimensions, Point, ZoneLike } from "../shared/types"
 import { AnchorPoint } from "./types"
 
 export type PlacementResult = {
@@ -6,8 +6,11 @@ export type PlacementResult = {
   size: Dimensions
 }
 
+// ZoneLike, not PrintZone - every strategy here only ever reads
+// `boundary`/`boundingBox`, so a WrapZone (placement/wrap-zone.ts, no
+// single real panelName) can reuse the exact same math as a real PrintZone.
 export type PlacementStrategy = (
-  zone: PrintZone,
+  zone: ZoneLike,
   naturalSize: Dimensions
 ) => PlacementResult
 
@@ -16,12 +19,12 @@ export type PlacementStrategy = (
 // to know where that box actually sits. Exported so callers that need to
 // clamp a position into the zone (e.g. the designer's manual drag) reuse
 // this instead of re-deriving it by hand.
-export const zoneOrigin = (zone: PrintZone): Point => ({
+export const zoneOrigin = (zone: ZoneLike): Point => ({
   x: Math.min(...zone.boundary.map((p) => p.x)),
   y: Math.min(...zone.boundary.map((p) => p.y)),
 })
 
-const center = (zone: PrintZone, size: Dimensions): Point => {
+const center = (zone: ZoneLike, size: Dimensions): Point => {
   const origin = zoneOrigin(zone)
   return {
     x: origin.x + (zone.boundingBox.w - size.w) / 2,
