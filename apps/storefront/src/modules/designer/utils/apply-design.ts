@@ -49,6 +49,17 @@ const FOREGROUND_ELEMENT_ANCHOR_CYCLE: AnchorPoint[] = [
   "center-left",
 ]
 
+// Same cycle shape as the two above, kept separate so adding several
+// custom-text instances in a row doesn't skip anchors already claimed by
+// icons added in the same session (or vice versa).
+const CUSTOM_TEXT_ANCHOR_CYCLE: AnchorPoint[] = [
+  "center",
+  "bottom-center",
+  "top-center",
+  "center-left",
+  "center-right",
+]
+
 // Turns the customer's selected brand elements into a CompositionPlan: each
 // selected logo placed once (front panel), the slogan (below the first
 // logo, in the selected font) repeated across all 4 main faces. This is
@@ -60,6 +71,7 @@ function buildCompositionPlan(elements: SelectedElement[]): CompositionPlan {
   const font = elements.find((el) => el.type === "font")?.value ?? null
   const color = elements.find((el) => el.type === "color")?.value ?? null
   const libraryElements = elements.filter((el) => el.type === "library-element")
+  const customTextElements = elements.filter((el) => el.type === "custom-text")
 
   const planElements: SemanticPlacement[] = []
 
@@ -148,6 +160,30 @@ function buildCompositionPlan(elements: SelectedElement[]): CompositionPlan {
       size: isBackgroundTier ? "large" : "small",
     })
   }
+
+  // Each Yazı-tool text (the "Aa" combo picker, not the brand slogan above)
+  // is its own individually placeable instance, front panel by default -
+  // same "one per add, not repeated across every panel" treatment as logos
+  // and library elements, deliberately NOT the slogan's
+  // "elements.find((el) => el.type === 'text')" repeat-on-every-panel
+  // behavior above (that's a different SelectedElementType on purpose).
+  customTextElements.forEach((textEl, index) => {
+    planElements.push({
+      elementId: textEl.id,
+      elementType: "text",
+      content: {
+        text: textEl.value,
+        font: textEl.fontFamily,
+        fontWeight: textEl.fontWeight,
+        uppercase: textEl.uppercase,
+      },
+      sourceElementId: textEl.id,
+      placementKind: "absolute",
+      panel: "front",
+      anchor: CUSTOM_TEXT_ANCHOR_CYCLE[index % CUSTOM_TEXT_ANCHOR_CYCLE.length],
+      size: "medium",
+    })
+  })
 
   return { version: "1.0", boxType: "fefco-0201", elements: planElements }
 }

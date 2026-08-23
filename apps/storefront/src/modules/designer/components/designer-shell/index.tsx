@@ -42,6 +42,7 @@ import { applyTheme } from "../../utils/apply-theme"
 import { generateAiDesign } from "../../utils/compose-design"
 import BrandKitPanel from "../brand-kit-panel"
 import ElementLibraryPanel from "../element-library-panel"
+import TextPanel from "../text-panel"
 import { getLibraryElement } from "../../utils/element-library"
 import { SelectedElement } from "../../types"
 
@@ -114,6 +115,7 @@ const DesignerShell = ({
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(
     initialDesignDraft?.brand_id ?? brands[0]?.id ?? null
   )
+  const [textInput, setTextInput] = useState("")
   const [aiPrompt, setAiPrompt] = useState("")
   const [aiMessage, setAiMessage] = useState<string | null>(null)
   const [isGeneratingAiDesign, setIsGeneratingAiDesign] = useState(false)
@@ -141,7 +143,11 @@ const DesignerShell = ({
 
   const toggleElement = (element: SelectedElement) => {
     setAiDesign(null)
-    if (element.type === "logo" || element.type === "library-element") {
+    if (
+      element.type === "logo" ||
+      element.type === "library-element" ||
+      element.type === "custom-text"
+    ) {
       // Both are individually placeable instances on the canvas, not a
       // single on/off toggle - each click on the row adds one more (placed
       // on the front panel by default, dragged wherever from there);
@@ -828,12 +834,7 @@ const DesignerShell = ({
           )}
 
           {activeTool === "yazi" && (
-            <div className="flex flex-col gap-y-2">
-              <h2 className="text-lg font-semibold text-black">Yazı</h2>
-              <p className="text-sm text-black/50">
-                Bu araç yakında burada aktif olacak.
-              </p>
-            </div>
+            <TextPanel text={textInput} onTextChange={setTextInput} onAddCombo={toggleElement} />
           )}
         </div>
 
@@ -900,6 +901,17 @@ const DesignerShell = ({
                     )}
                     {el.type === "font" && (
                       <span style={{ fontFamily: el.value }}>Aa</span>
+                    )}
+                    {el.type === "custom-text" && (
+                      <span
+                        style={{
+                          fontFamily: el.fontFamily,
+                          fontWeight: el.fontWeight,
+                          textTransform: el.uppercase ? "uppercase" : "none",
+                        }}
+                      >
+                        Aa
+                      </span>
                     )}
                     {el.type === "library-element" &&
                       (() => {

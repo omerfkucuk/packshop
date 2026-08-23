@@ -10,10 +10,18 @@ export type SelectedElementType =
   | "text"
   | "social"
   | "library-element"
+  | "custom-text"
 
 export type SelectedElement = {
   id: string
   type: SelectedElementType
   label: string
   value: string
+  /** Only meaningful for "custom-text" - the font combo (see
+   *  utils/text-combos.ts) chosen when this instance was added. Baked into
+   *  the element at add time (like a library element's color), not
+   *  re-editable afterward. */
+  fontFamily?: string
+  fontWeight?: number
+  uppercase?: boolean
 }

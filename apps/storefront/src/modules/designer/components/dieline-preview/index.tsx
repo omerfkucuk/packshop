@@ -725,6 +725,8 @@ const DielinePreview = ({
               } else if (el.elementType === "text") {
                 const text = el.content.text
                 const font = el.content.font
+                const fontWeight = el.content.fontWeight
+                const uppercase = el.content.uppercase === true
                 if (typeof text === "string") {
                   const fontSize = Math.min(MAX_TEXT_SIZE, Math.max(MIN_TEXT_SIZE, size.h))
                   visual = (
@@ -733,6 +735,8 @@ const DielinePreview = ({
                       y={flipY(position.y + size.h / 2)}
                       fontSize={fontSize}
                       fontFamily={typeof font === "string" ? font : undefined}
+                      fontWeight={typeof fontWeight === "number" ? fontWeight : undefined}
+                      style={uppercase ? { textTransform: "uppercase" } : undefined}
                       textAnchor="middle"
                       dominantBaseline="middle"
                       fill="#000"
