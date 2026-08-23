@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import type { PanelGeometry } from "@dtc/packaging-engine/shared"
 import { zoneOrigin } from "@dtc/packaging-engine/placement"
-import type { ResolvedLayout } from "@dtc/layout-engine"
+import type { ResolvedLayout, ResolvedElement } from "@dtc/layout-engine"
 import { elementsTouchingPanel } from "@dtc/layout-engine/constraints"
 import { ELEMENT_LIBRARY } from "./element-library"
 import { renderElementVisual } from "../components/dieline-preview/render-element-visual"
@@ -127,20 +127,60 @@ export async function renderPanelTexture(
   }
 }
 
-// Preloads every distinct image URL a set of elements references, so (a) a
-// broken/failed fetch surfaces here as a catchable rejection instead of
-// silently leaving a blank patch inside a later-rasterized panel SVG, and
-// (b) the browser's image cache is already warm by the time the SAME url
-// appears nested inside an SVG blob's own <image> in renderPanelTexture -
-// letting that resolve instantly instead of racing an in-flight fetch
-// during rasterization, which is inconsistent across browsers otherwise.
-export async function preloadImageUrls(urls: string[]): Promise<void> {
-  const unique = Array.from(new Set(urls))
+// Fetches `url` (must already be same-origin - see the proxy note on
+// inlineImagesAsDataUrls below) and returns it as a data: URI.
+async function fetchAsDataUrl(url: string): Promise<string> {
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(`fetchAsDataUrl: ${url} responded ${response.status}`)
+  }
+  const blob = await response.blob()
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(reader.error ?? new Error("FileReader failed"))
+    reader.readAsDataURL(blob)
+  })
+}
+
+// Replaces every element's content.url with a data: URI holding the same
+// image, fully embedded in-line. This is NOT just an optimization: a
+// per-panel texture SVG (renderPanelTexture) gets loaded via an <img> from
+// a Blob, and a browser's outer "the SVG is decoded" signal does not
+// reliably wait for that SVG's own NESTED <image href="..."> references to
+// finish loading first - decode()/onload can fire before a referenced
+// raster image has actually arrived, silently rasterizing a blank patch
+// where it should be (confirmed live: a logo added no visible errors, no
+// rejected promise, just never appeared - this exact race). A true data:
+// URI has no nested fetch to race at all - the bytes are already sitting
+// right there in the SVG string. `proxyUrlFor` builds the same-origin
+// asset-proxy URL each original url needs to be fetched through (Medusa's
+// /static route sends no CORS headers - see app/api/design-assets/proxy).
+export async function inlineImagesAsDataUrls(
+  layout: ResolvedLayout,
+  proxyUrlFor: (originalUrl: string) => string
+): Promise<ResolvedLayout> {
+  const originalUrls = new Set<string>()
+  for (const el of layout.panels.flatMap((p) => p.elements)) {
+    if (typeof el.content.url === "string") originalUrls.add(el.content.url)
+  }
+
+  const dataUrlByOriginal = new Map<string, string>()
   await Promise.all(
-    unique.map(async (url) => {
-      const image = new Image()
-      image.src = url
-      await image.decode()
+    Array.from(originalUrls).map(async (original) => {
+      dataUrlByOriginal.set(original, await fetchAsDataUrl(proxyUrlFor(original)))
     })
   )
+
+  const rewrite = (el: ResolvedElement): ResolvedElement => {
+    const url = el.content.url
+    if (typeof url !== "string") return el
+    const dataUrl = dataUrlByOriginal.get(url)
+    return dataUrl ? { ...el, content: { ...el.content, url: dataUrl } } : el
+  }
+
+  return {
+    ...layout,
+    panels: layout.panels.map((p) => ({ ...p, elements: p.elements.map(rewrite) })),
+  }
 }

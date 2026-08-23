@@ -3,8 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import type { PanelGeometry } from "@dtc/packaging-engine/shared"
-import type { ResolvedLayout, ResolvedElement } from "@dtc/layout-engine"
-import { renderPanelTexture, preloadImageUrls, DEFAULT_BOARD_COLOR } from "../../utils/panel-texture"
+import type { ResolvedLayout } from "@dtc/layout-engine"
+import {
+  renderPanelTexture,
+  inlineImagesAsDataUrls,
+  DEFAULT_BOARD_COLOR,
+} from "../../utils/panel-texture"
 import { warmUpFont } from "../../utils/measure-text"
 
 const TEXTURE_PX_PER_MM = 8
@@ -28,25 +32,12 @@ const PANEL_NAMES = {
 } as const
 
 // content.url is the only field a browser-side <canvas>/WebGL texture
-// operation can taint on - rewriting it through the same-origin asset
-// proxy (app/api/design-assets/proxy) is what lets renderPanelTexture
-// actually rasterize a customer's uploaded logo without a SecurityError.
-// Kept at this one call site (not inside panel-texture.ts itself) so that
-// file stays agnostic of the proxy strategy.
-function proxyImageUrls(layout: ResolvedLayout): ResolvedLayout {
-  const rewrite = (el: ResolvedElement): ResolvedElement => {
-    const url = el.content.url
-    if (typeof url !== "string") return el
-    return {
-      ...el,
-      content: { ...el.content, url: `/api/design-assets/proxy?url=${encodeURIComponent(url)}` },
-    }
-  }
-  return {
-    ...layout,
-    panels: layout.panels.map((p) => ({ ...p, elements: p.elements.map(rewrite) })),
-  }
-}
+// operation can taint on - fetching it through this same-origin asset
+// proxy (app/api/design-assets/proxy) is what lets inlineImagesAsDataUrls
+// actually read a customer's uploaded logo's bytes without a CORS error
+// (Medusa's /static route sends no CORS headers at all).
+const proxyUrlFor = (originalUrl: string) =>
+  `/api/design-assets/proxy?url=${encodeURIComponent(originalUrl)}`
 
 // Owns texture generation - a plain untextured board-color material shows
 // immediately, swapped for the real per-face textures once the async
@@ -72,16 +63,10 @@ const BoxMesh = ({ panels, resolvedLayout, backgroundColors, dimensionsM }: BoxM
     }
 
     const generation = ++generationRef.current
-    const proxiedLayout = proxyImageUrls(resolvedLayout)
-    const allElements = proxiedLayout.panels.flatMap((p) => p.elements)
 
     const run = async () => {
-      const urls = allElements
-        .map((el) => el.content.url)
-        .filter((url): url is string => typeof url === "string")
-
       const fontPairs = new Map<string, { font: string; weight: number }>()
-      for (const el of allElements) {
+      for (const el of resolvedLayout.panels.flatMap((p) => p.elements)) {
         if (el.elementType !== "text") continue
         const font = el.content.font
         if (typeof font !== "string") continue
@@ -93,8 +78,8 @@ const BoxMesh = ({ panels, resolvedLayout, backgroundColors, dimensionsM }: BoxM
       // measurement/rendering - rasterization is a third consumer of the
       // exact same underlying issue (a canvas op silently substitutes a
       // fallback font if the real one hasn't finished loading yet).
-      await Promise.all([
-        preloadImageUrls(urls),
+      const [inlinedLayout] = await Promise.all([
+        inlineImagesAsDataUrls(resolvedLayout, proxyUrlFor),
         Promise.all(Array.from(fontPairs.values()).map((p) => warmUpFont(p.font, p.weight))),
       ])
 
@@ -106,7 +91,7 @@ const BoxMesh = ({ panels, resolvedLayout, backgroundColors, dimensionsM }: BoxM
         mainPanels.map((panel) =>
           renderPanelTexture(
             panel,
-            proxiedLayout,
+            inlinedLayout,
             backgroundColors?.[panel.panelName],
             TEXTURE_PX_PER_MM
           )
