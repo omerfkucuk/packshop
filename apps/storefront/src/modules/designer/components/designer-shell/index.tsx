@@ -344,9 +344,13 @@ const DesignerShell = ({
     panelName: string,
     secondaryPanelName: string | undefined
   ) => {
+    // Merge, not replace (same reasoning as handleElementDragEnd above) -
+    // a plain `[elementId]: {...position, ...size, ...}` would silently
+    // drop a prior on-canvas text edit's `text` field back to whatever the
+    // element's original content was, the moment it's resized afterward.
     setManualOverrides((prev) => ({
       ...prev,
-      [elementId]: { ...position, ...size, panelName, secondaryPanelName },
+      [elementId]: { ...prev[elementId], ...position, ...size, panelName, secondaryPanelName },
     }))
   }
 
