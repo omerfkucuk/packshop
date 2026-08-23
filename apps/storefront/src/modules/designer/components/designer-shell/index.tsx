@@ -36,7 +36,7 @@ import { parseDimensionsFromVariantTitle } from "@lib/util/parse-variant-dimensi
 import { optionsAsKeymap } from "@modules/products/components/product-actions"
 import { Button } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import DielinePreview, { MIN_TEXT_SIZE, MAX_TEXT_SIZE } from "../dieline-preview"
+import DielinePreview, { MIN_TEXT_SIZE } from "../dieline-preview"
 import { applyDesign, type ResolveDesignResult } from "../../utils/apply-design"
 import { applyTheme } from "../../utils/apply-theme"
 import { generateAiDesign } from "../../utils/compose-design"
@@ -44,7 +44,7 @@ import BrandKitPanel from "../brand-kit-panel"
 import ElementLibraryPanel from "../element-library-panel"
 import TextPanel from "../text-panel"
 import { getLibraryElement } from "../../utils/element-library"
-import { measureText } from "../../utils/measure-text"
+import { measureText, fontSizeForInkHeight } from "../../utils/measure-text"
 import { SelectedElement } from "../../types"
 
 type Tool = "urun" | "komponent" | "marka-kiti" | "tema" | "yazi" | "elementler"
@@ -377,7 +377,9 @@ const DesignerShell = ({
     const fontWeight =
       typeof current.content.fontWeight === "number" ? current.content.fontWeight : 400
     const uppercase = current.content.uppercase === true
-    const fontSize = Math.min(MAX_TEXT_SIZE, Math.max(MIN_TEXT_SIZE, current.size.h))
+    const fontSize = font
+      ? Math.max(MIN_TEXT_SIZE, fontSizeForInkHeight(font, fontWeight, uppercase, current.size.h))
+      : Math.max(MIN_TEXT_SIZE, current.size.h)
     const measured = font ? measureText(trimmed, font, fontWeight, fontSize, uppercase) : null
     const newSize = measured ? { w: measured.width, h: measured.height } : current.size
 

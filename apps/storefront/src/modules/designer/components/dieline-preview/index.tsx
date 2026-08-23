@@ -6,6 +6,7 @@ import { zoneOrigin, deriveWrapZones, type WrapZone } from "@dtc/packaging-engin
 import type { ElementType, ResolvedLayout, ResolvedElement } from "@dtc/layout-engine"
 import { noElementOverlapRule, elementsTouchingPanel } from "@dtc/layout-engine/constraints"
 import { ELEMENT_LIBRARY, getLibraryElement } from "../../utils/element-library"
+import { fontSizeForInkHeight } from "../../utils/measure-text"
 
 type DielinePreviewProps = {
   panels: PanelGeometry[]
@@ -118,11 +119,39 @@ const CORNER_GROWTH_SIGN: Record<CornerHandle, { dx: 1 | -1; dy: 1 | -1 }> = {
 const toPolylinePoints = (points: Point[]) =>
   points.map((p) => `${p.x},${p.y}`).join(" ")
 
+// A defensive floor only - guards against a degenerate (near-zero) size.h
+// ever producing illegibly tiny or inverted text. No upper cap: the
+// rendered font size should be able to grow as large as the customer
+// resizes the box to, same as every other element type already can.
 // Exported so the designer shell can derive the exact same font-size a
 // text element is currently rendering at (e.g. to re-measure it after an
-// on-canvas edit) without hand-copying these numbers.
+// on-canvas edit) without hand-copying this number.
 export const MIN_TEXT_SIZE = 10
-export const MAX_TEXT_SIZE = 40
+
+// The actual SVG font-size for a text element, derived from its resolved
+// (tight ink-height) size.h - see fontSizeForInkHeight's own comment for
+// why this indirection exists. Falls back to the old direct size.h==
+// font-size mapping when no font is known (e.g. a brand-social-link text
+// element, which never sets content.font) - less precise, but a link
+// string doesn't call for pixel-tight framing the way a customer's own
+// headline does.
+const textFontSize = (
+  size: { h: number },
+  font: unknown,
+  fontWeight: unknown,
+  uppercase: boolean
+): number =>
+  Math.max(
+    MIN_TEXT_SIZE,
+    typeof font === "string"
+      ? fontSizeForInkHeight(
+          font,
+          typeof fontWeight === "number" ? fontWeight : 400,
+          uppercase,
+          size.h
+        )
+      : size.h
+  )
 
 const isImageLike = (el: ResolvedElement) =>
   el.elementType === "logo" ||
@@ -762,7 +791,7 @@ const DielinePreview = ({
                 const fontWeight = el.content.fontWeight
                 const uppercase = el.content.uppercase === true
                 if (typeof text === "string") {
-                  const fontSize = Math.min(MAX_TEXT_SIZE, Math.max(MIN_TEXT_SIZE, size.h))
+                  const fontSize = textFontSize(size, font, fontWeight, uppercase)
                   visual = (
                     <text
                       x={position.x + size.w / 2}
@@ -815,7 +844,7 @@ const DielinePreview = ({
                 const font = el.content.font
                 const fontWeight = el.content.fontWeight
                 const uppercase = el.content.uppercase === true
-                const fontSize = Math.min(MAX_TEXT_SIZE, Math.max(MIN_TEXT_SIZE, size.h))
+                const fontSize = textFontSize(size, font, fontWeight, uppercase)
                 return (
                   <g key={el.elementId}>
                     <foreignObject x={x} y={y} width={size.w} height={size.h}>
