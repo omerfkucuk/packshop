@@ -4,13 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import type { PanelGeometry } from "@dtc/packaging-engine/shared"
 import type { ResolvedLayout, ResolvedElement } from "@dtc/layout-engine"
-import { renderPanelTexture, preloadImageUrls } from "../../utils/panel-texture"
+import { renderPanelTexture, preloadImageUrls, DEFAULT_BOARD_COLOR } from "../../utils/panel-texture"
 import { warmUpFont } from "../../utils/measure-text"
 
-// Plain kraft-cardboard tan - flaps (top/bottom) never carry print content
-// (fefco-0201.ts never gives them a printZones entry), so there's nothing
-// to texture them with.
-const DEFAULT_BOARD_COLOR = "#c9a877"
 const TEXTURE_PX_PER_MM = 8
 
 export type Dimensions3D = { length: number; width: number; height: number }
@@ -52,9 +48,9 @@ function proxyImageUrls(layout: ResolvedLayout): ResolvedLayout {
   }
 }
 
-// Owns texture generation - a plain untextured (board-color/white)
-// material shows immediately, swapped for the real per-face textures once
-// the async pipeline (font/image warmup -> rasterize 4 panels) resolves.
+// Owns texture generation - a plain untextured board-color material shows
+// immediately, swapped for the real per-face textures once the async
+// pipeline (font/image warmup -> rasterize 4 panels) resolves.
 const BoxMesh = ({ panels, resolvedLayout, backgroundColors, dimensionsM }: BoxMeshProps) => {
   const geometry = useMemo(
     () => new THREE.BoxGeometry(dimensionsM.length, dimensionsM.height, dimensionsM.width),
@@ -144,7 +140,9 @@ const BoxMesh = ({ panels, resolvedLayout, backgroundColors, dimensionsM }: BoxM
   const materials = useMemo(() => {
     const materialFor = (panelName: string) => {
       const texture = textures?.[panelName]
-      return new THREE.MeshStandardMaterial(texture ? { map: texture } : { color: "#ffffff" })
+      return new THREE.MeshStandardMaterial(
+        texture ? { map: texture } : { color: DEFAULT_BOARD_COLOR }
+      )
     }
     // BoxGeometry's material-array order is [+x, -x, +y, -y, +z, -z].
     // X-extent = length -> +-x are the width panels (right/left);

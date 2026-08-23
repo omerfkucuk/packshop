@@ -11,6 +11,14 @@ import { renderElementVisual } from "../components/dieline-preview/render-elemen
 // texture and hit a GPU texture-size cliff.
 const MAX_TEXTURE_PX = 2048
 
+// Plain kraft-cardboard tan - a real FEFCO 0201 box is uncoated corrugated
+// board by default (not white), so an unprinted panel should read as
+// "bare cardboard," the same color the 3D preview's never-printed top/
+// bottom flaps already use (box-mesh.tsx), not a printed-white-board look
+// nobody asked for. Only a customer-chosen background color (Marka Kiti /
+// Tema) overrides this.
+export const DEFAULT_BOARD_COLOR = "#c9a877"
+
 export interface PanelTextureResult {
   canvas: HTMLCanvasElement
   widthMm: number
@@ -82,7 +90,7 @@ export async function renderPanelTexture(
         y={origin.y}
         width={widthMm}
         height={heightMm}
-        fill={backgroundColor ?? "#ffffff"}
+        fill={backgroundColor ?? DEFAULT_BOARD_COLOR}
       />
       <g clipPath={`url(#${clipId})`}>
         {elements.map((el) => {
