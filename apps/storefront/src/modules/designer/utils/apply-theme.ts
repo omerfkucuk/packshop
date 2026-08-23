@@ -8,7 +8,11 @@ import type { ThemeDefinition } from "@dtc/ai-composer/domain"
 import type { Brand } from "@lib/data/brands"
 import { getLibraryElement } from "./element-library"
 import { FEFCO_0201_PANEL_SEMANTICS, MAIN_PANELS } from "./panel-semantics"
-import { computeAspectPreservingSize, type ResolveDesignResult } from "./apply-design"
+import {
+  computeAspectPreservingSize,
+  computeTextAspectSize,
+  type ResolveDesignResult,
+} from "./apply-design"
 
 const SOCIAL_URL_FIELDS = [
   "instagram_url",
@@ -63,7 +67,9 @@ export function applyTheme(
 
   const resolvedLayout = resolveLayout(plan, panels, {
     panelSemantics: FEFCO_0201_PANEL_SEMANTICS,
-    computeNaturalSize: (el) => computeAspectPreservingSize(el, panels, imageNaturalSizes),
+    computeNaturalSize: (el) =>
+      computeAspectPreservingSize(el, panels, imageNaturalSizes) ??
+      computeTextAspectSize(el, panels),
   })
 
   const backgroundColors: Record<string, string> = {}

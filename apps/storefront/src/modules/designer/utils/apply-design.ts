@@ -226,6 +226,69 @@ export function computeAspectPreservingSize(
     : { w: targetLongEdge * aspect, h: targetLongEdge }
 }
 
+const TEXT_MEASURE_REFERENCE_PX = 100
+
+// Lazily created (canvas is browser-only) and reused across calls - a
+// fresh <canvas> per measurement would work too, just wastefully.
+let measureCanvasCtx: CanvasRenderingContext2D | null | undefined
+
+function getMeasureContext(): CanvasRenderingContext2D | null {
+  if (measureCanvasCtx !== undefined) return measureCanvasCtx
+  measureCanvasCtx =
+    typeof document === "undefined" ? null : document.createElement("canvas").getContext("2d")
+  return measureCanvasCtx
+}
+
+// A text element's real, measured glyph-run aspect ratio (canvas
+// measureText's tight actualBoundingBox* metrics, not the full em-square
+// line-height) - the same "hug the artwork" fix computeAspectPreservingSize
+// above already made for real uploaded logos, and the tightened
+// library-element viewBoxes made for the hand-drawn shapes. Without it,
+// every text element (no natural size of its own, unlike an image) fell
+// back to the same forced-SQUARE SizeHint bucket everything sizeless gets -
+// a short word and a long one resolved to the exact same square box, so
+// the selection frame read as a loose, mostly-empty square around the
+// actual (much narrower, much shorter) visible glyphs.
+export function computeTextAspectSize(
+  el: SemanticPlacement,
+  panels: PanelGeometry[]
+): Dimensions | null {
+  if (el.elementType !== "text") return null
+
+  const text = typeof el.content?.text === "string" ? el.content.text : null
+  const font = typeof el.content?.font === "string" ? el.content.font : null
+  if (!text || !font) return null
+
+  const ctx = getMeasureContext()
+  if (!ctx) return null // SSR, or no canvas support - square bucket fallback
+
+  const fontWeight = typeof el.content?.fontWeight === "number" ? el.content.fontWeight : 400
+  const uppercase = el.content?.uppercase === true
+  ctx.font = `${fontWeight} ${TEXT_MEASURE_REFERENCE_PX}px "${font}"`
+  const metrics = ctx.measureText(uppercase ? text.toUpperCase() : text)
+
+  const width = metrics.width
+  const height =
+    (metrics.actualBoundingBoxAscent || TEXT_MEASURE_REFERENCE_PX * 0.7) +
+    (metrics.actualBoundingBoxDescent || TEXT_MEASURE_REFERENCE_PX * 0.2)
+  if (!(width > 0) || !(height > 0)) return null
+
+  const physicalPanelName = FEFCO_0201_PANEL_SEMANTICS[el.panel]
+  const zone = panels.find((p) => p.panelName === physicalPanelName)?.printZones[0]
+  if (!zone) return null
+
+  const minDim = Math.min(zone.boundingBox.w, zone.boundingBox.h)
+  const fraction =
+    DEFAULT_SQUARE_BUCKETS[el.size as keyof typeof DEFAULT_SQUARE_BUCKETS] ??
+    DEFAULT_SQUARE_BUCKETS.medium
+  const targetLongEdge = minDim * fraction
+  const aspect = width / height
+
+  return aspect >= 1
+    ? { w: targetLongEdge, h: targetLongEdge / aspect }
+    : { w: targetLongEdge * aspect, h: targetLongEdge }
+}
+
 export type ResolveDesignResult = {
   resolvedLayout: ResolvedLayout
   /** panelName -> chosen background color, applied identically to every
@@ -260,7 +323,9 @@ export function applyDesign(
 
   const resolvedLayout = resolveLayout(plan, panels, {
     panelSemantics: FEFCO_0201_PANEL_SEMANTICS,
-    computeNaturalSize: (el) => computeAspectPreservingSize(el, panels, imageNaturalSizes),
+    computeNaturalSize: (el) =>
+      computeAspectPreservingSize(el, panels, imageNaturalSizes) ??
+      computeTextAspectSize(el, panels),
   })
 
   return { resolvedLayout, backgroundColors: computeBackgroundColors(elements) }
