@@ -6,7 +6,7 @@ import { zoneOrigin, deriveWrapZones, type WrapZone } from "@dtc/packaging-engin
 import type { ElementType, ResolvedLayout, ResolvedElement } from "@dtc/layout-engine"
 import { noElementOverlapRule, elementsTouchingPanel } from "@dtc/layout-engine/constraints"
 import { ELEMENT_LIBRARY, getLibraryElement } from "../../utils/element-library"
-import { fontSizeForInkHeight } from "../../utils/measure-text"
+import { fontSizeForInkHeight, applyTextCase } from "../../utils/measure-text"
 
 type DielinePreviewProps = {
   panels: PanelGeometry[]
@@ -799,12 +799,11 @@ const DielinePreview = ({
                       fontSize={fontSize}
                       fontFamily={typeof font === "string" ? font : undefined}
                       fontWeight={typeof fontWeight === "number" ? fontWeight : undefined}
-                      style={uppercase ? { textTransform: "uppercase" } : undefined}
                       textAnchor="middle"
                       dominantBaseline="middle"
                       fill="#000"
                     >
-                      {text}
+                      {applyTextCase(text, uppercase)}
                     </text>
                   )
                 }

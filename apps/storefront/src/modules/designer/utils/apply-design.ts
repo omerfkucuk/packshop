@@ -267,12 +267,34 @@ export function computeTextAspectSize(
   const fraction =
     DEFAULT_SQUARE_BUCKETS[el.size as keyof typeof DEFAULT_SQUARE_BUCKETS] ??
     DEFAULT_SQUARE_BUCKETS.medium
-  const targetLongEdge = minDim * fraction
+
+  // Unlike computeAspectPreservingSize above (which caps whichever edge is
+  // LONGER, fine for a logo whose aspect ratio rarely strays far from
+  // square), text needs its HEIGHT - i.e. its font size, the actual
+  // meaning of "small"/"medium"/"large" for text - pinned to the size
+  // hint unconditionally, with width simply following the measured aspect
+  // ratio, however wide that makes it.
+  //
+  // A long phrase's aspect ratio can run 15:1+. The old "cap whichever
+  // edge is longer" logic capped WIDTH at the target for any text (width
+  // is virtually always the longer edge), then shrank height to
+  // width/aspect to preserve the ratio - for a long phrase that meant a
+  // font size far smaller than the SizeHint asked for. Rendering then
+  // (correctly) derived its font size from that too-small height via
+  // fontSizeForInkHeight, producing real glyphs whose actual width had
+  // nothing to do with the box's width (which was never derived from the
+  // aspect ratio at all, just pinned at the target). Box and glyphs
+  // disagreed - exactly the reported "kenarlar doğru yerleşmemiş" bug,
+  // worse the more extreme the phrase's aspect ratio.
+  //
+  // anchorFit (the caller two levels up) already shrinks-to-fit if this
+  // overflows the zone, same safety net a logo's aspect-preserving size
+  // already relies on - an unbounded width here is never actually
+  // unbounded once resolveLayout finishes.
+  const targetHeight = minDim * fraction
   const aspect = width / height
 
-  return aspect >= 1
-    ? { w: targetLongEdge, h: targetLongEdge / aspect }
-    : { w: targetLongEdge * aspect, h: targetLongEdge }
+  return { w: targetHeight * aspect, h: targetHeight }
 }
 
 export type ResolveDesignResult = {
