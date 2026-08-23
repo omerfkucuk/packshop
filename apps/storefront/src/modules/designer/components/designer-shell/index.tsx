@@ -116,7 +116,6 @@ const DesignerShell = ({
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(
     initialDesignDraft?.brand_id ?? brands[0]?.id ?? null
   )
-  const [textInput, setTextInput] = useState("")
   const [aiPrompt, setAiPrompt] = useState("")
   const [aiMessage, setAiMessage] = useState<string | null>(null)
   const [isGeneratingAiDesign, setIsGeneratingAiDesign] = useState(false)
@@ -887,7 +886,7 @@ const DesignerShell = ({
           )}
 
           {activeTool === "yazi" && (
-            <TextPanel text={textInput} onTextChange={setTextInput} onAddCombo={toggleElement} />
+            <TextPanel onAddCombo={toggleElement} />
           )}
         </div>
 
