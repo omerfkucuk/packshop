@@ -113,6 +113,16 @@ describe("applyManualOverrides", () => {
     expect(logo.secondaryPanelName).toBe("Panel-W1")
   })
 
+  it("updates content.text from an on-canvas edit, leaving the rest of content untouched", () => {
+    const overridden = applyManualOverrides(layout, {
+      slogan: { x: 5, y: 5, text: "Edited slogan" },
+    })
+    const slogan = overridden.panels
+      .flatMap((p) => p.elements)
+      .find((el) => el.elementId === "slogan")!
+    expect(slogan.content.text).toBe("Edited slogan")
+  })
+
   it("clears a wrap once a later override for the same element omits secondaryPanelName", () => {
     const wrapped = applyManualOverrides(layout, {
       logo: { x: 290, y: 5, secondaryPanelName: "Panel-W1" },

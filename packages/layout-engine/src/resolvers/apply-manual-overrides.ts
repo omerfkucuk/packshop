@@ -16,6 +16,10 @@ export interface ManualOverride {
    *  encoded - see applyManualOverrides below for why that distinction
    *  matters here. */
   secondaryPanelName?: string
+  /** New text content, from an on-canvas inline edit (only meaningful for
+   *  a "text" element) - merged into content.text, everything else in
+   *  content left untouched. */
+  text?: string
 }
 
 export type ManualOverrides = Record<string, ManualOverride> // elementId -> override
@@ -60,6 +64,8 @@ export function applyManualOverrides(
             // off the seam; falling back to the stale value would leave it
             // wrapped forever.
             secondaryPanelName: override.secondaryPanelName,
+            content:
+              override.text !== undefined ? { ...el.content, text: override.text } : el.content,
           }
         : el
 

@@ -50,6 +50,14 @@ type DielinePreviewProps = {
    *  elsewhere on the page has focus). Selecting an element requires
    *  onDragEnd; showing the delete affordance additionally requires this. */
   onDeleteElement?: (elementId: string) => void
+  /** Fires once, on commit (Enter or blur out of the inline editor), with
+   *  the element's own elementId (NOT sourceElementId - unlike delete,
+   *  editing one physical instance of a repeated slogan should only ever
+   *  change that one instance, not every panel's copy) and the new text.
+   *  Double-clicking a text element (only text - logos/library elements
+   *  aren't editable this way) starts editing; requires this AND a text
+   *  elementType to show the inline editor at all. */
+  onEditText?: (elementId: string, newText: string) => void
 }
 
 type DragState = {
@@ -110,8 +118,11 @@ const CORNER_GROWTH_SIGN: Record<CornerHandle, { dx: 1 | -1; dy: 1 | -1 }> = {
 const toPolylinePoints = (points: Point[]) =>
   points.map((p) => `${p.x},${p.y}`).join(" ")
 
-const MIN_TEXT_SIZE = 10
-const MAX_TEXT_SIZE = 40
+// Exported so the designer shell can derive the exact same font-size a
+// text element is currently rendering at (e.g. to re-measure it after an
+// on-canvas edit) without hand-copying these numbers.
+export const MIN_TEXT_SIZE = 10
+export const MAX_TEXT_SIZE = 40
 
 const isImageLike = (el: ResolvedElement) =>
   el.elementType === "logo" ||
@@ -190,6 +201,7 @@ const DielinePreview = ({
   onDragEnd,
   onResize,
   onDeleteElement,
+  onEditText,
 }: DielinePreviewProps) => {
   const svgRef = useRef<SVGSVGElement>(null)
   const [dragState, setDragState] = useState<DragState | null>(null)
@@ -198,6 +210,28 @@ const DielinePreview = ({
   // stale id here is harmless - the render loop below only shows resize
   // handles for elements it's actually iterating over).
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
+  // Which text element (by its own elementId, not sourceElementId) is
+  // currently showing its inline <input> editor, and the in-progress value
+  // typed into it - separate from the element's own committed
+  // content.text, which only updates once the edit is committed.
+  const [editingElementId, setEditingElementId] = useState<string | null>(null)
+  const [editingText, setEditingText] = useState("")
+
+  const startEditingText = (el: ResolvedElement) => {
+    if (!onEditText) return
+    setSelectedElementId(null)
+    setEditingElementId(el.elementId)
+    setEditingText(typeof el.content.text === "string" ? el.content.text : "")
+  }
+
+  const commitTextEdit = () => {
+    if (editingElementId) {
+      onEditText?.(editingElementId, editingText)
+    }
+    setEditingElementId(null)
+  }
+
+  const cancelTextEdit = () => setEditingElementId(null)
 
   // Delete/Backspace deletes the selected element, unless some other text
   // input on the page currently has focus (editing a brand name, typing
@@ -775,6 +809,53 @@ const DielinePreview = ({
 
               if (!visual) return null
 
+              const isEditingThisElement = editingElementId === el.elementId
+
+              if (isEditingThisElement) {
+                const font = el.content.font
+                const fontWeight = el.content.fontWeight
+                const uppercase = el.content.uppercase === true
+                const fontSize = Math.min(MAX_TEXT_SIZE, Math.max(MIN_TEXT_SIZE, size.h))
+                return (
+                  <g key={el.elementId}>
+                    <foreignObject x={x} y={y} width={size.w} height={size.h}>
+                      <input
+                        autoFocus
+                        value={editingText}
+                        onChange={(e) => setEditingText(e.target.value)}
+                        onFocus={(e) => e.currentTarget.select()}
+                        onBlur={commitTextEdit}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            commitTextEdit()
+                          } else if (e.key === "Escape") {
+                            e.preventDefault()
+                            cancelTextEdit()
+                          }
+                        }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          boxSizing: "border-box",
+                          padding: 0,
+                          border: "1px dashed #2563eb",
+                          outline: "none",
+                          background: "rgba(255,255,255,0.9)",
+                          textAlign: "center",
+                          color: "#000",
+                          fontFamily: typeof font === "string" ? font : undefined,
+                          fontWeight: typeof fontWeight === "number" ? fontWeight : undefined,
+                          textTransform: uppercase ? "uppercase" : "none",
+                          fontSize,
+                        }}
+                      />
+                    </foreignObject>
+                  </g>
+                )
+              }
+
               return (
                 <g key={el.elementId}>
                   {visual}
@@ -802,6 +883,11 @@ const DielinePreview = ({
                       pointerEvents="all"
                       style={{ touchAction: "none", cursor: "grab" }}
                       onPointerDown={handlePointerDown(el)}
+                      onDoubleClick={
+                        el.elementType === "text" && onEditText
+                          ? () => startEditingText(el)
+                          : undefined
+                      }
                     />
                   )}
                   {isSelected && (

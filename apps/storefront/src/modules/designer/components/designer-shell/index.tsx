@@ -36,7 +36,7 @@ import { parseDimensionsFromVariantTitle } from "@lib/util/parse-variant-dimensi
 import { optionsAsKeymap } from "@modules/products/components/product-actions"
 import { Button } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import DielinePreview from "../dieline-preview"
+import DielinePreview, { MIN_TEXT_SIZE, MAX_TEXT_SIZE } from "../dieline-preview"
 import { applyDesign, type ResolveDesignResult } from "../../utils/apply-design"
 import { applyTheme } from "../../utils/apply-theme"
 import { generateAiDesign } from "../../utils/compose-design"
@@ -44,6 +44,7 @@ import BrandKitPanel from "../brand-kit-panel"
 import ElementLibraryPanel from "../element-library-panel"
 import TextPanel from "../text-panel"
 import { getLibraryElement } from "../../utils/element-library"
+import { measureText } from "../../utils/measure-text"
 import { SelectedElement } from "../../types"
 
 type Tool = "urun" | "komponent" | "marka-kiti" | "tema" | "yazi" | "elementler"
@@ -347,6 +348,56 @@ const DesignerShell = ({
     setManualOverrides((prev) => ({
       ...prev,
       [elementId]: { ...position, ...size, panelName, secondaryPanelName },
+    }))
+  }
+
+  // Commits an on-canvas inline text edit (double-click a text element to
+  // start one, see DielinePreview's onEditText). Keyed by the element's own
+  // elementId, not sourceElementId - editing one physical instance of a
+  // repeated slogan only changes that one panel's copy, same as
+  // drag/resize already only ever move one instance.
+  const handleTextEdit = (elementId: string, newText: string) => {
+    const current = (appliedDesign?.resolvedLayout.panels ?? [])
+      .flatMap((p) => p.elements)
+      .find((el) => el.elementId === elementId)
+    if (!current) return
+
+    const trimmed = newText.trim()
+    if (!trimmed) {
+      // Nothing left after editing - remove it rather than leave an
+      // invisible, zero-content text element behind on the canvas.
+      removeElement(current.sourceElementId ?? elementId)
+      return
+    }
+
+    // Keep the current font size (derived the exact same way the canvas
+    // itself renders it) - editing text shouldn't suddenly shrink/grow the
+    // font, only its measured width/height at that unchanged size.
+    const font = typeof current.content.font === "string" ? current.content.font : null
+    const fontWeight =
+      typeof current.content.fontWeight === "number" ? current.content.fontWeight : 400
+    const uppercase = current.content.uppercase === true
+    const fontSize = Math.min(MAX_TEXT_SIZE, Math.max(MIN_TEXT_SIZE, current.size.h))
+    const measured = font ? measureText(trimmed, font, fontWeight, fontSize, uppercase) : null
+    const newSize = measured ? { w: measured.width, h: measured.height } : current.size
+
+    // Recenter around the box's OLD center, rather than keeping its old
+    // top-left corner fixed - otherwise a width change (near-certain once
+    // the text itself changes) would visibly drift the text sideways
+    // instead of growing/shrinking evenly around where it already was.
+    const centerX = current.position.x + current.size.w / 2
+    const centerY = current.position.y + current.size.h / 2
+
+    setManualOverrides((prev) => ({
+      ...prev,
+      [elementId]: {
+        ...prev[elementId],
+        x: centerX - newSize.w / 2,
+        y: centerY - newSize.h / 2,
+        w: newSize.w,
+        h: newSize.h,
+        text: trimmed,
+      },
     }))
   }
 
@@ -848,6 +899,7 @@ const DesignerShell = ({
                 backgroundColors={appliedDesign?.backgroundColors}
                 onDragEnd={handleElementDragEnd}
                 onResize={handleElementResize}
+                onEditText={handleTextEdit}
                 onDeleteElement={removeElement}
                 className="max-h-full max-w-full"
               />
