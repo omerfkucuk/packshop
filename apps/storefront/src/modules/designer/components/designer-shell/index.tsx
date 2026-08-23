@@ -318,23 +318,32 @@ const DesignerShell = ({
         }
       : baseDesign
 
+  // Shared by every manual-override writer below - always merges onto
+  // whatever the element's override already had (never replaces it
+  // wholesale), so a field written by one interaction (e.g. a resize's w/h,
+  // or a text edit's `text`) survives a later, unrelated interaction (e.g.
+  // a plain drag) instead of silently reverting to the element's original
+  // value. panelName/secondaryPanelName are the one exception callers rely
+  // on: passing them explicitly (even as `undefined`) - rather than
+  // omitting them from patch - is what lets dragging an element back off a
+  // seam actually clear a stale wrap.
+  const patchManualOverride = (
+    elementId: string,
+    patch: Partial<ManualOverrides[string]>
+  ) => {
+    setManualOverrides((prev) => ({
+      ...prev,
+      [elementId]: { ...prev[elementId], ...patch },
+    }))
+  }
+
   const handleElementDragEnd = (
     elementId: string,
     position: { x: number; y: number },
     panelName: string,
     secondaryPanelName: string | undefined
   ) => {
-    // Merge, not replace - if this element already has a resize override
-    // (w/h), a plain `[elementId]: position` would silently drop it back
-    // to its original size the next time it's dragged. panelName and
-    // secondaryPanelName are always written explicitly here (never left to
-    // the `...prev[elementId]` spread), so dragging an already-wrapped
-    // element back off its seam actually clears the wrap instead of the
-    // stale value lingering from a previous drag.
-    setManualOverrides((prev) => ({
-      ...prev,
-      [elementId]: { ...prev[elementId], ...position, panelName, secondaryPanelName },
-    }))
+    patchManualOverride(elementId, { ...position, panelName, secondaryPanelName })
   }
 
   const handleElementResize = (
@@ -344,14 +353,7 @@ const DesignerShell = ({
     panelName: string,
     secondaryPanelName: string | undefined
   ) => {
-    // Merge, not replace (same reasoning as handleElementDragEnd above) -
-    // a plain `[elementId]: {...position, ...size, ...}` would silently
-    // drop a prior on-canvas text edit's `text` field back to whatever the
-    // element's original content was, the moment it's resized afterward.
-    setManualOverrides((prev) => ({
-      ...prev,
-      [elementId]: { ...prev[elementId], ...position, ...size, panelName, secondaryPanelName },
-    }))
+    patchManualOverride(elementId, { ...position, ...size, panelName, secondaryPanelName })
   }
 
   // Commits an on-canvas inline text edit (double-click a text element to
@@ -393,17 +395,13 @@ const DesignerShell = ({
     const centerX = current.position.x + current.size.w / 2
     const centerY = current.position.y + current.size.h / 2
 
-    setManualOverrides((prev) => ({
-      ...prev,
-      [elementId]: {
-        ...prev[elementId],
-        x: centerX - newSize.w / 2,
-        y: centerY - newSize.h / 2,
-        w: newSize.w,
-        h: newSize.h,
-        text: trimmed,
-      },
-    }))
+    patchManualOverride(elementId, {
+      x: centerX - newSize.w / 2,
+      y: centerY - newSize.h / 2,
+      w: newSize.w,
+      h: newSize.h,
+      text: trimmed,
+    })
   }
 
   // geometryPanels changing (custom-size edit, product/variant swap) is a
