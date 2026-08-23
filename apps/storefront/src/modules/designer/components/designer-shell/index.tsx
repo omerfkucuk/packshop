@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { isEqual } from "lodash"
 import { HttpTypes } from "@medusajs/types"
@@ -37,6 +38,17 @@ import { optionsAsKeymap } from "@modules/products/components/product-actions"
 import { Button } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import DielinePreview, { MIN_TEXT_SIZE } from "../dieline-preview"
+// Client-only, ssr:false - three.js needs a real browser (WebGL) and the
+// bundle is only worth downloading once the customer actually switches to
+// the 3D view, not on every Tasarla page load.
+const BoxPreview3D = dynamic(() => import("../box-preview-3d"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full w-full text-sm text-black/50">
+      3D önizleme yükleniyor…
+    </div>
+  ),
+})
 import { applyDesign, type ResolveDesignResult } from "../../utils/apply-design"
 import { applyTheme } from "../../utils/apply-theme"
 import { generateAiDesign } from "../../utils/compose-design"
@@ -103,6 +115,9 @@ const DesignerShell = ({
   })
   const hasAutoAdvancedToBrandKit = useRef(!!initialVariant)
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
+  // 3D is a read-only preview (orbit/rotate only) - all editing stays on
+  // the 2D dieline regardless of which view is currently showing.
+  const [viewMode, setViewMode] = useState<"2d" | "3d">("2d")
   const [options, setOptions] = useState<Record<string, string | undefined>>(
     () => optionsAsKeymap(initialVariant?.options ?? null) ?? {}
   )
@@ -894,8 +909,38 @@ const DesignerShell = ({
 
         {/* Canvas + AI bar */}
         <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex-1 bg-black/[0.02] flex items-center justify-center overflow-auto p-8">
-            {geometryPanels ? (
+          <div className="relative flex-1 bg-black/[0.02] flex items-center justify-center overflow-auto p-8">
+            {geometryPanels && (
+              <div className="absolute top-4 right-4 z-10 flex rounded-lg border border-black/10 bg-white p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("2d")}
+                  className={`px-3 py-1.5 rounded-md transition-colors ${
+                    viewMode === "2d" ? "bg-black text-white" : "text-black/60 hover:text-black"
+                  }`}
+                >
+                  2D
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("3d")}
+                  className={`px-3 py-1.5 rounded-md transition-colors ${
+                    viewMode === "3d" ? "bg-black text-white" : "text-black/60 hover:text-black"
+                  }`}
+                >
+                  3D
+                </button>
+              </div>
+            )}
+            {geometryPanels && viewMode === "3d" ? (
+              <BoxPreview3D
+                panels={geometryPanels}
+                resolvedLayout={appliedDesign?.resolvedLayout}
+                backgroundColors={appliedDesign?.backgroundColors}
+                dimensionsMm={geometryDimensionsMm!}
+                className="h-full w-full"
+              />
+            ) : geometryPanels ? (
               <DielinePreview
                 panels={geometryPanels}
                 resolvedLayout={appliedDesign?.resolvedLayout}

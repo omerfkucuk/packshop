@@ -5,8 +5,17 @@ import type { PanelGeometry, Point, ZoneLike } from "@dtc/packaging-engine/share
 import { zoneOrigin, deriveWrapZones, type WrapZone } from "@dtc/packaging-engine/placement"
 import type { ElementType, ResolvedLayout, ResolvedElement } from "@dtc/layout-engine"
 import { noElementOverlapRule, elementsTouchingPanel } from "@dtc/layout-engine/constraints"
-import { ELEMENT_LIBRARY, getLibraryElement } from "../../utils/element-library"
-import { fontSizeForInkHeight, applyTextCase } from "../../utils/measure-text"
+import { ELEMENT_LIBRARY } from "../../utils/element-library"
+import {
+  MIN_TEXT_SIZE,
+  textFontSize,
+  renderElementVisual,
+} from "./render-element-visual"
+
+// Re-exported for designer-shell, which derives the exact same font-size a
+// text element is currently rendering at (e.g. to re-measure it after an
+// on-canvas edit) without hand-copying this number.
+export { MIN_TEXT_SIZE }
 
 type DielinePreviewProps = {
   panels: PanelGeometry[]
@@ -118,46 +127,6 @@ const CORNER_GROWTH_SIGN: Record<CornerHandle, { dx: 1 | -1; dy: 1 | -1 }> = {
 
 const toPolylinePoints = (points: Point[]) =>
   points.map((p) => `${p.x},${p.y}`).join(" ")
-
-// A defensive floor only - guards against a degenerate (near-zero) size.h
-// ever producing illegibly tiny or inverted text. No upper cap: the
-// rendered font size should be able to grow as large as the customer
-// resizes the box to, same as every other element type already can.
-// Exported so the designer shell can derive the exact same font-size a
-// text element is currently rendering at (e.g. to re-measure it after an
-// on-canvas edit) without hand-copying this number.
-export const MIN_TEXT_SIZE = 10
-
-// The actual SVG font-size for a text element, derived from its resolved
-// (tight ink-height) size.h - see fontSizeForInkHeight's own comment for
-// why this indirection exists. Falls back to the old direct size.h==
-// font-size mapping when no font is known (e.g. a brand-social-link text
-// element, which never sets content.font) - less precise, but a link
-// string doesn't call for pixel-tight framing the way a customer's own
-// headline does.
-const textFontSize = (
-  size: { h: number },
-  font: unknown,
-  fontWeight: unknown,
-  uppercase: boolean
-): number =>
-  Math.max(
-    MIN_TEXT_SIZE,
-    typeof font === "string"
-      ? fontSizeForInkHeight(
-          font,
-          typeof fontWeight === "number" ? fontWeight : 400,
-          uppercase,
-          size.h
-        )
-      : size.h
-  )
-
-const isImageLike = (el: ResolvedElement) =>
-  el.elementType === "logo" ||
-  el.elementType === "image" ||
-  el.elementType === "reference-image" ||
-  el.elementType === "ai-generated"
 
 // Everything except text is allowed to bleed to the panel's true physical
 // edge (see fullPanelBounds below) - a logo/shape/pattern/icon/image
@@ -768,72 +737,14 @@ const DielinePreview = ({
               const isOverlapping = overlappingElementIds.has(el.elementId)
               const isSelected = selectedElementId === el.elementId
 
-              let visual: React.ReactNode = null
-
-              if (isImageLike(el)) {
-                const url = el.content.url
-                if (typeof url === "string") {
-                  visual = (
-                    // eslint-disable-next-line jsx-a11y/alt-text
-                    <image
-                      href={url}
-                      x={x}
-                      y={y}
-                      width={size.w}
-                      height={size.h}
-                      preserveAspectRatio="xMidYMid meet"
-                    />
-                  )
-                }
-              } else if (el.elementType === "text") {
-                const text = el.content.text
-                const font = el.content.font
-                const fontWeight = el.content.fontWeight
-                const uppercase = el.content.uppercase === true
-                if (typeof text === "string") {
-                  const fontSize = textFontSize(size, font, fontWeight, uppercase)
-                  visual = (
-                    <text
-                      x={position.x + size.w / 2}
-                      y={flipY(position.y + size.h / 2)}
-                      fontSize={fontSize}
-                      fontFamily={typeof font === "string" ? font : undefined}
-                      fontWeight={typeof fontWeight === "number" ? fontWeight : undefined}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      fill="#000"
-                    >
-                      {applyTextCase(text, uppercase)}
-                    </text>
-                  )
-                }
-              } else if (
-                el.elementType === "icon" ||
-                el.elementType === "shape" ||
-                el.elementType === "pattern"
-              ) {
-                const libraryElementId = el.content.libraryElementId
-                const entry =
-                  typeof libraryElementId === "string"
-                    ? getLibraryElement(libraryElementId)
-                    : undefined
-                if (entry) {
-                  const color =
-                    typeof el.content.color === "string" ? el.content.color : undefined
-                  visual = (
-                    <use
-                      href={`#library-element-${entry.id}`}
-                      x={x}
-                      y={y}
-                      width={size.w}
-                      height={size.h}
-                      style={entry.recolorable && color ? { color } : undefined}
-                    />
-                  )
-                }
-              }
-              // qr/barcode rendering lands with their own element-type
-              // plugins later - nothing to draw yet, `visual` stays null.
+              const visual = renderElementVisual(
+                el,
+                x,
+                y,
+                position.x + size.w / 2,
+                flipY(position.y + size.h / 2),
+                size
+              )
 
               if (!visual) return null
 
