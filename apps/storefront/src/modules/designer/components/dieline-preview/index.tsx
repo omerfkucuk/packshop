@@ -428,14 +428,9 @@ const DielinePreview = ({
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [selectedElementId, onDuplicateElement, resolvedLayout])
 
-  // Print zones only, not the panels' full cutLines/creaseLines - nothing
-  // ever prints on a flap or the glue tab, so this view (both the full
-  // flat dieline and the single-panel one from a 3D face click) shows
-  // only the area a design can actually touch. Since it drives the
-  // viewBox, cut/crease line rendering further down naturally never draws
-  // anything outside it either - the <svg>'s own default overflow:hidden
-  // does the cropping, no extra logic needed there.
-  const allPoints = panels.flatMap((panel) => panel.printZones.flatMap((zone) => zone.boundary))
+  const allPoints = panels.flatMap((panel) =>
+    [...panel.cutLines, ...panel.creaseLines].flat()
+  )
 
   if (allPoints.length === 0) {
     return null
@@ -1099,18 +1094,68 @@ const DielinePreview = ({
         ))}
       </defs>
       <g transform={`matrix(1 0 0 -1 0 ${minY + maxY})`}>
-        {/* Nothing ever prints on a flap or the glue tab - the viewBox
-            (see allPoints above) is cropped to print zones only, so this
-            polygon IS effectively the whole visible board now, in the
-            same kraft color the 3D preview uses. A chosen background
-            color still overrides it per panel, same as before. */}
+        {/* A panel's own flaps/glue tab are real board too - filling its
+            full cut-line envelope (not just the print zone) in the same
+            kraft color the 3D preview uses is what makes this actually
+            read as "the physical face of the box" rather than a plain
+            technical schematic, especially now that clicking a face in 3D
+            opens straight into this same view for that one panel. A plain
+            bounding-box rect (not the true, possibly-notched cut outline)
+            is deliberate - any small kerf gap between adjacent flaps just
+            reads as continuous board under the black cut line, which is
+            correct: the physical sheet IS continuous there before it's
+            actually cut. */}
+        {panels.map((panel) => {
+          const points = [...panel.cutLines, ...panel.creaseLines].flat()
+          if (points.length === 0) return null
+          const px = points.map((p) => p.x)
+          const py = points.map((p) => p.y)
+          const bx = Math.min(...px)
+          const by = Math.min(...py)
+          return (
+            <rect
+              key={`${panel.panelName}-board`}
+              x={bx}
+              y={by}
+              width={Math.max(...px) - bx}
+              height={Math.max(...py) - by}
+              fill={DEFAULT_BOARD_COLOR}
+              stroke="none"
+            />
+          )
+        })}
         {panels.flatMap((panel) =>
           panel.printZones.map((zone) => (
             <polygon
               key={zone.id}
               points={toPolylinePoints(zone.boundary)}
-              fill={backgroundColors?.[panel.panelName] ?? DEFAULT_BOARD_COLOR}
+              fill={backgroundColors?.[panel.panelName] ?? "rgba(0,0,0,0.04)"}
               stroke="none"
+            />
+          ))
+        )}
+        {panels.flatMap((panel) =>
+          panel.creaseLines.map((line, i) => (
+            <polyline
+              key={`${panel.panelName}-crease-${i}`}
+              points={toPolylinePoints(line)}
+              fill="none"
+              stroke="#9ca3af"
+              strokeDasharray="6 4"
+              strokeWidth={1.5}
+              vectorEffect="non-scaling-stroke"
+            />
+          ))
+        )}
+        {panels.flatMap((panel) =>
+          panel.cutLines.map((line, i) => (
+            <polyline
+              key={`${panel.panelName}-cut-${i}`}
+              points={toPolylinePoints(line)}
+              fill="none"
+              stroke="#000"
+              strokeWidth={1.5}
+              vectorEffect="non-scaling-stroke"
             />
           ))
         )}
