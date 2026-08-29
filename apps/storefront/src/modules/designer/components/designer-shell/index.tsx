@@ -186,6 +186,29 @@ const DesignerShell = ({
     setSelectedElements((prev) => prev.filter((el) => el.id !== id))
   }
 
+  // Only meaningful for an individually-placed element (logo/library-
+  // element/custom-text) - those are the only SelectedElement types whose
+  // id equals its own ResolvedElement.elementId 1:1 (see buildCompositionPlan
+  // in apply-design.ts), so they're the only ones a lookup by elementId can
+  // ever find here. A no-op for anything else (a repeated brand slogan
+  // instance, an AI-composed element) is the right fallback - there's no
+  // single logical "the source" to clone for those, same reasoning as the
+  // on-canvas delete button's own sourceElementId fallback.
+  const duplicateElement = (
+    elementId: string,
+    position: { x: number; y: number },
+    panelName: string,
+    secondaryPanelName: string | undefined
+  ) => {
+    const original = selectedElements.find((el) => el.id === elementId)
+    if (!original) return
+
+    setAiDesign(null)
+    const duplicate = { ...original, id: `${original.id}-${crypto.randomUUID()}` }
+    setSelectedElements((prev) => [...prev, duplicate])
+    patchManualOverride(duplicate.id, { ...position, panelName, secondaryPanelName })
+  }
+
   const handleSelectTheme = (theme: ThemeId) => {
     setAiDesign(null)
     setSelectedTheme((prev) => (prev === theme ? null : theme))
@@ -949,6 +972,7 @@ const DesignerShell = ({
                 onResize={handleElementResize}
                 onEditText={handleTextEdit}
                 onDeleteElement={removeElement}
+                onDuplicateElement={duplicateElement}
                 className="max-h-full max-w-full"
               />
             ) : image ? (

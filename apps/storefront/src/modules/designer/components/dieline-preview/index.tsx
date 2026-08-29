@@ -60,6 +60,21 @@ type DielinePreviewProps = {
    *  elsewhere on the page has focus). Selecting an element requires
    *  onDragEnd; showing the delete affordance additionally requires this. */
   onDeleteElement?: (elementId: string) => void
+  /** Fires with the id of the element to duplicate, its new (offset,
+   *  panel-bounds-clamped) mm position, and the panel/wrap state that
+   *  position resolved to - from the on-canvas duplicate button, or
+   *  Ctrl/Cmd+C then Ctrl/Cmd+V while an element is selected (same
+   *  editable-focus guard as delete). Only meaningful for an
+   *  individually-placed element (logo/library-element/custom-text -
+   *  the caller is expected to no-op for anything else, same as the
+   *  sourceElementId fallback delete already relies on elsewhere); this
+   *  component doesn't know which is which, it only computes geometry. */
+  onDuplicateElement?: (
+    elementId: string,
+    position: Point,
+    panelName: string,
+    secondaryPanelName: string | undefined
+  ) => void
   /** Fires once, on commit (Enter or blur out of the inline editor), with
    *  the element's own elementId (NOT sourceElementId - unlike delete,
    *  editing one physical instance of a repeated slogan should only ever
@@ -178,6 +193,13 @@ const clamp = (value: number, min: number, max: number) =>
 // commit.
 const CLICK_THRESHOLD_MM = 1.5
 const MIN_ELEMENT_SIZE_MM = 8
+// Base up-and-right offset for a duplicated element, so a paste never lands
+// exactly on top of its source (which would otherwise immediately read as
+// an unhelpful red overlap outline, indistinguishable from the original).
+// Repeated Ctrl+V presses without an intervening Ctrl+C multiply this by
+// the paste's own sequence number (see clipboardRef below), fanning
+// several pastes out in a staircase instead of stacking them all here.
+const DUPLICATE_OFFSET_MM = 10
 
 // Flat 2D render of a generated dieline: cut lines solid black, crease lines
 // dashed gray, print zones lightly shaded (or the resolved layout's chosen
@@ -199,6 +221,7 @@ const DielinePreview = ({
   onDragEnd,
   onResize,
   onDeleteElement,
+  onDuplicateElement,
   onEditText,
 }: DielinePreviewProps) => {
   const svgRef = useRef<SVGSVGElement>(null)
@@ -214,6 +237,63 @@ const DielinePreview = ({
   // content.text, which only updates once the edit is committed.
   const [editingElementId, setEditingElementId] = useState<string | null>(null)
   const [editingText, setEditingText] = useState("")
+  // Which element Ctrl/Cmd+C last copied, and how many times Ctrl/Cmd+V has
+  // pasted it since - a ref (not state) since neither should ever trigger a
+  // re-render on their own. Deliberately NOT reset by selection changes
+  // (clicking the fresh paste, or anything else) - only a new Ctrl/Cmd+C
+  // changes what's "copied," matching normal copy/paste elsewhere.
+  const clipboardRef = useRef<{ elementId: string; sequence: number } | null>(null)
+
+  // Self-contained (module-level zoneBounds/fullPanelBounds/clamp only, no
+  // component-scoped resolveWrapClamp) deliberately - this and the
+  // Ctrl+C/Ctrl+V effect below are hooks/helpers declared before the
+  // allPoints-empty early return further down, so anything they close over
+  // must already be initialized in every render, including one that
+  // returns before resolveWrapClamp's own declaration is ever reached.
+  // Consequence: a duplicate never inherits a wrap across panels, even if
+  // its source was wrapped - it clamps to the source's own single panel,
+  // same as any other fresh, never-dragged element.
+  const duplicateElementAt = (el: ResolvedElement, offsetMultiplier: number) => {
+    if (!onDuplicateElement) return
+
+    const zone = panels.find((p) => p.panelName === el.panelName)?.printZones[0]
+    const bounds = zone
+      ? canBleedToPanelEdge(el.elementType)
+        ? fullPanelBounds(zone)
+        : zoneBounds(zone)
+      : null
+
+    // Offset away from whichever edge the source is already nearest to, not
+    // always down-right - a fresh library/icon element's default anchor is
+    // often already pinned to a corner (see FOREGROUND_ELEMENT_ANCHOR_CYCLE
+    // in apply-design.ts, which starts new icons at "bottom-right"), and a
+    // fixed direction would immediately hit that same edge's clamp, so
+    // every paste (any offsetMultiplier) landed on the exact same clamped
+    // spot instead of fanning out.
+    let dirX = 1
+    let dirY = -1 // Y-up mm: -1 moves down on screen, matching the default's +x/-y bias
+    if (bounds) {
+      const zoneCenterX = (bounds.minX + bounds.maxX) / 2
+      const zoneCenterY = (bounds.minY + bounds.maxY) / 2
+      const elCenterX = el.position.x + el.size.w / 2
+      const elCenterY = el.position.y + el.size.h / 2
+      if (elCenterX > zoneCenterX) dirX = -1
+      if (elCenterY < zoneCenterY) dirY = 1
+    }
+
+    const offset = DUPLICATE_OFFSET_MM * offsetMultiplier
+    const rawX = el.position.x + offset * dirX
+    const rawY = el.position.y + offset * dirY
+
+    const position = bounds
+      ? {
+          x: clamp(rawX, bounds.minX, bounds.maxX - el.size.w),
+          y: clamp(rawY, bounds.minY, bounds.maxY - el.size.h),
+        }
+      : { x: rawX, y: rawY }
+
+    onDuplicateElement(el.elementId, position, el.panelName, undefined)
+  }
 
   const startEditingText = (el: ResolvedElement) => {
     if (!onEditText) return
@@ -261,6 +341,51 @@ const DielinePreview = ({
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [selectedElementId, onDeleteElement, resolvedLayout])
+
+  // Ctrl/Cmd+C arms the clipboard with whatever's selected; Ctrl/Cmd+V
+  // duplicates it, offset further each repeated press (see
+  // DUPLICATE_OFFSET_MM/clipboardRef) so several quick pastes fan out
+  // instead of stacking on the exact same spot. Same editable-focus guard
+  // as Delete/Backspace above, and for the same reason - this is a global
+  // keydown listener, so it must yield to normal copy/paste anywhere else
+  // on the page (a brand name field, the AI prompt box, ...).
+  useEffect(() => {
+    if (!onDuplicateElement) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return
+      const key = e.key.toLowerCase()
+      if (key !== "c" && key !== "v") return
+
+      const active = document.activeElement
+      const isEditableFocused =
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement ||
+        (active instanceof HTMLElement && active.isContentEditable)
+      if (isEditableFocused) return
+
+      if (key === "c") {
+        if (!selectedElementId) return
+        e.preventDefault()
+        clipboardRef.current = { elementId: selectedElementId, sequence: 0 }
+        return
+      }
+
+      // Paste
+      if (!clipboardRef.current) return
+      const el = (resolvedLayout?.panels ?? [])
+        .flatMap((p) => p.elements)
+        .find((candidate) => candidate.elementId === clipboardRef.current!.elementId)
+      if (!el) return // copied element no longer exists (deleted, or its layout changed)
+
+      e.preventDefault()
+      clipboardRef.current.sequence += 1
+      duplicateElementAt(el, clipboardRef.current.sequence)
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [selectedElementId, onDuplicateElement, resolvedLayout])
 
   const allPoints = panels.flatMap((panel) =>
     [...panel.cutLines, ...panel.creaseLines].flat()
@@ -880,6 +1005,47 @@ const DielinePreview = ({
                             />
                           </g>
                         ))}
+                      {onDuplicateElement && (
+                        <g
+                          style={{ cursor: "pointer" }}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            duplicateElementAt(el, 1)
+                          }}
+                        >
+                          {/* Same above-top-edge placement as the delete
+                              button, offset left of center so the two never
+                              overlap. Two-overlapping-squares "duplicate"
+                              glyph drawn as plain rects rather than a
+                              Unicode symbol - guaranteed to render
+                              identically everywhere, no font coverage risk. */}
+                          <circle
+                            cx={x + size.w / 2 - handleRadius * 2.2}
+                            cy={y - handleRadius * 2.6}
+                            r={handleRadius * 1.5}
+                            fill="#2563eb"
+                          />
+                          <rect
+                            x={x + size.w / 2 - handleRadius * 2.2 - handleRadius * 0.55}
+                            y={y - handleRadius * 2.6 - handleRadius * 0.15}
+                            width={handleRadius * 0.75}
+                            height={handleRadius * 0.75}
+                            fill="none"
+                            stroke="#fff"
+                            strokeWidth={handleRadius * 0.22}
+                          />
+                          <rect
+                            x={x + size.w / 2 - handleRadius * 2.2 - handleRadius * 0.15}
+                            y={y - handleRadius * 2.6 - handleRadius * 0.55}
+                            width={handleRadius * 0.75}
+                            height={handleRadius * 0.75}
+                            fill="#2563eb"
+                            stroke="#fff"
+                            strokeWidth={handleRadius * 0.22}
+                          />
+                        </g>
+                      )}
                       {onDeleteElement && (
                         <g
                           style={{ cursor: "pointer" }}
@@ -896,16 +1062,19 @@ const DielinePreview = ({
                             setSelectedElementId(null)
                           }}
                         >
-                          {/* Above the top edge, centered - clear of the
-                              tl/tr resize handles which sit right on it. */}
+                          {/* Above the top edge, centered (when the
+                              duplicate button also shows, this sits right of
+                              center instead - see its own offset above) -
+                              clear of the tl/tr resize handles which sit
+                              right on it. */}
                           <circle
-                            cx={x + size.w / 2}
+                            cx={x + size.w / 2 + (onDuplicateElement ? handleRadius * 2.2 : 0)}
                             cy={y - handleRadius * 2.6}
                             r={handleRadius * 1.5}
                             fill="#ef4444"
                           />
                           <text
-                            x={x + size.w / 2}
+                            x={x + size.w / 2 + (onDuplicateElement ? handleRadius * 2.2 : 0)}
                             y={y - handleRadius * 2.6}
                             fontSize={handleRadius * 1.8}
                             textAnchor="middle"
