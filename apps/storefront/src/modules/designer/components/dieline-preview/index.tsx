@@ -223,6 +223,13 @@ const SNAP_THRESHOLD_MM = 4
 // to another element's own width or height before it snaps to match it
 // exactly.
 const SIZE_SNAP_THRESHOLD_MM = 4
+// A single neutral gray for every piece of "this is selected" chrome
+// (outline, resize dots, the duplicate/delete buttons) - deliberately NOT
+// blue-for-select/red-for-delete: with one shared color, duplicate vs.
+// delete has to (and does) read from the icon alone, and the whole
+// selection state stays visually quiet instead of competing with the
+// design itself for attention.
+const SELECTION_COLOR = "#6b7280"
 
 // Flat 2D render of a generated dieline: cut lines solid black, crease lines
 // dashed gray, print zones lightly shaded (or the resolved layout's chosen
@@ -1244,8 +1251,8 @@ const DielinePreview = ({
                         width={size.w}
                         height={size.h}
                         fill="none"
-                        stroke="#2563eb"
-                        strokeWidth={1.5}
+                        stroke={SELECTION_COLOR}
+                        strokeWidth={1}
                         strokeDasharray="5 3"
                         vectorEffect="non-scaling-stroke"
                         pointerEvents="none"
@@ -1282,7 +1289,7 @@ const DielinePreview = ({
                               cx={cx}
                               cy={cy}
                               r={handleRadius}
-                              fill="#2563eb"
+                              fill={SELECTION_COLOR}
                               pointerEvents="none"
                             />
                           </g>
@@ -1303,28 +1310,28 @@ const DielinePreview = ({
                               Unicode symbol - guaranteed to render
                               identically everywhere, no font coverage risk. */}
                           <circle
-                            cx={x + size.w / 2 - handleRadius * 2.2}
-                            cy={y - handleRadius * 2.6}
-                            r={handleRadius * 1.5}
-                            fill="#2563eb"
+                            cx={x + size.w / 2 - handleRadius * 1.7}
+                            cy={y - handleRadius * 1.8}
+                            r={handleRadius * 1.1}
+                            fill={SELECTION_COLOR}
                           />
                           <rect
-                            x={x + size.w / 2 - handleRadius * 2.2 - handleRadius * 0.55}
-                            y={y - handleRadius * 2.6 - handleRadius * 0.15}
-                            width={handleRadius * 0.75}
-                            height={handleRadius * 0.75}
+                            x={x + size.w / 2 - handleRadius * 1.7 - handleRadius * 0.4}
+                            y={y - handleRadius * 1.8 - handleRadius * 0.1}
+                            width={handleRadius * 0.55}
+                            height={handleRadius * 0.55}
                             fill="none"
                             stroke="#fff"
-                            strokeWidth={handleRadius * 0.22}
+                            strokeWidth={handleRadius * 0.16}
                           />
                           <rect
-                            x={x + size.w / 2 - handleRadius * 2.2 - handleRadius * 0.15}
-                            y={y - handleRadius * 2.6 - handleRadius * 0.55}
-                            width={handleRadius * 0.75}
-                            height={handleRadius * 0.75}
-                            fill="#2563eb"
+                            x={x + size.w / 2 - handleRadius * 1.7 - handleRadius * 0.1}
+                            y={y - handleRadius * 1.8 - handleRadius * 0.4}
+                            width={handleRadius * 0.55}
+                            height={handleRadius * 0.55}
+                            fill={SELECTION_COLOR}
                             stroke="#fff"
-                            strokeWidth={handleRadius * 0.22}
+                            strokeWidth={handleRadius * 0.16}
                           />
                         </g>
                       )}
@@ -1350,15 +1357,15 @@ const DielinePreview = ({
                               clear of the tl/tr resize handles which sit
                               right on it. */}
                           <circle
-                            cx={x + size.w / 2 + (onDuplicateElement ? handleRadius * 2.2 : 0)}
-                            cy={y - handleRadius * 2.6}
-                            r={handleRadius * 1.5}
-                            fill="#ef4444"
+                            cx={x + size.w / 2 + (onDuplicateElement ? handleRadius * 1.7 : 0)}
+                            cy={y - handleRadius * 1.8}
+                            r={handleRadius * 1.1}
+                            fill={SELECTION_COLOR}
                           />
                           <text
-                            x={x + size.w / 2 + (onDuplicateElement ? handleRadius * 2.2 : 0)}
-                            y={y - handleRadius * 2.6}
-                            fontSize={handleRadius * 1.8}
+                            x={x + size.w / 2 + (onDuplicateElement ? handleRadius * 1.7 : 0)}
+                            y={y - handleRadius * 1.8}
+                            fontSize={handleRadius * 1.3}
                             textAnchor="middle"
                             dominantBaseline="central"
                             fill="#fff"
