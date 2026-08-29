@@ -13,6 +13,7 @@ import {
 } from "../../utils/panel-texture"
 import { warmUpFont } from "../../utils/measure-text"
 import { getGrainTexture } from "../../utils/grain-texture"
+import { buildEmbeddedFontFaceCss } from "../../utils/embed-font"
 
 const TEXTURE_PX_PER_MM = 8
 
@@ -181,9 +182,16 @@ const BoxMesh = ({
       // measurement/rendering - rasterization is a third consumer of the
       // exact same underlying issue (a canvas op silently substitutes a
       // fallback font if the real one hasn't finished loading yet).
-      const [inlinedLayout] = await Promise.all([
+      // fontFaceCss is a DIFFERENT fix for a related-but-distinct problem:
+      // even once warmed, the page's loaded Google Fonts <link> is
+      // invisible to the isolated Blob-<img> context each panel's texture
+      // rasterizes through - see embed-font.ts for why every panel's text
+      // was silently rendering in the same fallback font regardless of
+      // which one was actually chosen.
+      const [inlinedLayout, , fontFaceCss] = await Promise.all([
         inlineImagesAsDataUrls(resolvedLayout, proxyUrlFor),
         Promise.all(Array.from(fontPairs.values()).map((p) => warmUpFont(p.font, p.weight))),
+        buildEmbeddedFontFaceCss(Array.from(fontPairs.values())),
       ])
 
       const mainPanels = Object.values(PANEL_NAMES)
@@ -196,7 +204,8 @@ const BoxMesh = ({
             panel,
             inlinedLayout,
             backgroundColors?.[panel.panelName],
-            TEXTURE_PX_PER_MM
+            TEXTURE_PX_PER_MM,
+            fontFaceCss
           )
         )
       )

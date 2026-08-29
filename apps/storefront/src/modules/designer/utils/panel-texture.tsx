@@ -46,7 +46,8 @@ export async function renderPanelTexture(
   panel: PanelGeometry,
   resolvedLayout: ResolvedLayout,
   backgroundColor: string | undefined,
-  pxPerMm: number
+  pxPerMm: number,
+  fontFaceCss?: string
 ): Promise<PanelTextureResult> {
   const zone = panel.printZones[0]
   if (!zone) {
@@ -73,6 +74,12 @@ export async function renderPanelTexture(
       height={heightMm}
     >
       <defs>
+        {/* Self-contained (data: URI) @font-face rules - this SVG gets
+            rasterized via a Blob <img>, an isolated context that can't see
+            the page's own loaded Google Fonts <link>, so without this
+            every font silently fell back to the same one. See
+            embed-font.ts for the why in full. */}
+        {fontFaceCss && <style>{fontFaceCss}</style>}
         {/* Scoped exactly to the zone's own bounds - what actually crops a
             wrap element cleanly at the seam, whether flipped or not (a
             rectangle spanning the whole zone looks identical either way). */}
