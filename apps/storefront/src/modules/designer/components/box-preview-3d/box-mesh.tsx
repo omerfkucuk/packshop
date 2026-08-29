@@ -170,15 +170,17 @@ const BoxMesh = ({ panels, resolvedLayout, backgroundColors, dimensionsM }: BoxM
       })
     }
 
-    const flatMaterialFor = (faceWidthM: number, faceHeightM: number) =>
-      new THREE.MeshStandardMaterial({
+    const flatMaterialFor = (faceWidthM: number, faceHeightM: number) => {
+      const faceGrain = grainFor(faceWidthM, faceHeightM)
+      return new THREE.MeshStandardMaterial({
         color: DEFAULT_BOARD_COLOR,
         roughness: BOARD_ROUGHNESS,
         metalness: 0,
-        bumpMap: grainFor(faceWidthM, faceHeightM),
+        bumpMap: faceGrain,
         bumpScale: BUMP_SCALE,
-        roughnessMap: grainFor(faceWidthM, faceHeightM),
+        roughnessMap: faceGrain,
       })
+    }
 
     // BoxGeometry's material-array order is [+x, -x, +y, -y, +z, -z].
     // X-extent = length -> +-x are the width panels (right/left);
