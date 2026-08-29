@@ -122,7 +122,16 @@ type ResizeState = {
 // A smart-guide line shown while dragging, at the mm coordinate another
 // element's matching edge/center sits at - "vertical" spans Y at a fixed
 // X (columns line up), "horizontal" spans X at a fixed Y (rows line up).
-type SnapGuide = { orientation: "vertical" | "horizontal"; position: number }
+// `extent` scopes the line to a sub-range of the OTHER axis instead of the
+// whole canvas - a margin-match guide (see snapDragPosition) is only
+// meaningful within the one panel it was measured against, since a fixed
+// X isn't a shared coordinate across two panels of different widths the
+// way it is for two elements on the very same panel.
+type SnapGuide = {
+  orientation: "vertical" | "horizontal"
+  position: number
+  extent?: { min: number; max: number }
+}
 
 // The corner diagonally opposite each handle - it's what stays fixed while
 // that handle is dragged (position/size describe the ORIGINAL box, at
@@ -266,23 +275,26 @@ const DielinePreview = ({
   const clipboardRef = useRef<{ elementId: string; sequence: number } | null>(null)
 
   // Self-contained (module-level zoneBounds/fullPanelBounds/clamp only, no
-  // component-scoped resolveWrapClamp) deliberately - this and the
-  // Ctrl+C/Ctrl+V effect below are hooks/helpers declared before the
-  // allPoints-empty early return further down, so anything they close over
-  // must already be initialized in every render, including one that
-  // returns before resolveWrapClamp's own declaration is ever reached.
-  // Consequence: a duplicate never inherits a wrap across panels, even if
-  // its source was wrapped - it clamps to the source's own single panel,
-  // same as any other fresh, never-dragged element.
+  // component-scoped resolveWrapClamp) deliberately - this and everything
+  // else declared up to and including the Ctrl+C/Ctrl+V effect below are
+  // hooks/helpers wired up before the allPoints-empty early return further
+  // down, so anything they close over must already be initialized in
+  // every render, including one that returns before resolveWrapClamp's
+  // own declaration is ever reached.
+  const panelBoundsFor = (panelName: string, elementType: ElementType): Bounds | null => {
+    const zone = panels.find((p) => p.panelName === panelName)?.printZones[0]
+    if (!zone) return null
+    return canBleedToPanelEdge(elementType) ? fullPanelBounds(zone) : zoneBounds(zone)
+  }
+
+  // Consequence of the TDZ note above: a duplicate never inherits a wrap
+  // across panels, even if its source was wrapped - it clamps to the
+  // source's own single panel, same as any other fresh, never-dragged
+  // element.
   const duplicateElementAt = (el: ResolvedElement, offsetMultiplier: number) => {
     if (!onDuplicateElement) return
 
-    const zone = panels.find((p) => p.panelName === el.panelName)?.printZones[0]
-    const bounds = zone
-      ? canBleedToPanelEdge(el.elementType)
-        ? fullPanelBounds(zone)
-        : zoneBounds(zone)
-      : null
+    const bounds = panelBoundsFor(el.panelName, el.elementType)
 
     // Offset away from whichever edge the source is already nearest to, not
     // always down-right - a fresh library/icon element's default anchor is
@@ -606,12 +618,24 @@ const DielinePreview = ({
   // if several are in range - X and Y are chosen independently of each
   // other too, so e.g. matching one element's left edge while also
   // matching a DIFFERENT element's vertical center is fine).
+  //
+  // X also gets a second kind of match: the GAP from each element's own
+  // panel edge (see the margin block below), not just absolute position -
+  // needed for FEFCO 0201 specifically because front/back share the box's
+  // LENGTH as their panel width while right/left share its WIDTH, so two
+  // elements meant to "repeat" the same look on opposite long (or short)
+  // faces will almost never land on the same absolute X, only the same
+  // margin. Y doesn't need this: every main panel shares the box's one
+  // HEIGHT, so absolute Y already means the same thing on every panel.
   const snapDragPosition = (
     rawBox: Bounds,
+    elementType: ElementType,
+    myPanelName: string,
     excludeElementId: string
   ): { dx: number; dy: number; guides: SnapGuide[] } => {
     const centerX = (rawBox.minX + rawBox.maxX) / 2
     const centerY = (rawBox.minY + rawBox.maxY) / 2
+    const myZone = panelBoundsFor(myPanelName, elementType)
 
     let bestX: { delta: number; guide: SnapGuide } | null = null
     let bestY: { delta: number; guide: SnapGuide } | null = null
@@ -633,6 +657,49 @@ const DielinePreview = ({
         const delta = theirs - mine
         if (Math.abs(delta) <= SNAP_THRESHOLD_MM && (!bestX || Math.abs(delta) < Math.abs(bestX.delta))) {
           bestX = { delta, guide: { orientation: "vertical", position: theirs } }
+        }
+      }
+
+      if (myZone) {
+        const otherZone = panelBoundsFor(other.panelName, other.elementType)
+        if (otherZone) {
+          // Shift needed so MY left-edge gap from my own panel's left edge
+          // equals THEIRS (a fixed reference - theirs never moves here).
+          const myLeftMargin = rawBox.minX - myZone.minX
+          const otherLeftMargin = oMinX - otherZone.minX
+          const leftDelta = otherLeftMargin - myLeftMargin
+          if (
+            Math.abs(leftDelta) <= SNAP_THRESHOLD_MM &&
+            (!bestX || Math.abs(leftDelta) < Math.abs(bestX.delta))
+          ) {
+            bestX = {
+              delta: leftDelta,
+              guide: {
+                orientation: "vertical",
+                position: myZone.minX + otherLeftMargin,
+                extent: { min: myZone.minY, max: myZone.maxY },
+              },
+            }
+          }
+
+          // Same idea, mirrored: my gap from my own RIGHT edge matches
+          // theirs from their right edge.
+          const myRightMargin = myZone.maxX - rawBox.maxX
+          const otherRightMargin = otherZone.maxX - oMaxX
+          const rightDelta = myRightMargin - otherRightMargin
+          if (
+            Math.abs(rightDelta) <= SNAP_THRESHOLD_MM &&
+            (!bestX || Math.abs(rightDelta) < Math.abs(bestX.delta))
+          ) {
+            bestX = {
+              delta: rightDelta,
+              guide: {
+                orientation: "vertical",
+                position: myZone.maxX - otherRightMargin,
+                extent: { min: myZone.minY, max: myZone.maxY },
+              },
+            }
+          }
         }
       }
 
@@ -799,6 +866,16 @@ const DielinePreview = ({
     const draggedX = dragState.elementStart.x + dxSvg
     const draggedY = dragState.elementStart.y - dySvg
 
+    // Which panel this raw (pre-snap) position is over - same center-point
+    // logic the real panel retarget below uses, needed here only so a
+    // margin-match snap (see snapDragPosition) knows which panel's own
+    // edges "my" gap is measured from. A snap only ever nudges by a few
+    // mm, so it practically never changes which panel this resolves to;
+    // the retarget below (using the SNAPPED position) stays the
+    // authoritative one for actual clamping.
+    const draggedCenter = { x: draggedX + dragState.size.w / 2, y: draggedY + dragState.size.h / 2 }
+    const panelForSnap = findPanelAt(draggedCenter)?.panelName ?? dragState.panelName
+
     // Smart-guide snap onto another element's edge/center, computed from
     // the raw (pre-clamp, pre-panel-retarget) pointer position - see
     // snapDragPosition. Applied before panel targeting/clamping below so a
@@ -812,6 +889,8 @@ const DielinePreview = ({
         maxX: draggedX + dragState.size.w,
         maxY: draggedY + dragState.size.h,
       },
+      dragState.elementType,
+      panelForSnap,
       dragState.elementId
     )
     setSnapGuides(snap.guides)
@@ -1264,19 +1343,23 @@ const DielinePreview = ({
             })}
           </g>
         ))}
-        {snapGuides.map((guide, i) => (
-          <line
-            key={i}
-            x1={guide.orientation === "vertical" ? guide.position : minX}
-            y1={guide.orientation === "vertical" ? flipY(minY) : flipY(guide.position)}
-            x2={guide.orientation === "vertical" ? guide.position : maxX}
-            y2={guide.orientation === "vertical" ? flipY(maxY) : flipY(guide.position)}
-            stroke="#ec4899"
-            strokeWidth={1}
-            vectorEffect="non-scaling-stroke"
-            pointerEvents="none"
-          />
-        ))}
+        {snapGuides.map((guide, i) => {
+          const extentMin = guide.extent?.min ?? (guide.orientation === "vertical" ? minY : minX)
+          const extentMax = guide.extent?.max ?? (guide.orientation === "vertical" ? maxY : maxX)
+          return (
+            <line
+              key={i}
+              x1={guide.orientation === "vertical" ? guide.position : extentMin}
+              y1={guide.orientation === "vertical" ? flipY(extentMin) : flipY(guide.position)}
+              x2={guide.orientation === "vertical" ? guide.position : extentMax}
+              y2={guide.orientation === "vertical" ? flipY(extentMax) : flipY(guide.position)}
+              stroke="#ec4899"
+              strokeWidth={1}
+              vectorEffect="non-scaling-stroke"
+              pointerEvents="none"
+            />
+          )
+        })}
       </g>
     </svg>
   )
