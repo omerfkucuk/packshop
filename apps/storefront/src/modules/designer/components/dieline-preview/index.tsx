@@ -119,6 +119,11 @@ type ResizeState = {
   current: { position: Point; size: { w: number; h: number } }
 }
 
+// A smart-guide line shown while dragging, at the mm coordinate another
+// element's matching edge/center sits at - "vertical" spans Y at a fixed
+// X (columns line up), "horizontal" spans X at a fixed Y (rows line up).
+type SnapGuide = { orientation: "vertical" | "horizontal"; position: number }
+
 // The corner diagonally opposite each handle - it's what stays fixed while
 // that handle is dragged (position/size describe the ORIGINAL box, at
 // gesture start).
@@ -200,6 +205,15 @@ const MIN_ELEMENT_SIZE_MM = 8
 // the paste's own sequence number (see clipboardRef below), fanning
 // several pastes out in a staircase instead of stacking them all here.
 const DUPLICATE_OFFSET_MM = 10
+// How close (mm) another element's edge/center needs to be before a drag
+// snaps onto it and shows an alignment guide - Figma/Canva-ish tolerance,
+// tight enough that a deliberately off-alignment drag isn't fought once
+// it's past the threshold.
+const SNAP_THRESHOLD_MM = 4
+// Same idea for a resize - how close the growing width/height needs to get
+// to another element's own width or height before it snaps to match it
+// exactly.
+const SIZE_SNAP_THRESHOLD_MM = 4
 
 // Flat 2D render of a generated dieline: cut lines solid black, crease lines
 // dashed gray, print zones lightly shaded (or the resolved layout's chosen
@@ -227,6 +241,13 @@ const DielinePreview = ({
   const svgRef = useRef<SVGSVGElement>(null)
   const [dragState, setDragState] = useState<DragState | null>(null)
   const [resizeState, setResizeState] = useState<ResizeState | null>(null)
+  // Active smart guide(s) while dragging (empty otherwise) - see
+  // snapDragPosition below.
+  const [snapGuides, setSnapGuides] = useState<SnapGuide[]>([])
+  // Which other element's size a resize is currently snapped to match, if
+  // any - highlighted on canvas so the match is obvious, not just a number
+  // that happens to line up. See snapResizeScale below.
+  const [sizeMatchElementId, setSizeMatchElementId] = useState<string | null>(null)
   // Not cleared when the element disappears from a new resolvedLayout (a
   // stale id here is harmless - the render loop below only shows resize
   // handles for elements it's actually iterating over).
@@ -574,6 +595,107 @@ const DielinePreview = ({
       })
     }
 
+  const otherElements = (excludeElementId: string): ResolvedElement[] =>
+    (resolvedLayout?.panels ?? [])
+      .flatMap((p) => p.elements)
+      .filter((e) => e.elementId !== excludeElementId)
+
+  // Figma/Canva-style smart guides: snaps a dragged box's raw (pre-clamp)
+  // position onto whichever OTHER element's matching edge or center is
+  // within SNAP_THRESHOLD_MM, independently per axis (closest match wins
+  // if several are in range - X and Y are chosen independently of each
+  // other too, so e.g. matching one element's left edge while also
+  // matching a DIFFERENT element's vertical center is fine).
+  const snapDragPosition = (
+    rawBox: Bounds,
+    excludeElementId: string
+  ): { dx: number; dy: number; guides: SnapGuide[] } => {
+    const centerX = (rawBox.minX + rawBox.maxX) / 2
+    const centerY = (rawBox.minY + rawBox.maxY) / 2
+
+    let bestX: { delta: number; guide: SnapGuide } | null = null
+    let bestY: { delta: number; guide: SnapGuide } | null = null
+
+    for (const other of otherElements(excludeElementId)) {
+      const oMinX = other.position.x
+      const oMaxX = other.position.x + other.size.w
+      const oCenterX = oMinX + other.size.w / 2
+      const oMinY = other.position.y
+      const oMaxY = other.position.y + other.size.h
+      const oCenterY = oMinY + other.size.h / 2
+
+      const xPairs: [number, number][] = [
+        [rawBox.minX, oMinX],
+        [rawBox.maxX, oMaxX],
+        [centerX, oCenterX],
+      ]
+      for (const [mine, theirs] of xPairs) {
+        const delta = theirs - mine
+        if (Math.abs(delta) <= SNAP_THRESHOLD_MM && (!bestX || Math.abs(delta) < Math.abs(bestX.delta))) {
+          bestX = { delta, guide: { orientation: "vertical", position: theirs } }
+        }
+      }
+
+      const yPairs: [number, number][] = [
+        [rawBox.minY, oMinY],
+        [rawBox.maxY, oMaxY],
+        [centerY, oCenterY],
+      ]
+      for (const [mine, theirs] of yPairs) {
+        const delta = theirs - mine
+        if (Math.abs(delta) <= SNAP_THRESHOLD_MM && (!bestY || Math.abs(delta) < Math.abs(bestY.delta))) {
+          bestY = { delta, guide: { orientation: "horizontal", position: theirs } }
+        }
+      }
+    }
+
+    return {
+      dx: bestX?.delta ?? 0,
+      dy: bestY?.delta ?? 0,
+      guides: [bestX?.guide, bestY?.guide].filter((g): g is SnapGuide => !!g),
+    }
+  }
+
+  // Same idea as snapDragPosition, but for a resize's SIZE, not position -
+  // snaps the growing box's width OR height to exactly match another
+  // element's, once it's already close. Independent of snapDragPosition: a
+  // resize can match another element's size without also being aligned to
+  // it, and vice versa.
+  const snapResizeScale = (
+    originalSize: { w: number; h: number },
+    scale: number,
+    minScale: number,
+    maxScale: number,
+    excludeElementId: string
+  ): { scale: number; matchedElementId: string | null } => {
+    const currentW = originalSize.w * scale
+    const currentH = originalSize.h * scale
+
+    let best: { delta: number; scale: number; elementId: string } | null = null
+    for (const other of otherElements(excludeElementId)) {
+      for (const targetDim of [other.size.w, other.size.h]) {
+        const scaleForW = targetDim / originalSize.w
+        if (scaleForW >= minScale && scaleForW <= maxScale) {
+          const delta = Math.abs(currentW - targetDim)
+          if (delta <= SIZE_SNAP_THRESHOLD_MM && (!best || delta < best.delta)) {
+            best = { delta, scale: scaleForW, elementId: other.elementId }
+          }
+        }
+        const scaleForH = targetDim / originalSize.h
+        if (scaleForH >= minScale && scaleForH <= maxScale) {
+          const delta = Math.abs(currentH - targetDim)
+          if (delta <= SIZE_SNAP_THRESHOLD_MM && (!best || delta < best.delta)) {
+            best = { delta, scale: scaleForH, elementId: other.elementId }
+          }
+        }
+      }
+    }
+
+    return best
+      ? { scale: best.scale, matchedElementId: best.elementId }
+      : { scale, matchedElementId: null }
+  }
+
   const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
     if (resizeState) {
       const svgPoint = toSvgPoint(e.clientX, e.clientY)
@@ -637,6 +759,20 @@ const DielinePreview = ({
       const maxScale = Math.min(maxScaleX, maxScaleY)
       scale = clamp(scale, minScale, Math.max(minScale, maxScale))
 
+      // Snap the size (not position) to match another element's width or
+      // height once it's already close - see snapResizeScale. Applied
+      // AFTER the wrap/bounds clamp above so a match is never offered
+      // outside what this gesture could already legally reach.
+      const sizeSnap = snapResizeScale(
+        resizeState.originalSize,
+        scale,
+        minScale,
+        Math.max(minScale, maxScale),
+        resizeState.elementId
+      )
+      scale = sizeSnap.scale
+      setSizeMatchElementId(sizeSnap.matchedElementId)
+
       const newSize = {
         w: resizeState.originalSize.w * scale,
         h: resizeState.originalSize.h * scale,
@@ -660,8 +796,27 @@ const DielinePreview = ({
     const dySvg = current.y - dragState.pointerStart.y
     // x maps 1:1 svg->mm; y inverts (svgY = flipY(mmY) is an involution) -
     // an on-screen downward drag must SUBTRACT from mm y (Y-up), not add.
-    const rawX = dragState.elementStart.x + dxSvg
-    const rawY = dragState.elementStart.y - dySvg
+    const draggedX = dragState.elementStart.x + dxSvg
+    const draggedY = dragState.elementStart.y - dySvg
+
+    // Smart-guide snap onto another element's edge/center, computed from
+    // the raw (pre-clamp, pre-panel-retarget) pointer position - see
+    // snapDragPosition. Applied before panel targeting/clamping below so a
+    // snap that nudges the box back onto its starting panel (right at a
+    // seam) goes through the exact same downstream logic as any other
+    // position, rather than being a special case.
+    const snap = snapDragPosition(
+      {
+        minX: draggedX,
+        minY: draggedY,
+        maxX: draggedX + dragState.size.w,
+        maxY: draggedY + dragState.size.h,
+      },
+      dragState.elementId
+    )
+    setSnapGuides(snap.guides)
+    const rawX = draggedX + snap.dx
+    const rawY = draggedY + snap.dy
 
     // Which panel to clamp against is decided by the element's own
     // (unclamped) CENTER point, not dragState.panelName - crossing into
@@ -709,6 +864,7 @@ const DielinePreview = ({
       }
     }
     setDragState(null)
+    setSnapGuides([])
   }
 
   const endResize = () => {
@@ -722,6 +878,7 @@ const DielinePreview = ({
       )
     }
     setResizeState(null)
+    setSizeMatchElementId(null)
   }
 
   const handlePointerUp = () => {
@@ -937,6 +1094,20 @@ const DielinePreview = ({
                       pointerEvents="none"
                     />
                   )}
+                  {sizeMatchElementId === el.elementId && (
+                    <rect
+                      x={x}
+                      y={y}
+                      width={size.w}
+                      height={size.h}
+                      fill="none"
+                      stroke="#ec4899"
+                      strokeWidth={1.5}
+                      strokeDasharray="2 2"
+                      vectorEffect="non-scaling-stroke"
+                      pointerEvents="none"
+                    />
+                  )}
                   {onDragEnd && (
                     <rect
                       x={x}
@@ -1092,6 +1263,19 @@ const DielinePreview = ({
               )
             })}
           </g>
+        ))}
+        {snapGuides.map((guide, i) => (
+          <line
+            key={i}
+            x1={guide.orientation === "vertical" ? guide.position : minX}
+            y1={guide.orientation === "vertical" ? flipY(minY) : flipY(guide.position)}
+            x2={guide.orientation === "vertical" ? guide.position : maxX}
+            y2={guide.orientation === "vertical" ? flipY(maxY) : flipY(guide.position)}
+            stroke="#ec4899"
+            strokeWidth={1}
+            vectorEffect="non-scaling-stroke"
+            pointerEvents="none"
+          />
         ))}
       </g>
     </svg>
