@@ -2,7 +2,7 @@
 
 import { Suspense } from "react"
 import { Canvas } from "@react-three/fiber"
-import { OrbitControls } from "@react-three/drei"
+import { ContactShadows, Environment, Lightformer, OrbitControls } from "@react-three/drei"
 import type { PanelGeometry } from "@dtc/packaging-engine/shared"
 import type { ResolvedLayout } from "@dtc/layout-engine"
 import BoxMesh from "./box-mesh"
@@ -49,15 +49,41 @@ const BoxPreview3D = ({
         }}
       >
         <Suspense fallback={null}>
-          <ambientLight intensity={0.65} />
           <directionalLight
             position={[boundingRadius * 3, boundingRadius * 4, boundingRadius * 2]}
-            intensity={0.8}
+            intensity={0.6}
           />
-          <directionalLight
-            position={[-boundingRadius * 3, boundingRadius, -boundingRadius * 2]}
-            intensity={0.3}
-          />
+          {/* Procedural studio rig instead of an HDRI preset - no external
+              asset fetch (matches this project's no-network-dependency
+              rendering philosophy), and it's what actually fixed the "flat
+              plastic" look: image-based lighting from soft panels gives the
+              board real gradient/reflection instead of two hard directional
+              lights. */}
+          <Environment resolution={256}>
+            <Lightformer
+              intensity={2.5}
+              rotation={[Math.PI / 2, 0, 0]}
+              position={[0, boundingRadius * 6, 0]}
+              scale={[boundingRadius * 10, boundingRadius * 10, 1]}
+            />
+            <Lightformer
+              intensity={0.8}
+              rotation={[0, Math.PI / 2, 0]}
+              position={[-boundingRadius * 6, boundingRadius, 0]}
+              scale={[boundingRadius * 10, boundingRadius * 10, 1]}
+            />
+            <Lightformer
+              intensity={0.8}
+              rotation={[0, -Math.PI / 2, 0]}
+              position={[boundingRadius * 6, boundingRadius, 0]}
+              scale={[boundingRadius * 10, boundingRadius * 10, 1]}
+            />
+            <Lightformer
+              intensity={0.4}
+              position={[0, boundingRadius, -boundingRadius * 6]}
+              scale={[boundingRadius * 10, boundingRadius * 10, 1]}
+            />
+          </Environment>
           <BoxMesh
             panels={panels}
             resolvedLayout={resolvedLayout}
@@ -65,6 +91,16 @@ const BoxPreview3D = ({
             dimensionsM={{ length: lengthM, width: widthM, height: heightM }}
           />
         </Suspense>
+        {/* Grounds the box - without this it visibly floats, one of the
+            biggest "this is obviously a 3D render" tells. */}
+        <ContactShadows
+          position={[0, -heightM / 2 - 0.001, 0]}
+          opacity={0.45}
+          blur={2.4}
+          far={boundingRadius * 3}
+          scale={boundingRadius * 6}
+          resolution={512}
+        />
         <OrbitControls
           enablePan={false}
           makeDefault

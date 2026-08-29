@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
+import { RoundedBoxGeometry } from "three-stdlib"
 import type { PanelGeometry } from "@dtc/packaging-engine/shared"
 import type { ResolvedLayout } from "@dtc/layout-engine"
 import {
@@ -10,8 +11,21 @@ import {
   DEFAULT_BOARD_COLOR,
 } from "../../utils/panel-texture"
 import { warmUpFont } from "../../utils/measure-text"
+import { getGrainTexture } from "../../utils/grain-texture"
 
 const TEXTURE_PX_PER_MM = 8
+
+// RoundedBoxGeometry clamps this to at most half the smallest box
+// dimension itself, so a tiny custom size degrades gracefully instead of
+// self-intersecting.
+const EDGE_RADIUS_M = 0.003
+
+// Real board grain doesn't scale with a face's size - repeat it roughly
+// every 25mm of actual board regardless of box/panel dimensions, so a big
+// and a small box both read as the same physical cardboard.
+const GRAIN_TILE_M = 0.025
+const BUMP_SCALE = 0.00025
+const BOARD_ROUGHNESS = 0.9
 
 export type Dimensions3D = { length: number; width: number; height: number }
 
@@ -44,7 +58,14 @@ const proxyUrlFor = (originalUrl: string) =>
 // pipeline (font/image warmup -> rasterize 4 panels) resolves.
 const BoxMesh = ({ panels, resolvedLayout, backgroundColors, dimensionsM }: BoxMeshProps) => {
   const geometry = useMemo(
-    () => new THREE.BoxGeometry(dimensionsM.length, dimensionsM.height, dimensionsM.width),
+    () =>
+      new RoundedBoxGeometry(
+        dimensionsM.length,
+        dimensionsM.height,
+        dimensionsM.width,
+        3,
+        EDGE_RADIUS_M
+      ),
     [dimensionsM.length, dimensionsM.width, dimensionsM.height]
   )
 
@@ -123,12 +144,42 @@ const BoxMesh = ({ panels, resolvedLayout, backgroundColors, dimensionsM }: BoxM
   }, [resolvedLayout, backgroundColors, panels])
 
   const materials = useMemo(() => {
-    const materialFor = (panelName: string) => {
-      const texture = textures?.[panelName]
-      return new THREE.MeshStandardMaterial(
-        texture ? { map: texture } : { color: DEFAULT_BOARD_COLOR }
-      )
+    const grain = getGrainTexture()
+
+    // Each face gets its own clone so its repeat can match that face's own
+    // real-world size (grain.clone() is a cheap ~128x128 canvas re-upload,
+    // not a re-generation) - a shared texture with one repeat would make
+    // the grain look coarser on the shorter faces than the longer ones.
+    const grainFor = (faceWidthM: number, faceHeightM: number) => {
+      const faceGrain = grain.clone()
+      faceGrain.repeat.set(faceWidthM / GRAIN_TILE_M, faceHeightM / GRAIN_TILE_M)
+      faceGrain.needsUpdate = true
+      return faceGrain
     }
+
+    const materialFor = (panelName: string, faceWidthM: number, faceHeightM: number) => {
+      const texture = textures?.[panelName]
+      const faceGrain = grainFor(faceWidthM, faceHeightM)
+      return new THREE.MeshStandardMaterial({
+        ...(texture ? { map: texture } : { color: DEFAULT_BOARD_COLOR }),
+        roughness: BOARD_ROUGHNESS,
+        metalness: 0,
+        bumpMap: faceGrain,
+        bumpScale: BUMP_SCALE,
+        roughnessMap: faceGrain,
+      })
+    }
+
+    const flatMaterialFor = (faceWidthM: number, faceHeightM: number) =>
+      new THREE.MeshStandardMaterial({
+        color: DEFAULT_BOARD_COLOR,
+        roughness: BOARD_ROUGHNESS,
+        metalness: 0,
+        bumpMap: grainFor(faceWidthM, faceHeightM),
+        bumpScale: BUMP_SCALE,
+        roughnessMap: grainFor(faceWidthM, faceHeightM),
+      })
+
     // BoxGeometry's material-array order is [+x, -x, +y, -y, +z, -z].
     // X-extent = length -> +-x are the width panels (right/left);
     // Z-extent = width -> +-z are the length panels (front/back);
@@ -136,14 +187,14 @@ const BoxMesh = ({ panels, resolvedLayout, backgroundColors, dimensionsM }: BoxM
     // +z = front deliberately, so it's camera-facing at the default orbit
     // angle (three.js's default camera looks toward -Z).
     return [
-      materialFor(PANEL_NAMES.right),
-      materialFor(PANEL_NAMES.left),
-      new THREE.MeshStandardMaterial({ color: DEFAULT_BOARD_COLOR }),
-      new THREE.MeshStandardMaterial({ color: DEFAULT_BOARD_COLOR }),
-      materialFor(PANEL_NAMES.front),
-      materialFor(PANEL_NAMES.back),
+      materialFor(PANEL_NAMES.right, dimensionsM.width, dimensionsM.height),
+      materialFor(PANEL_NAMES.left, dimensionsM.width, dimensionsM.height),
+      flatMaterialFor(dimensionsM.length, dimensionsM.width),
+      flatMaterialFor(dimensionsM.length, dimensionsM.width),
+      materialFor(PANEL_NAMES.front, dimensionsM.length, dimensionsM.height),
+      materialFor(PANEL_NAMES.back, dimensionsM.length, dimensionsM.height),
     ]
-  }, [textures])
+  }, [textures, dimensionsM.length, dimensionsM.width, dimensionsM.height])
 
   return <mesh geometry={geometry} material={materials} />
 }
