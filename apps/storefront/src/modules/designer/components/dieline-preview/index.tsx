@@ -640,6 +640,38 @@ const DielinePreview = ({
     let bestX: { delta: number; guide: SnapGuide } | null = null
     let bestY: { delta: number; guide: SnapGuide } | null = null
 
+    // Snap to the CURRENT panel's own center, independent of any other
+    // element - the one case none of the element-to-element matching
+    // below can cover on its own (nothing to compare against with just
+    // one element on the canvas), and the most common thing a customer
+    // actually wants when centering a single logo/element on a panel.
+    if (myZone) {
+      const zoneCenterX = (myZone.minX + myZone.maxX) / 2
+      const zoneCenterY = (myZone.minY + myZone.maxY) / 2
+      const centerDeltaX = zoneCenterX - centerX
+      if (Math.abs(centerDeltaX) <= SNAP_THRESHOLD_MM) {
+        bestX = {
+          delta: centerDeltaX,
+          guide: {
+            orientation: "vertical",
+            position: zoneCenterX,
+            extent: { min: myZone.minY, max: myZone.maxY },
+          },
+        }
+      }
+      const centerDeltaY = zoneCenterY - centerY
+      if (Math.abs(centerDeltaY) <= SNAP_THRESHOLD_MM) {
+        bestY = {
+          delta: centerDeltaY,
+          guide: {
+            orientation: "horizontal",
+            position: zoneCenterY,
+            extent: { min: myZone.minX, max: myZone.maxX },
+          },
+        }
+      }
+    }
+
     for (const other of otherElements(excludeElementId)) {
       const oMinX = other.position.x
       const oMaxX = other.position.x + other.size.w
