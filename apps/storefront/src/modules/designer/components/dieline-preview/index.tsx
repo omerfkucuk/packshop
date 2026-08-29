@@ -6,7 +6,6 @@ import { zoneOrigin, deriveWrapZones, type WrapZone } from "@dtc/packaging-engin
 import type { ElementType, ResolvedLayout, ResolvedElement } from "@dtc/layout-engine"
 import { noElementOverlapRule, elementsTouchingPanel } from "@dtc/layout-engine/constraints"
 import { ELEMENT_LIBRARY } from "../../utils/element-library"
-import { DEFAULT_BOARD_COLOR } from "../../utils/panel-texture"
 import {
   MIN_TEXT_SIZE,
   textFontSize,
@@ -1094,36 +1093,6 @@ const DielinePreview = ({
         ))}
       </defs>
       <g transform={`matrix(1 0 0 -1 0 ${minY + maxY})`}>
-        {/* A panel's own flaps/glue tab are real board too - filling its
-            full cut-line envelope (not just the print zone) in the same
-            kraft color the 3D preview uses is what makes this actually
-            read as "the physical face of the box" rather than a plain
-            technical schematic, especially now that clicking a face in 3D
-            opens straight into this same view for that one panel. A plain
-            bounding-box rect (not the true, possibly-notched cut outline)
-            is deliberate - any small kerf gap between adjacent flaps just
-            reads as continuous board under the black cut line, which is
-            correct: the physical sheet IS continuous there before it's
-            actually cut. */}
-        {panels.map((panel) => {
-          const points = [...panel.cutLines, ...panel.creaseLines].flat()
-          if (points.length === 0) return null
-          const px = points.map((p) => p.x)
-          const py = points.map((p) => p.y)
-          const bx = Math.min(...px)
-          const by = Math.min(...py)
-          return (
-            <rect
-              key={`${panel.panelName}-board`}
-              x={bx}
-              y={by}
-              width={Math.max(...px) - bx}
-              height={Math.max(...py) - by}
-              fill={DEFAULT_BOARD_COLOR}
-              stroke="none"
-            />
-          )
-        })}
         {panels.flatMap((panel) =>
           panel.printZones.map((zone) => (
             <polygon
