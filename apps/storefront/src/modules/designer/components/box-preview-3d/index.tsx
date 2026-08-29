@@ -15,18 +15,25 @@ type BoxPreview3DProps = {
   backgroundColors?: Record<string, string>
   dimensionsMm: Dimensions3D
   className?: string
+  /** See BoxMesh's own doc - fires with a printed face's panel name on
+   *  click, omitted entirely means the box itself doesn't respond to
+   *  clicks (orbit/zoom still always works, via OrbitControls). */
+  onFaceClick?: (panelName: string) => void
 }
 
-// Read-only preview of the assembled box - orbit/rotate only, no editing
-// (editing stays on the precise mm-based 2D dieline, DielinePreview).
-// Loaded via next/dynamic({ssr:false}) from designer-shell, so the three.js
-// bundle only downloads once the customer actually switches to this view.
+// Orbit/zoom preview of the assembled box - actual element editing always
+// stays on the precise mm-based 2D dieline (DielinePreview); clicking a
+// printed face here (onFaceClick) is a shortcut INTO that same 2D editor,
+// not a second editing surface of its own. Loaded via
+// next/dynamic({ssr:false}) from designer-shell, so the three.js bundle
+// only downloads once the customer actually switches to this view.
 const BoxPreview3D = ({
   panels,
   resolvedLayout,
   backgroundColors,
   dimensionsMm,
   className,
+  onFaceClick,
 }: BoxPreview3DProps) => {
   // Scene-unit convention: meters, not raw mm - three.js's default light
   // intensities, camera near/far planes, and OrbitControls' own internal
@@ -89,6 +96,7 @@ const BoxPreview3D = ({
             resolvedLayout={resolvedLayout}
             backgroundColors={backgroundColors}
             dimensionsM={{ length: lengthM, width: widthM, height: heightM }}
+            onFaceClick={onFaceClick}
           />
         </Suspense>
         {/* Grounds the box - without this it visibly floats, one of the

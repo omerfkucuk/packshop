@@ -34,6 +34,11 @@ type BoxMeshProps = {
   resolvedLayout?: ResolvedLayout | null
   backgroundColors?: Record<string, string>
   dimensionsM: Dimensions3D
+  /** Fires with the physical panel name of whichever printed face was
+   *  clicked (front/right/back/left - never top/bottom, they're never
+   *  printed and have no elements to edit). Omit to make the box
+   *  click-through (e.g. a pure preview with no 2D editor to jump to). */
+  onFaceClick?: (panelName: string) => void
 }
 
 // Physical panel names generateFefco0201 always produces, matching
@@ -44,6 +49,18 @@ const PANEL_NAMES = {
   back: "Panel-L2",
   left: "Panel-W2",
 } as const
+
+// Mirrors the materials array's own [+x, -x, +y, -y, +z, -z] order below -
+// three.js sets Intersection.face.materialIndex to whichever of the 6
+// groups a raycast hit belongs to, for a mesh with a material array. Top/
+// bottom (indices 2/3) are deliberately absent - they're never printed,
+// so a click there has nothing to jump to.
+const FACE_MATERIAL_INDEX_TO_PANEL: Record<number, string> = {
+  0: PANEL_NAMES.right,
+  1: PANEL_NAMES.left,
+  4: PANEL_NAMES.front,
+  5: PANEL_NAMES.back,
+}
 
 // content.url is the only field a browser-side <canvas>/WebGL texture
 // operation can taint on - fetching it through this same-origin asset
@@ -56,7 +73,13 @@ const proxyUrlFor = (originalUrl: string) =>
 // Owns texture generation - a plain untextured board-color material shows
 // immediately, swapped for the real per-face textures once the async
 // pipeline (font/image warmup -> rasterize 4 panels) resolves.
-const BoxMesh = ({ panels, resolvedLayout, backgroundColors, dimensionsM }: BoxMeshProps) => {
+const BoxMesh = ({
+  panels,
+  resolvedLayout,
+  backgroundColors,
+  dimensionsM,
+  onFaceClick,
+}: BoxMeshProps) => {
   const geometry = useMemo(
     () =>
       new RoundedBoxGeometry(
@@ -198,7 +221,26 @@ const BoxMesh = ({ panels, resolvedLayout, backgroundColors, dimensionsM }: BoxM
     ]
   }, [textures, dimensionsM.length, dimensionsM.width, dimensionsM.height])
 
-  return <mesh geometry={geometry} material={materials} />
+  return (
+    <mesh
+      geometry={geometry}
+      material={materials}
+      onClick={
+        onFaceClick &&
+        ((event) => {
+          // Otherwise a click "through" the box would also fire
+          // OrbitControls' own click-adjacent handling and any parent
+          // scene listeners - this mesh is the only thing a click on the
+          // box should ever mean.
+          event.stopPropagation()
+          const materialIndex = event.face?.materialIndex
+          const panelName =
+            materialIndex !== undefined ? FACE_MATERIAL_INDEX_TO_PANEL[materialIndex] : undefined
+          if (panelName) onFaceClick(panelName)
+        })
+      }
+    />
+  )
 }
 
 export default BoxMesh

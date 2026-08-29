@@ -66,6 +66,19 @@ type Tool = "urun" | "komponent" | "marka-kiti" | "tema" | "yazi" | "elementler"
 // least 27cm combined, and Boy must never be shorter than En.
 const MIN_PAIR_SUM_CM = 27
 
+// Display-only Turkish label for the physical panel a 3D face click
+// resolves to (see BoxMesh's onFaceClick) - shown in the "which face am I
+// looking at" pill above the focused 2D view. Mirrors
+// FEFCO_0201_PANEL_SEMANTICS's mapping in reverse; kept as its own small
+// map here rather than inverting that one at runtime since it only exists
+// for this one label, not any real geometry/layout decision.
+const PANEL_DISPLAY_NAME: Record<string, string> = {
+  "Panel-L1": "Ön",
+  "Panel-W1": "Sağ",
+  "Panel-L2": "Arka",
+  "Panel-W2": "Sol",
+}
+
 const TOOLS: { id: Tool; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "urun", label: "Ürün", icon: Photo },
   { id: "komponent", label: "Konfigürasyon", icon: CogSixTooth },
@@ -116,8 +129,15 @@ const DesignerShell = ({
   const hasAutoAdvancedToBrandKit = useRef(!!initialVariant)
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
   // 3D is a read-only preview (orbit/rotate only) - all editing stays on
-  // the 2D dieline regardless of which view is currently showing.
+  // the 2D dieline regardless of which view is currently showing. Clicking
+  // a printed face while in 3D (see onFaceClick below) jumps INTO that 2D
+  // editor already zoomed to just the clicked face, via focusedPanelName.
   const [viewMode, setViewMode] = useState<"2d" | "3d">("2d")
+  // Which physical panel (if any) the 2D dieline is zoomed to - set by
+  // clicking a face in 3D, cleared by either 2D/3D toggle button (both are
+  // "show me everything" actions). null shows the full flat dieline, same
+  // as before this existed.
+  const [focusedPanelName, setFocusedPanelName] = useState<string | null>(null)
   const [options, setOptions] = useState<Record<string, string | undefined>>(
     () => optionsAsKeymap(initialVariant?.options ?? null) ?? {}
   )
@@ -355,6 +375,27 @@ const DesignerShell = ({
           resolvedLayout: applyManualOverrides(baseDesign.resolvedLayout, activeOverrides),
         }
       : baseDesign
+
+  // When a 3D face click has focused the 2D view on one panel, the 2D
+  // editor gets ONLY that panel's own geometry/elements - not a special
+  // mode DielinePreview knows about, just a smaller `panels` array and a
+  // resolvedLayout filtered to match. Its viewBox is derived from
+  // whatever panels it's given, so handing it one panel alone is what
+  // actually does the "zoom to this face" - and since cross-panel drag/
+  // wrap logic only ever sees panels it's given, dragging can't reach a
+  // neighbor that isn't there either, without any special-casing for that.
+  const displayedPanels: typeof geometryPanels = focusedPanelName
+    ? (geometryPanels?.filter((p) => p.panelName === focusedPanelName) ?? geometryPanels)
+    : geometryPanels
+  const displayedResolvedLayout =
+    focusedPanelName && appliedDesign?.resolvedLayout
+      ? {
+          ...appliedDesign.resolvedLayout,
+          panels: appliedDesign.resolvedLayout.panels.filter(
+            (p) => p.panelName === focusedPanelName
+          ),
+        }
+      : appliedDesign?.resolvedLayout
 
   // Shared by every manual-override writer below - always merges onto
   // whatever the element's override already had (never replaces it
@@ -934,25 +975,42 @@ const DesignerShell = ({
         <div className="flex-1 flex flex-col min-h-0">
           <div className="relative flex-1 bg-black/[0.02] flex items-center justify-center overflow-auto p-8">
             {geometryPanels && (
-              <div className="absolute top-4 right-4 z-10 flex rounded-lg border border-black/10 bg-white p-0.5 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setViewMode("2d")}
-                  className={`px-3 py-1.5 rounded-md transition-colors ${
-                    viewMode === "2d" ? "bg-black text-white" : "text-black/60 hover:text-black"
-                  }`}
-                >
-                  2D
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode("3d")}
-                  className={`px-3 py-1.5 rounded-md transition-colors ${
-                    viewMode === "3d" ? "bg-black text-white" : "text-black/60 hover:text-black"
-                  }`}
-                >
-                  3D
-                </button>
+              <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+                {focusedPanelName && viewMode === "2d" && (
+                  <button
+                    type="button"
+                    onClick={() => setFocusedPanelName(null)}
+                    className="flex items-center gap-1 rounded-lg border border-black/10 bg-white px-3 py-1.5 text-xs text-black/60 hover:text-black transition-colors"
+                  >
+                    ← {PANEL_DISPLAY_NAME[focusedPanelName] ?? focusedPanelName} · Tüm yüzler
+                  </button>
+                )}
+                <div className="flex rounded-lg border border-black/10 bg-white p-0.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewMode("2d")
+                      setFocusedPanelName(null)
+                    }}
+                    className={`px-3 py-1.5 rounded-md transition-colors ${
+                      viewMode === "2d" ? "bg-black text-white" : "text-black/60 hover:text-black"
+                    }`}
+                  >
+                    2D
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewMode("3d")
+                      setFocusedPanelName(null)
+                    }}
+                    className={`px-3 py-1.5 rounded-md transition-colors ${
+                      viewMode === "3d" ? "bg-black text-white" : "text-black/60 hover:text-black"
+                    }`}
+                  >
+                    3D
+                  </button>
+                </div>
               </div>
             )}
             {geometryPanels && viewMode === "3d" ? (
@@ -962,11 +1020,15 @@ const DesignerShell = ({
                 backgroundColors={appliedDesign?.backgroundColors}
                 dimensionsMm={geometryDimensionsMm!}
                 className="h-full w-full"
+                onFaceClick={(panelName) => {
+                  setFocusedPanelName(panelName)
+                  setViewMode("2d")
+                }}
               />
             ) : geometryPanels ? (
               <DielinePreview
-                panels={geometryPanels}
-                resolvedLayout={appliedDesign?.resolvedLayout}
+                panels={displayedPanels!}
+                resolvedLayout={displayedResolvedLayout}
                 backgroundColors={appliedDesign?.backgroundColors}
                 onDragEnd={handleElementDragEnd}
                 onResize={handleElementResize}
