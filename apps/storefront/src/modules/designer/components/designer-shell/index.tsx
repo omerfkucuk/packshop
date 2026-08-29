@@ -127,6 +127,19 @@ const DesignerShell = ({
     return "komponent"
   })
   const hasAutoAdvancedToBrandKit = useRef(!!initialVariant)
+  // Mobile only - below `small` the tool panel becomes a bottom sheet
+  // instead of an always-visible sidebar, so whether it's open needs
+  // tracking separately from which tool is active. Ignored at `small` and
+  // up, where the sidebar is always shown regardless of this value.
+  const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(true)
+  const handleToolTap = (tool: Tool) => {
+    if (tool === activeTool) {
+      setIsMobilePanelOpen((open) => !open)
+      return
+    }
+    setActiveTool(tool)
+    setIsMobilePanelOpen(true)
+  }
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
   // 3D is a read-only preview (orbit/rotate only) - all editing stays on
   // the 2D dieline regardless of which view is currently showing. Clicking
@@ -250,6 +263,7 @@ const DesignerShell = ({
     ) {
       hasAutoAdvancedToBrandKit.current = true
       setActiveTool("marka-kiti")
+      setIsMobilePanelOpen(true)
     }
   }, [selectedVariant, activeTool])
 
@@ -688,32 +702,51 @@ const DesignerShell = ({
       </header>
 
       {/* Main row */}
-      <div className="flex-1 flex min-h-0">
-        {/* Icon rail */}
-        <nav className="w-24 shrink-0 border-r border-black/10 flex flex-col items-center py-4 gap-y-1 overflow-y-auto">
+      <div className="flex-1 flex flex-col min-h-0 small:flex-row">
+        {/* Icon rail - a bottom tab bar on mobile, a left rail from `small` up */}
+        <nav className="fixed inset-x-0 bottom-0 z-40 flex h-16 w-full items-stretch justify-around border-t border-black/10 bg-white small:static small:z-auto small:h-auto small:w-24 small:flex-col small:items-center small:justify-start small:gap-y-1 small:overflow-y-auto small:border-r small:border-t-0 small:py-4">
           {TOOLS.map((tool) => {
             const Icon = tool.icon
             const active = activeTool === tool.id
             return (
               <button
                 key={tool.id}
-                onClick={() => setActiveTool(tool.id)}
-                className={`flex flex-col items-center gap-y-1 w-20 py-2 rounded-lg text-[10px] transition-colors ${
+                onClick={() => handleToolTap(tool.id)}
+                className={`flex flex-1 min-w-0 flex-col items-center justify-center gap-y-0.5 px-1 text-[10px] transition-colors small:flex-none small:w-20 small:justify-start small:gap-y-1 small:py-2 small:rounded-lg ${
                   active
-                    ? "bg-black/[0.06] text-black font-medium"
-                    : "text-black/50 hover:bg-black/[0.04] hover:text-black"
+                    ? "text-black font-medium small:bg-black/[0.06]"
+                    : "text-black/50 hover:text-black small:hover:bg-black/[0.04]"
                 }`}
                 data-testid={`designer-tool-${tool.id}`}
               >
                 <Icon className="h-5 w-5" />
-                {tool.label}
+                <span className="max-w-full truncate">{tool.label}</span>
               </button>
             )
           })}
         </nav>
 
-        {/* Tool panel */}
-        <div className="w-80 shrink-0 border-r border-black/10 overflow-y-auto p-5">
+        {/* Backdrop - mobile only, taps outside the sheet close it */}
+        {isMobilePanelOpen && (
+          <div
+            className="fixed inset-0 z-20 bg-black/20 small:hidden"
+            onClick={() => setIsMobilePanelOpen(false)}
+          />
+        )}
+
+        {/* Tool panel - a bottom sheet over the canvas on mobile, a fixed
+            sidebar from `small` up. isMobilePanelOpen only ever affects the
+            mobile sheet's transform; the `small:` variants below always win
+            past that breakpoint regardless of its value. */}
+        <div
+          className={`fixed inset-x-0 bottom-16 z-30 max-h-[65vh] overflow-y-auto rounded-t-2xl border-t border-black/10 bg-white shadow-[0_-8px_24px_rgba(0,0,0,0.08)] transition-transform duration-200 ease-out small:static small:z-auto small:max-h-none small:w-80 small:shrink-0 small:translate-y-0 small:overflow-y-auto small:rounded-none small:border-r small:border-t-0 small:shadow-none ${
+            isMobilePanelOpen ? "translate-y-0" : "pointer-events-none translate-y-full"
+          }`}
+        >
+          <div className="flex items-center justify-center pt-2.5 pb-1 small:hidden">
+            <span className="h-1 w-10 rounded-full bg-black/10" />
+          </div>
+          <div className="p-5">
           {activeTool === "urun" && (
             <div className="flex flex-col gap-y-4">
               <h2 className="text-lg font-semibold text-black">Ürün</h2>
@@ -969,11 +1002,13 @@ const DesignerShell = ({
           {activeTool === "yazi" && (
             <TextPanel onAddCombo={toggleElement} />
           )}
+          </div>
         </div>
 
-        {/* Canvas + AI bar */}
-        <div className="flex-1 flex flex-col min-h-0">
-          <div className="relative flex-1 bg-black/[0.02] flex items-center justify-center overflow-auto p-8">
+        {/* Canvas + AI bar - pb-16 on mobile keeps content clear of the
+            fixed bottom tab bar, which sits outside normal flow there */}
+        <div className="flex-1 flex flex-col min-h-0 pb-16 small:pb-0">
+          <div className="relative flex-1 bg-black/[0.02] flex items-center justify-center overflow-auto p-4 small:p-8">
             {geometryPanels && (
               <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
                 {focusedPanelName && viewMode === "2d" && (
@@ -1049,7 +1084,7 @@ const DesignerShell = ({
               <span className="text-sm text-black/50">Görsel bulunamadı.</span>
             ) : (
               <span className="text-sm text-black/50">
-                Soldan bir ürün seçerek başlayın.
+                Bir ürün seçerek başlayın.
               </span>
             )}
           </div>
