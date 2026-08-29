@@ -584,6 +584,11 @@ const DielinePreview = ({
   const handlePointerDown =
     (el: ResolvedElement) => (e: React.PointerEvent<SVGRectElement>) => {
       if (!onDragEnd) return
+      // Stops this from also reaching the root <svg>'s own background
+      // pointerdown (see its handler below) - without this, pressing an
+      // element would select it and then immediately deselect it again as
+      // the same event bubbled up.
+      e.stopPropagation()
       e.currentTarget.setPointerCapture(e.pointerId)
       setDragState({
         elementId: el.elementId,
@@ -972,11 +977,11 @@ const DielinePreview = ({
       const dx = dragState.current.x - dragState.elementStart.x
       const dy = dragState.current.y - dragState.elementStart.y
       if (Math.hypot(dx, dy) < CLICK_THRESHOLD_MM) {
-        // Barely moved (or didn't) - a click/tap, not a drag. Toggle
-        // selection instead of committing a no-op position change.
-        setSelectedElementId((prev) =>
-          prev === dragState.elementId ? null : dragState.elementId
-        )
+        // Barely moved (or didn't) - a click/tap, not a drag. Selects it
+        // (not a toggle - re-clicking an already-selected element keeps it
+        // selected; only clicking empty canvas, handled by the root <svg>'s
+        // own pointerdown below, clears the selection).
+        setSelectedElementId(dragState.elementId)
       } else if (onDragEnd) {
         onDragEnd(dragState.elementId, dragState.current, dragState.panelName, dragState.secondaryPanelName)
       }
@@ -1070,6 +1075,12 @@ const DielinePreview = ({
       // Dragging/resizing near the <text> elements would otherwise trigger
       // the browser's native text selection mid-gesture.
       style={dragState || resizeState ? { userSelect: "none" } : undefined}
+      // Deselects on a click anywhere that ISN'T an element - every
+      // interactive element (grab rect, resize handle, duplicate/delete
+      // button) stops propagation on its own pointerdown, so this only
+      // ever fires for the dieline geometry (panel/zone shading, cut/
+      // crease lines) or genuinely empty space.
+      onPointerDown={() => setSelectedElementId(null)}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
