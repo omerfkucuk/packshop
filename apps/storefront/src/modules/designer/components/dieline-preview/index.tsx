@@ -1288,7 +1288,7 @@ const DielinePreview = ({
                             <circle
                               cx={cx}
                               cy={cy}
-                              r={handleRadius}
+                              r={handleRadius * 0.55}
                               fill={SELECTION_COLOR}
                               pointerEvents="none"
                             />
