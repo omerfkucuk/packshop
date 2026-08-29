@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
+import { Line } from "@react-three/drei"
 import { RoundedBoxGeometry } from "three-stdlib"
 import type { PanelGeometry } from "@dtc/packaging-engine/shared"
 import type { ResolvedLayout } from "@dtc/layout-engine"
@@ -50,16 +51,60 @@ const PANEL_NAMES = {
   left: "Panel-W2",
 } as const
 
+type FaceKey = "right" | "left" | "front" | "back"
+
 // Mirrors the materials array's own [+x, -x, +y, -y, +z, -z] order below -
 // three.js sets Intersection.face.materialIndex to whichever of the 6
 // groups a raycast hit belongs to, for a mesh with a material array. Top/
 // bottom (indices 2/3) are deliberately absent - they're never printed,
-// so a click there has nothing to jump to.
-const FACE_MATERIAL_INDEX_TO_PANEL: Record<number, string> = {
-  0: PANEL_NAMES.right,
-  1: PANEL_NAMES.left,
-  4: PANEL_NAMES.front,
-  5: PANEL_NAMES.back,
+// so a click there has nothing to jump to (and can never become
+// `armedFace` below either).
+const FACE_MATERIAL_INDEX_TO_KEY: Record<number, FaceKey> = {
+  0: "right",
+  1: "left",
+  4: "front",
+  5: "back",
+}
+
+// How long an armed (first-clicked) face stays armed with no further
+// click, before quietly disarming - otherwise a face clicked once, then
+// left alone, would still jump to 2D on some unrelated click much later.
+const ARM_TIMEOUT_MS = 4000
+
+// A thin border outline is the ONLY visual change an armed face gets - its
+// own material/board color stays exactly what it already was (the point
+// is to still read as plain kraft board, not a highlighted/selected
+// color), and only right/left/front/back can ever show one - top/bottom
+// aren't clickable at all, so they never get a border either. Points are
+// nudged OUTLINE_OFFSET_M past the true surface to avoid z-fighting with
+// the mesh underneath.
+const OUTLINE_OFFSET_M = 0.001
+
+const faceOutlinePoints = (
+  faceKey: FaceKey,
+  dimensionsM: Dimensions3D
+): [number, number, number][] => {
+  const hx = dimensionsM.length / 2
+  const hy = dimensionsM.height / 2
+  const hz = dimensionsM.width / 2
+  switch (faceKey) {
+    case "front": {
+      const z = hz + OUTLINE_OFFSET_M
+      return [[-hx, -hy, z], [hx, -hy, z], [hx, hy, z], [-hx, hy, z], [-hx, -hy, z]]
+    }
+    case "back": {
+      const z = -hz - OUTLINE_OFFSET_M
+      return [[-hx, -hy, z], [hx, -hy, z], [hx, hy, z], [-hx, hy, z], [-hx, -hy, z]]
+    }
+    case "right": {
+      const x = hx + OUTLINE_OFFSET_M
+      return [[x, -hy, -hz], [x, -hy, hz], [x, hy, hz], [x, hy, -hz], [x, -hy, -hz]]
+    }
+    case "left": {
+      const x = -hx - OUTLINE_OFFSET_M
+      return [[x, -hy, -hz], [x, -hy, hz], [x, hy, hz], [x, hy, -hz], [x, -hy, -hz]]
+    }
+  }
 }
 
 // content.url is the only field a browser-side <canvas>/WebGL texture
@@ -91,6 +136,20 @@ const BoxMesh = ({
       ),
     [dimensionsM.length, dimensionsM.width, dimensionsM.height]
   )
+
+  // First click on a face arms it (shows the outline below, doesn't
+  // navigate); a second click on that SAME face is what actually fires
+  // onFaceClick. Without this, a small OrbitControls drag that happens to
+  // start and end over the same face still counts as a native "click" and
+  // was jumping to 2D on every minor orbit adjustment.
+  const [armedFace, setArmedFace] = useState<FaceKey | null>(null)
+  const armTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (armTimeoutRef.current) clearTimeout(armTimeoutRef.current)
+    }
+  }, [])
 
   const [textures, setTextures] = useState<Record<string, THREE.CanvasTexture> | null>(null)
   // Bumped on every effect run, checked before committing its result - a
@@ -222,24 +281,50 @@ const BoxMesh = ({
   }, [textures, dimensionsM.length, dimensionsM.width, dimensionsM.height])
 
   return (
-    <mesh
-      geometry={geometry}
-      material={materials}
-      onClick={
-        onFaceClick &&
-        ((event) => {
-          // Otherwise a click "through" the box would also fire
-          // OrbitControls' own click-adjacent handling and any parent
-          // scene listeners - this mesh is the only thing a click on the
-          // box should ever mean.
-          event.stopPropagation()
-          const materialIndex = event.face?.materialIndex
-          const panelName =
-            materialIndex !== undefined ? FACE_MATERIAL_INDEX_TO_PANEL[materialIndex] : undefined
-          if (panelName) onFaceClick(panelName)
-        })
-      }
-    />
+    <>
+      <mesh
+        geometry={geometry}
+        material={materials}
+        onClick={
+          onFaceClick &&
+          ((event) => {
+            // Otherwise a click "through" the box would also fire
+            // OrbitControls' own click-adjacent handling and any parent
+            // scene listeners - this mesh is the only thing a click on the
+            // box should ever mean.
+            event.stopPropagation()
+            const materialIndex = event.face?.materialIndex
+            const faceKey =
+              materialIndex !== undefined ? FACE_MATERIAL_INDEX_TO_KEY[materialIndex] : undefined
+            if (armTimeoutRef.current) clearTimeout(armTimeoutRef.current)
+
+            if (!faceKey) {
+              // Hit the top/bottom - not clickable, and clears whatever
+              // was armed rather than leaving it silently waiting.
+              setArmedFace(null)
+              return
+            }
+            if (armedFace === faceKey) {
+              setArmedFace(null)
+              onFaceClick(PANEL_NAMES[faceKey])
+              return
+            }
+            setArmedFace(faceKey)
+            armTimeoutRef.current = setTimeout(() => setArmedFace(null), ARM_TIMEOUT_MS)
+          })
+        }
+      />
+      {armedFace && (
+        <Line
+          points={faceOutlinePoints(armedFace, dimensionsM)}
+          color="#ffffff"
+          lineWidth={2.5}
+          transparent
+          opacity={0.85}
+          depthTest={false}
+        />
+      )}
+    </>
   )
 }
 
