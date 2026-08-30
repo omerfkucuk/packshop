@@ -81,6 +81,20 @@ const ARM_TIMEOUT_MS = 4000
 // the mesh underneath.
 const OUTLINE_OFFSET_M = 0.001
 
+// Top/bottom are flat, untextured faces (never printed) - but a plain flat
+// top reads as a lidless block rather than a closed box. Real FEFCO 0201
+// assembly folds the major flaps (attached to the LONG panels, front/back -
+// Panel-L1/L2) in last, and their free edges meet at the box's center,
+// running the full length of the box. That seam is the only visual cue a
+// flat top needs to read as "this has a lid".
+const TOP_SEAM_OFFSET_M = 0.0005
+
+const topSeamPoints = (dimensionsM: Dimensions3D): [number, number, number][] => {
+  const hx = dimensionsM.length / 2
+  const y = dimensionsM.height / 2 + TOP_SEAM_OFFSET_M
+  return [[-hx, y, 0], [hx, y, 0]]
+}
+
 const faceOutlinePoints = (
   faceKey: FaceKey,
   dimensionsM: Dimensions3D
@@ -322,6 +336,13 @@ const BoxMesh = ({
             armTimeoutRef.current = setTimeout(() => setArmedFace(null), ARM_TIMEOUT_MS)
           })
         }
+      />
+      <Line
+        points={topSeamPoints(dimensionsM)}
+        color="#000000"
+        lineWidth={1}
+        transparent
+        opacity={0.18}
       />
       {armedFace && (
         <Line
