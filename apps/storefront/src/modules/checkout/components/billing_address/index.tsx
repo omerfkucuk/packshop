@@ -3,21 +3,36 @@ import Input from "@modules/common/components/input"
 import React, { useState } from "react"
 import CountrySelect from "../country-select"
 
-const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
+const BillingAddress = ({
+  cart,
+  customer,
+}: {
+  cart: HttpTypes.StoreCart | null
+  customer: HttpTypes.StoreCustomer | null
+}) => {
+  // The cart itself only has a billing address once the customer has typed
+  // one into this exact cart - fall back to their saved default billing
+  // address (tax fields included) so returning customers don't have to
+  // retype company/tax info they already saved on their account.
+  const savedBillingAddress = customer?.addresses?.find(
+    (address) => address.is_default_billing
+  )
+  const billingAddress = cart?.billing_address || savedBillingAddress
+
   const [formData, setFormData] = useState<Record<string, string>>({
-    "billing_address.first_name": cart?.billing_address?.first_name || "",
-    "billing_address.last_name": cart?.billing_address?.last_name || "",
-    "billing_address.address_1": cart?.billing_address?.address_1 || "",
-    "billing_address.company": cart?.billing_address?.company || "",
-    "billing_address.postal_code": cart?.billing_address?.postal_code || "",
-    "billing_address.city": cart?.billing_address?.city || "",
-    "billing_address.country_code": cart?.billing_address?.country_code || "",
-    "billing_address.province": cart?.billing_address?.province || "",
-    "billing_address.phone": cart?.billing_address?.phone || "",
+    "billing_address.first_name": billingAddress?.first_name || "",
+    "billing_address.last_name": billingAddress?.last_name || "",
+    "billing_address.address_1": billingAddress?.address_1 || "",
+    "billing_address.company": billingAddress?.company || "",
+    "billing_address.postal_code": billingAddress?.postal_code || "",
+    "billing_address.city": billingAddress?.city || "",
+    "billing_address.country_code": billingAddress?.country_code || "",
+    "billing_address.province": billingAddress?.province || "",
+    "billing_address.phone": billingAddress?.phone || "",
     "billing_address.metadata.tax_number":
-      (cart?.billing_address?.metadata?.tax_number as string) || "",
+      (billingAddress?.metadata?.tax_number as string) || "",
     "billing_address.metadata.tax_office":
-      (cart?.billing_address?.metadata?.tax_office as string) || "",
+      (billingAddress?.metadata?.tax_office as string) || "",
   })
 
   const handleChange = (
