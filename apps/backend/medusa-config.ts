@@ -79,5 +79,8 @@ module.exports = defineConfig({
     {
       resolve: "./src/modules/design",
     },
+    {
+      resolve: "./src/modules/crm-link",
+    },
   ],
 })

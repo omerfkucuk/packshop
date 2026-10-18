@@ -14,6 +14,10 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
     "billing_address.country_code": cart?.billing_address?.country_code || "",
     "billing_address.province": cart?.billing_address?.province || "",
     "billing_address.phone": cart?.billing_address?.phone || "",
+    "billing_address.metadata.tax_number":
+      (cart?.billing_address?.metadata?.tax_number as string) || "",
+    "billing_address.metadata.tax_office":
+      (cart?.billing_address?.metadata?.tax_office as string) || "",
   })
 
   const handleChange = (
@@ -105,6 +109,20 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
           value={formData["billing_address.phone"]}
           onChange={handleChange}
           data-testid="billing-phone-input"
+        />
+        <Input
+          label="Vergi numarası"
+          name="billing_address.metadata.tax_number"
+          value={formData["billing_address.metadata.tax_number"]}
+          onChange={handleChange}
+          data-testid="billing-tax-number-input"
+        />
+        <Input
+          label="Vergi dairesi"
+          name="billing_address.metadata.tax_office"
+          value={formData["billing_address.metadata.tax_office"]}
+          onChange={handleChange}
+          data-testid="billing-tax-office-input"
         />
       </div>
     </>

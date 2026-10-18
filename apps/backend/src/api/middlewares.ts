@@ -9,6 +9,11 @@ const upload = multer({ storage: multer.memoryStorage() })
 export default defineMiddlewares({
   routes: [
     {
+      method: ["POST"],
+      matcher: "/webhooks/twenty",
+      bodyParser: { preserveRawBody: true },
+    },
+    {
       method: ["GET", "POST"],
       matcher: "/store/brands",
       middlewares: [authenticate("customer", ["session", "bearer"])],

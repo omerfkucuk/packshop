@@ -77,6 +77,14 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
           {billingAddress.first_name} {billingAddress.last_name}
         </span>
         <span>{billingAddress.company}</span>
+        {billingAddress.metadata?.tax_number ? (
+          <span>
+            Vergi no: {billingAddress.metadata.tax_number as string}
+            {billingAddress.metadata?.tax_office
+              ? ` - ${billingAddress.metadata.tax_office}`
+              : ""}
+          </span>
+        ) : null}
         <span>
           {billingAddress.address_1}
           {billingAddress.address_2 ? `, ${billingAddress.address_2}` : ""}
@@ -122,6 +130,22 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
             name="company"
             defaultValue={billingAddress?.company || undefined}
             data-testid="billing-company-input"
+          />
+          <Input
+            label="Vergi numarası"
+            name="metadata.tax_number"
+            defaultValue={
+              (billingAddress?.metadata?.tax_number as string) || undefined
+            }
+            data-testid="billing-tax-number-input"
+          />
+          <Input
+            label="Vergi dairesi"
+            name="metadata.tax_office"
+            defaultValue={
+              (billingAddress?.metadata?.tax_office as string) || undefined
+            }
+            data-testid="billing-tax-office-input"
           />
           <Input
             label="Telefon"

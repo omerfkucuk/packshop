@@ -378,6 +378,10 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
         country_code: formData.get("billing_address.country_code"),
         province: formData.get("billing_address.province"),
         phone: formData.get("billing_address.phone"),
+        metadata: {
+          tax_number: formData.get("billing_address.metadata.tax_number"),
+          tax_office: formData.get("billing_address.metadata.tax_office"),
+        },
       }
     await updateCart(data)
   } catch (e: any) {
