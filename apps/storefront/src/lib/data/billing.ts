@@ -32,6 +32,10 @@ export const saveBillingAddress = async (
     province: formData.get("province") as string,
     country_code: formData.get("country_code") as string,
     phone: formData.get("phone") as string,
+    metadata: {
+      tax_number: formData.get("metadata.tax_number") as string,
+      tax_office: formData.get("metadata.tax_office") as string,
+    },
   }
 
   try {

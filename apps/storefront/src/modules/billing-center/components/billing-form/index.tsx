@@ -90,6 +90,24 @@ const BillingForm = ({ region, billingAddress }: BillingFormProps) => {
           defaultValue={billingAddress?.company || undefined}
           data-testid="company-input"
         />
+        <div className="grid grid-cols-2 gap-x-2">
+          <Input
+            label="Vergi numarası"
+            name="metadata.tax_number"
+            defaultValue={
+              (billingAddress?.metadata?.tax_number as string) || undefined
+            }
+            data-testid="tax-number-input"
+          />
+          <Input
+            label="Vergi dairesi"
+            name="metadata.tax_office"
+            defaultValue={
+              (billingAddress?.metadata?.tax_office as string) || undefined
+            }
+            data-testid="tax-office-input"
+          />
+        </div>
         <Input
           label="Adres"
           name="address_1"
