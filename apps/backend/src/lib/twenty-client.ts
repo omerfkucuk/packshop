@@ -84,6 +84,23 @@ export type UpsertPersonInput = {
   phone?: string | null
 }
 
+// Packshop is Turkey-only, and Medusa's phone field is free text with no
+// country picker, so raw values arrive as local Turkish formats like
+// "05424779734" that Twenty's phone validator rejects outright. Twenty
+// does accept a single E.164 string and splits it itself (confirmed live)
+// - this covers the common Turkish shapes; anything it still can't parse
+// is caught and dropped by upsertPerson below rather than failing the
+// whole sync.
+function normalizeTurkishPhone(phone: string): string {
+  const digits = phone.replace(/[^\d+]/g, "")
+  if (digits.startsWith("+")) return digits
+  if (digits.startsWith("0090")) return `+${digits.slice(2)}`
+  if (digits.startsWith("90") && digits.length === 12) return `+${digits}`
+  if (digits.startsWith("0") && digits.length === 11) return `+90${digits.slice(1)}`
+  if (digits.length === 10) return `+90${digits}`
+  return digits
+}
+
 /**
  * Creates/updates the person in Twenty. Pass `knownPersonId` (from the
  * `crm-link` module) whenever we already have one, to update by id
@@ -99,27 +116,42 @@ export async function upsertPerson(
   // Omit name/phone entirely when not provided, instead of sending blanks -
   // an update must not erase a name/phone a previous sync already set (e.g.
   // order-placed only has the order's email, not the customer's name).
-  const payload = {
+  const buildPayload = (includePhone: boolean) => ({
     emails: { primaryEmail: input.email },
     ...(input.firstName || input.lastName
       ? { name: { firstName: input.firstName ?? "", lastName: input.lastName ?? "" } }
       : {}),
-    ...(input.phone ? { phones: { primaryPhoneNumber: input.phone } } : {}),
+    ...(includePhone && input.phone
+      ? { phones: { primaryPhoneNumber: normalizeTurkishPhone(input.phone) } }
+      : {}),
+  })
+
+  const write = async (path: string, method: "POST" | "PATCH") => {
+    try {
+      return await twentyFetch<{ data: Record<string, TwentyPerson> }>(path, {
+        method,
+        body: JSON.stringify(buildPayload(true)),
+      })
+    } catch (error) {
+      // A still-unparseable phone must not sink the whole sync - email and
+      // name are the part that actually matters for matching the contact.
+      if (input.phone && String(error).includes("INVALID_PHONE_NUMBER")) {
+        return await twentyFetch<{ data: Record<string, TwentyPerson> }>(path, {
+          method,
+          body: JSON.stringify(buildPayload(false)),
+        })
+      }
+      throw error
+    }
   }
 
   const existingId = knownPersonId ?? (await findPersonIdByEmail(input.email))
   if (existingId) {
-    await twentyFetch(`/rest/people/${existingId}`, {
-      method: "PATCH",
-      body: JSON.stringify(payload),
-    })
+    await write(`/rest/people/${existingId}`, "PATCH")
     return existingId
   }
 
-  const created = await twentyFetch<{ data: { createPerson: TwentyPerson } }>(
-    "/rest/people",
-    { method: "POST", body: JSON.stringify(payload) }
-  )
+  const created = await write("/rest/people", "POST")
   return created.data.createPerson.id
 }
 
