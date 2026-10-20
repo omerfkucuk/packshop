@@ -1,3 +1,4 @@
+import { Buildings, Swatch } from "@medusajs/icons"
 import ChevronDown from "@modules/common/icons/chevron-down"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import MapPin from "@modules/common/icons/map-pin"
@@ -16,9 +17,11 @@ type OverviewProps = {
 
 // Mirrors the sidebar (which the overview hides) - keep the two in sync.
 const SHORTCUTS = [
-  { href: "/account/profile", label: "Kişisel bilgiler", Icon: User, testId: "profile-link" },
-  { href: "/account/addresses", label: "Adreslerim", Icon: MapPin, testId: "addresses-link" },
-  { href: "/account/orders", label: "Siparişlerim", Icon: Package, testId: "orders-link" },
+  { href: "/account/profile", label: "Kişisel bilgiler", icon: <User size={26} />, testId: "profile-link" },
+  { href: "/faturalandirma-merkezi", label: "Firma bilgileri", icon: <Buildings className="h-[26px] w-[26px]" />, testId: "billing-center-link" },
+  { href: "/marka-merkezi", label: "Marka Merkezi", icon: <Swatch className="h-[26px] w-[26px]" />, testId: "brand-center-link" },
+  { href: "/account/addresses", label: "Adreslerim", icon: <MapPin size={26} />, testId: "addresses-link" },
+  { href: "/account/orders", label: "Siparişlerim", icon: <Package size={26} />, testId: "orders-link" },
 ]
 
 const Overview = ({ customer, orders }: OverviewProps) => {
@@ -46,15 +49,15 @@ const Overview = ({ customer, orders }: OverviewProps) => {
         </span>
       </div>
 
-      <div className="grid grid-cols-2 small:grid-cols-4 gap-2 small:gap-3 mt-8">
-        {SHORTCUTS.map(({ href, label, Icon, testId }) => (
+      <div className="grid grid-cols-2 small:grid-cols-3 gap-2 small:gap-3 mt-8">
+        {SHORTCUTS.map(({ href, label, icon, testId }) => (
           <LocalizedClientLink
             key={href}
             href={href}
             className={TILE_CLASS}
             data-testid={testId}
           >
-            <Icon size={26} />
+            {icon}
             <span>{label}</span>
           </LocalizedClientLink>
         ))}

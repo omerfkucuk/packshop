@@ -19,7 +19,7 @@ import { Locale } from "@lib/data/locales"
 
 const SideMenuItems = {
   "Marka Merkezi": "/marka-merkezi",
-  "Faturalandırma Merkezi": "/faturalandirma-merkezi",
+  "Firma bilgileri": "/faturalandirma-merkezi",
 }
 
 type SideMenuProps = {

@@ -63,6 +63,24 @@ const AccountNav = ({
               </li>
               <li className="w-full">
                 <AccountNavLink
+                  href="/faturalandirma-merkezi"
+                  route={route!}
+                  data-testid="billing-center-link"
+                >
+                  Firma bilgileri
+                </AccountNavLink>
+              </li>
+              <li className="w-full">
+                <AccountNavLink
+                  href="/marka-merkezi"
+                  route={route!}
+                  data-testid="brand-center-link"
+                >
+                  Marka Merkezi
+                </AccountNavLink>
+              </li>
+              <li className="w-full">
+                <AccountNavLink
                   href="/account/addresses"
                   route={route!}
                   data-testid="addresses-link"

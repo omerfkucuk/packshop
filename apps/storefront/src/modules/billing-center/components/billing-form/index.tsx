@@ -39,7 +39,7 @@ const BillingForm = ({ region, billingAddress }: BillingFormProps) => {
     <div className="flex flex-col gap-y-8 max-w-2xl">
       <div className="flex flex-col gap-y-4">
         <h1 className="text-2xl font-bold tracking-tight text-black">
-          Faturalandırma Merkezi
+          Firma bilgileri
         </h1>
         <p className="text-base text-black/70">
           Faturalarınızda kullanılacak firma unvanı ve fatura adresini buradan

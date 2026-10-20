@@ -7,8 +7,8 @@ import { getRegion } from "@lib/data/regions"
 import BillingForm from "@modules/billing-center/components/billing-form"
 
 export const metadata: Metadata = {
-  title: "Faturalandırma Merkezi | Packshop",
-  description: "Fatura bilgilerinizi görüntüleyin ve düzenleyin.",
+  title: "Firma bilgileri | Packshop",
+  description: "Firma ve fatura bilgilerinizi görüntüleyin ve düzenleyin.",
 }
 
 export default async function BillingCenterPage(props: {
