@@ -1,177 +1,186 @@
 import ChevronDown from "@modules/common/icons/chevron-down"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import MapPin from "@modules/common/icons/map-pin"
+import Package from "@modules/common/icons/package"
+import User from "@modules/common/icons/user"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
+
+import LogoutButton from "./logout-button"
 
 type OverviewProps = {
   customer: HttpTypes.StoreCustomer | null
   orders: HttpTypes.StoreOrder[] | null
 }
 
+const SHORTCUTS = [
+  { href: "/account/profile", label: "Kişisel bilgiler", Icon: User, testId: "shortcut-profile" },
+  { href: "/account/orders", label: "Siparişlerim", Icon: Package, testId: "shortcut-orders" },
+  { href: "/account/addresses", label: "Adreslerim", Icon: MapPin, testId: "shortcut-addresses" },
+]
+
 const Overview = ({ customer, orders }: OverviewProps) => {
+  const suggestions = getSuggestions(customer)
+
   return (
-    <div data-testid="overview-page-wrapper">
-      <div className="hidden small:block">
-        <div className="text-xl font-bold text-black flex justify-between items-center mb-4">
-          <span data-testid="welcome-message" data-value={customer?.first_name}>
-            Merhaba {customer?.first_name}
-          </span>
-          <span className="text-sm text-black/70">
-            Giriş yapan:{" "}
-            <span
-              className="font-semibold text-black"
-              data-testid="customer-email"
-              data-value={customer?.email}
-            >
-              {customer?.email}
-            </span>
-          </span>
+    <div className="max-w-2xl mx-auto" data-testid="overview-page-wrapper">
+      <div className="flex flex-col items-center text-center gap-y-1">
+        <div className="flex items-center justify-center h-24 w-24 rounded-full bg-black/60 text-white mb-3">
+          <User size={44} />
         </div>
-        <div className="flex flex-col py-8 border-t border-black/10">
-          <div className="flex flex-col gap-y-4 h-full col-span-1 row-span-2 flex-1">
-            <div className="flex items-start gap-x-16 mb-6">
-              <div className="flex flex-col gap-y-4">
-                <h3 className="text-lg font-semibold text-black">Profil</h3>
-                <div className="flex items-end gap-x-2">
-                  <span
-                    className="text-3xl font-semibold leading-none text-black"
-                    data-testid="customer-profile-completion"
-                    data-value={getProfileCompletion(customer)}
-                  >
-                    {getProfileCompletion(customer)}%
-                  </span>
-                  <span className="text-sm text-black/50">Tamamlandı</span>
-                </div>
-              </div>
+        <h1
+          className="text-2xl font-bold text-black"
+          data-testid="welcome-message"
+          data-value={customer?.first_name}
+        >
+          {customer?.first_name} {customer?.last_name}
+        </h1>
+        <span
+          className="text-base text-black/60"
+          data-testid="customer-email"
+          data-value={customer?.email}
+        >
+          {customer?.email}
+        </span>
+      </div>
 
-              <div className="flex flex-col gap-y-4">
-                <h3 className="text-lg font-semibold text-black">Adresler</h3>
-                <div className="flex items-end gap-x-2">
-                  <span
-                    className="text-3xl font-semibold leading-none text-black"
-                    data-testid="addresses-count"
-                    data-value={customer?.addresses?.length || 0}
-                  >
-                    {customer?.addresses?.length || 0}
-                  </span>
-                  <span className="text-sm text-black/50">Kayıtlı</span>
-                </div>
-              </div>
-            </div>
+      <div className="grid grid-cols-3 gap-2 small:gap-3 mt-8">
+        {SHORTCUTS.map(({ href, label, Icon, testId }) => (
+          <LocalizedClientLink
+            key={href}
+            href={href}
+            className="flex flex-col items-center justify-center gap-y-3 rounded-xl bg-black/[0.04] px-2 py-5 text-sm font-medium text-black text-center hover:bg-black/[0.08] transition-colors"
+            data-testid={testId}
+          >
+            <Icon size={26} />
+            <span>{label}</span>
+          </LocalizedClientLink>
+        ))}
+      </div>
 
-            <div className="flex flex-col gap-y-4">
-              <div className="flex items-center gap-x-2">
-                <h3 className="text-lg font-semibold text-black">
-                  Son siparişler
-                </h3>
-              </div>
-              <ul
-                className="flex flex-col gap-y-4"
-                data-testid="orders-wrapper"
+      {suggestions.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-lg font-bold text-black mb-3">Öneriler</h2>
+          <div className="flex flex-col gap-y-3">
+            {suggestions.map((s) => (
+              <div
+                key={s.title}
+                className="rounded-xl border border-black/15 p-5 small:p-6"
+                data-testid="overview-suggestion"
               >
-                {orders && orders.length > 0 ? (
-                  orders.slice(0, 5).map((order) => {
-                    return (
-                      <li
-                        key={order.id}
-                        data-testid="order-wrapper"
-                        data-value={order.id}
-                      >
-                        <LocalizedClientLink
-                          href={`/account/orders/details/${order.id}`}
-                        >
-                          <div className="flex justify-between items-center p-4 border border-black/10 rounded-lg hover:border-black/20 transition-colors">
-                            <div className="grid grid-cols-3 grid-rows-2 text-sm gap-x-4 flex-1">
-                              <span className="font-semibold text-black">
-                                Tarih
-                              </span>
-                              <span className="font-semibold text-black">
-                                Sipariş no
-                              </span>
-                              <span className="font-semibold text-black">
-                                Tutar
-                              </span>
-                              <span
-                                className="text-black/70"
-                                data-testid="order-created-date"
-                              >
-                                {new Date(order.created_at).toLocaleDateString(
-                                  "tr-TR"
-                                )}
-                              </span>
-                              <span
-                                className="text-black/70"
-                                data-testid="order-id"
-                                data-value={order.display_id}
-                              >
-                                #{order.display_id}
-                              </span>
-                              <span
-                                className="text-black/70"
-                                data-testid="order-amount"
-                              >
-                                {convertToLocale({
-                                  amount: order.total,
-                                  currency_code: order.currency_code,
-                                })}
-                              </span>
-                            </div>
-                            <button
-                              className="flex items-center justify-between text-black/50"
-                              data-testid="open-order-button"
-                            >
-                              <span className="sr-only">
-                                #{order.display_id} numaralı siparişe git
-                              </span>
-                              <ChevronDown className="-rotate-90" />
-                            </button>
-                          </div>
-                        </LocalizedClientLink>
-                      </li>
-                    )
-                  })
-                ) : (
-                  <span className="text-black/50" data-testid="no-orders-message">
-                    Henüz sipariş yok
-                  </span>
-                )}
-              </ul>
-            </div>
+                <h3 className="text-xl font-bold text-black">{s.title}</h3>
+                <p className="mt-2 text-base text-black/70">{s.description}</p>
+                <LocalizedClientLink
+                  href={s.href}
+                  className="mt-4 inline-flex items-center rounded-full bg-black/[0.06] px-5 py-2.5 text-sm font-medium text-black hover:bg-black/[0.1] transition-colors"
+                >
+                  {s.cta}
+                </LocalizedClientLink>
+              </div>
+            ))}
           </div>
+        </section>
+      )}
+
+      <section className="mt-10">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-bold text-black">Son siparişler</h2>
+          {orders && orders.length > 0 && (
+            <LocalizedClientLink
+              href="/account/orders"
+              className="text-sm text-black/60 hover:text-black"
+            >
+              Tümünü gör
+            </LocalizedClientLink>
+          )}
         </div>
+        <ul className="flex flex-col gap-y-3" data-testid="orders-wrapper">
+          {orders && orders.length > 0 ? (
+            orders.slice(0, 3).map((order) => (
+              <li key={order.id} data-testid="order-wrapper" data-value={order.id}>
+                <LocalizedClientLink
+                  href={`/account/orders/details/${order.id}`}
+                  className="flex items-center justify-between rounded-xl border border-black/10 p-4 hover:border-black/20 transition-colors"
+                >
+                  <div className="flex flex-col gap-y-0.5 text-sm">
+                    <span
+                      className="font-semibold text-black"
+                      data-testid="order-id"
+                      data-value={order.display_id}
+                    >
+                      #{order.display_id}
+                    </span>
+                    <span className="text-black/60" data-testid="order-created-date">
+                      {new Date(order.created_at).toLocaleDateString("tr-TR")}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-x-3">
+                    <span className="text-sm font-medium text-black" data-testid="order-amount">
+                      {convertToLocale({
+                        amount: order.total,
+                        currency_code: order.currency_code,
+                      })}
+                    </span>
+                    <ChevronDown className="-rotate-90 text-black/40" />
+                  </div>
+                </LocalizedClientLink>
+              </li>
+            ))
+          ) : (
+            <span className="text-black/50" data-testid="no-orders-message">
+              Henüz sipariş yok
+            </span>
+          )}
+        </ul>
+      </section>
+
+      {/* Desktop logs out from the sidebar; on mobile the sidebar is hidden here. */}
+      <div className="small:hidden mt-10 flex justify-center">
+        <LogoutButton />
       </div>
     </div>
   )
 }
 
-const getProfileCompletion = (customer: HttpTypes.StoreCustomer | null) => {
-  let count = 0
+type Suggestion = { title: string; description: string; cta: string; href: string }
 
+const getSuggestions = (customer: HttpTypes.StoreCustomer | null): Suggestion[] => {
   if (!customer) {
-    return 0
+    return []
   }
 
-  if (customer.email) {
-    count++
+  const suggestions: Suggestion[] = []
+
+  if (!customer.metadata?.business_email) {
+    suggestions.push({
+      title: "Şirket e-postanızı ekleyin",
+      description:
+        "Siparişleriniz ve teklifleriniz hakkında size doğru adresten ulaşabilmemiz için şirketinize ait e-posta adresinizi ekleyin.",
+      cta: "Şirket e-postası ekle",
+      href: "/account/profile",
+    })
   }
 
-  if (customer.first_name && customer.last_name) {
-    count++
+  if (!customer.phone) {
+    suggestions.push({
+      title: "Telefon numaranızı ekleyin",
+      description: "Siparişinizle ilgili hızlıca iletişime geçebilmemiz için telefon numaranızı ekleyin.",
+      cta: "Telefon ekle",
+      href: "/account/profile",
+    })
   }
 
-  if (customer.phone) {
-    count++
+  if (!customer.addresses?.some((addr) => addr.is_default_billing)) {
+    suggestions.push({
+      title: "Fatura bilgilerinizi tamamlayın",
+      description:
+        "Şirket adınızı, vergi numaranızı ve vergi dairenizi ekleyerek ödeme adımında zaman kazanın.",
+      cta: "Fatura bilgilerini ekle",
+      href: "/faturalandirma-merkezi",
+    })
   }
 
-  const billingAddress = customer.addresses?.find(
-    (addr) => addr.is_default_billing
-  )
-
-  if (billingAddress) {
-    count++
-  }
-
-  return (count / 4) * 100
+  return suggestions
 }
 
 export default Overview

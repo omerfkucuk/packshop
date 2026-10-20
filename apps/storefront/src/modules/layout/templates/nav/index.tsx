@@ -8,7 +8,7 @@ import { retrieveCustomer } from "@lib/data/customer"
 import { StoreRegion } from "@medusajs/types"
 import { ShoppingBag } from "@medusajs/icons"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import AccountMenu from "@modules/layout/components/account-menu"
+import User from "@modules/common/icons/user"
 import CartButton from "@modules/layout/components/cart-button"
 import GoogleOneTap from "@modules/layout/components/google-one-tap"
 import SideMenu from "@modules/layout/components/side-menu"
@@ -49,9 +49,15 @@ export default async function Nav() {
           <SearchBar />
 
           <div className="flex items-center gap-x-1 h-full">
-            <div className="flex items-center h-full">
-              <AccountMenu customer={customer} />
-            </div>
+            {/* Straight to /account - it shows the login form when signed out. */}
+            <LocalizedClientLink
+              href="/account"
+              className="flex items-center justify-center h-10 w-10 rounded-lg hover:bg-black/[0.04] transition-colors"
+              aria-label="Hesabım"
+              data-testid="nav-account-link"
+            >
+              <User />
+            </LocalizedClientLink>
             <Suspense
               fallback={
                 <LocalizedClientLink
