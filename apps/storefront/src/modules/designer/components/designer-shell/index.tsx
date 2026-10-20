@@ -570,6 +570,9 @@ const DesignerShell = ({
       variantId: selectedVariant.id,
       quantity,
       countryCode,
+      // The design itself is the customer's (customer, product) draft; this
+      // flag lets the cart show "Tasarım: Eklendi" with a link back.
+      metadata: { has_design: true },
     })
     setIsAdding(false)
     router.push(`/${countryCode}/cart`)
@@ -588,6 +591,7 @@ const DesignerShell = ({
       quantity,
       countryCode,
       metadata: {
+        has_design: true,
         custom_size: true,
         custom_width_cm: customWidth,
         custom_height_cm: customHeight,

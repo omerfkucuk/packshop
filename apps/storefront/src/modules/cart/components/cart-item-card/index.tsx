@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import { deleteLineItem, updateLineItem } from "@lib/data/cart"
 import { sdk } from "@lib/config"
 import { HttpTypes } from "@medusajs/types"
+import { isCustomProduct } from "@lib/util/product"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import LineItemPrice from "@modules/common/components/line-item-price"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -45,6 +46,19 @@ function useTierQuantities(productId?: string, variantId?: string, currencyCode?
   return quantities
 }
 
+// Production time is entered per product in Medusa admin as
+// metadata.production_days (business days after design approval).
+function addBusinessDays(from: Date, days: number) {
+  const date = new Date(from)
+  let added = 0
+  while (added < days) {
+    date.setDate(date.getDate() + 1)
+    const day = date.getDay()
+    if (day !== 0 && day !== 6) added++
+  }
+  return date
+}
+
 const CartItemCard = ({ item, currencyCode }: CartItemCardProps) => {
   const [updating, setUpdating] = useState(false)
   const [removing, setRemoving] = useState(false)
@@ -82,6 +96,18 @@ const CartItemCard = ({ item, currencyCode }: CartItemCardProps) => {
       .map((o) => `${o.option!.title}: ${o.value}`) ?? []
 
   const metadata = item.metadata ?? {}
+  const hasDesign = !!metadata.has_design
+  const needsDesign = hasDesign || (item.product ? isCustomProduct(item.product) : false)
+  const designHref = `/tasarla?product=${item.product_handle}&variant=${item.variant_id}&quantity=${item.quantity}`
+  const productionDays = Number(item.product?.metadata?.production_days) || 0
+  const deliveryDate =
+    productionDays > 0
+      ? addBusinessDays(new Date(), productionDays).toLocaleDateString("tr-TR", {
+          day: "numeric",
+          month: "long",
+          weekday: "long",
+        })
+      : null
   const customSize = metadata.custom_size
     ? `${metadata.custom_width_cm} × ${metadata.custom_height_cm} × ${metadata.custom_depth_cm} cm`
     : null
@@ -140,6 +166,33 @@ const CartItemCard = ({ item, currencyCode }: CartItemCardProps) => {
       </div>
 
       <div className="mt-6 small:ml-44 flex flex-col">
+        {deliveryDate && (
+          <div className="flex flex-wrap items-baseline gap-x-2 border-t border-black/10 py-4 text-sm">
+            <span className="text-black/60">Teslimat</span>
+            <span className="text-black">
+              {needsDesign ? "Tasarım onayından sonra " : ""}
+              <span className="font-semibold">{productionDays} iş günü</span> içinde kargoda
+            </span>
+            <span className="text-black/50">(tahmini {deliveryDate})</span>
+          </div>
+        )}
+        {needsDesign && (
+          <div className="flex items-center justify-between border-t border-black/10 py-4 text-sm">
+            <span>
+              <span className="text-black/60">Tasarım</span>{" "}
+              <span className={hasDesign ? "font-medium text-green-700" : "font-medium text-black"}>
+                {hasDesign ? "Eklendi" : "Eklenmedi"}
+              </span>
+            </span>
+            <LocalizedClientLink
+              href={designHref}
+              className="text-black underline underline-offset-4 hover:no-underline"
+              data-testid="product-design-link"
+            >
+              {hasDesign ? "Tasarımı düzenle" : "Tasarım ekle"}
+            </LocalizedClientLink>
+          </div>
+        )}
         {customSize && (
           <div className="flex items-center justify-between border-t border-black/10 py-4 text-sm">
             <span className="text-black/60">
