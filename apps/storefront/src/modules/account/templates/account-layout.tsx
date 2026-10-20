@@ -1,7 +1,5 @@
 import React from "react"
 
-import UnderlineLink from "@modules/common/components/interactive-link"
-
 import AccountGrid from "../components/account-grid"
 import AccountNav from "../components/account-nav"
 import { HttpTypes } from "@medusajs/types"
@@ -21,22 +19,6 @@ const AccountLayout: React.FC<AccountLayoutProps> = ({
         <AccountGrid nav={customer && <AccountNav customer={customer} />}>
           {children}
         </AccountGrid>
-        <div className="flex flex-col small:flex-row items-end justify-between small:border-t border-black/10 py-12 gap-8">
-          <div>
-            <h3 className="text-xl font-bold text-black mb-4">
-              Sorularınız mı var?
-            </h3>
-            <span className="text-base text-black/70">
-              Sıkça sorulan soruların cevaplarını müşteri hizmetleri
-              sayfamızda bulabilirsiniz.
-            </span>
-          </div>
-          <div>
-            <UnderlineLink href="/customer-service">
-              Müşteri Hizmetleri
-            </UnderlineLink>
-          </div>
-        </div>
       </div>
     </div>
   )

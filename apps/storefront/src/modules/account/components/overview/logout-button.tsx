@@ -1,11 +1,8 @@
 "use client"
 
-import { ArrowRightOnRectangle } from "@medusajs/icons"
 import { useParams } from "next/navigation"
 
 import { signout } from "@lib/data/customer"
-
-import { TILE_CLASS } from "./tile-class"
 
 const LogoutButton = () => {
   const { countryCode } = useParams() as { countryCode: string }
@@ -14,11 +11,10 @@ const LogoutButton = () => {
     <button
       type="button"
       onClick={() => signout(countryCode)}
-      className={TILE_CLASS}
+      className="rounded-full px-5 py-2.5 text-sm font-medium text-black/60 hover:bg-black/[0.04] hover:text-black transition-colors"
       data-testid="logout-button"
     >
-      <ArrowRightOnRectangle className="h-[26px] w-[26px]" />
-      <span>Çıkış yap</span>
+      Çıkış yap
     </button>
   )
 }

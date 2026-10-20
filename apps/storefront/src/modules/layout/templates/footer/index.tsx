@@ -3,6 +3,7 @@ import { listCollections } from "@lib/data/collections"
 import { Text } from "@modules/common/components/ui"
 
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import HideOnAccount from "@modules/layout/components/hide-on-account"
 import NewsletterForm from "@modules/layout/components/newsletter-form"
 
 export default async function Footer() {
@@ -13,6 +14,7 @@ export default async function Footer() {
 
   return (
     <footer className="w-full">
+      <HideOnAccount>
       <div className="bg-ui-bg-subtle">
         <div className="content-container flex flex-col small:flex-row items-start small:items-center justify-between gap-6 py-12">
           <div>
@@ -26,6 +28,7 @@ export default async function Footer() {
           <NewsletterForm />
         </div>
       </div>
+      </HideOnAccount>
 
       <div className="border-t border-black/10 w-full">
         <div className="content-container flex flex-col w-full">

@@ -1,10 +1,8 @@
 import { Buildings, Swatch } from "@medusajs/icons"
-import ChevronDown from "@modules/common/icons/chevron-down"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import MapPin from "@modules/common/icons/map-pin"
 import Package from "@modules/common/icons/package"
 import User from "@modules/common/icons/user"
-import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
 
 import LogoutButton from "./logout-button"
@@ -12,7 +10,6 @@ import { TILE_CLASS } from "./tile-class"
 
 type OverviewProps = {
   customer: HttpTypes.StoreCustomer | null
-  orders: HttpTypes.StoreOrder[] | null
 }
 
 // Mirrors the sidebar (which the overview hides) - keep the two in sync.
@@ -24,8 +21,10 @@ const SHORTCUTS = [
   { href: "/account/orders", label: "Siparişlerim", icon: <Package size={26} />, testId: "orders-link" },
 ]
 
-const Overview = ({ customer, orders }: OverviewProps) => {
+const Overview = ({ customer }: OverviewProps) => {
   const suggestions = getSuggestions(customer)
+  // Firma bilgileri (Faturalandırma Merkezi) edits the default billing address.
+  const companyName = customer?.addresses?.find((addr) => addr.is_default_billing)?.company
 
   return (
     <div className="max-w-2xl mx-auto" data-testid="overview-page-wrapper">
@@ -40,13 +39,11 @@ const Overview = ({ customer, orders }: OverviewProps) => {
         >
           {customer?.first_name} {customer?.last_name}
         </h1>
-        <span
-          className="text-base text-black/60"
-          data-testid="customer-email"
-          data-value={customer?.email}
-        >
-          {customer?.email}
-        </span>
+        {companyName && (
+          <span className="text-base text-black/60" data-testid="customer-company">
+            {companyName}
+          </span>
+        )}
       </div>
 
       <div className="grid grid-cols-2 small:grid-cols-3 gap-2 small:gap-3 mt-8">
@@ -61,7 +58,6 @@ const Overview = ({ customer, orders }: OverviewProps) => {
             <span>{label}</span>
           </LocalizedClientLink>
         ))}
-        <LogoutButton />
       </div>
 
       {suggestions.length > 0 && (
@@ -88,57 +84,10 @@ const Overview = ({ customer, orders }: OverviewProps) => {
         </section>
       )}
 
-      <section className="mt-10">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold text-black">Son siparişler</h2>
-          {orders && orders.length > 0 && (
-            <LocalizedClientLink
-              href="/account/orders"
-              className="text-sm text-black/60 hover:text-black"
-            >
-              Tümünü gör
-            </LocalizedClientLink>
-          )}
-        </div>
-        <ul className="flex flex-col gap-y-3" data-testid="orders-wrapper">
-          {orders && orders.length > 0 ? (
-            orders.slice(0, 3).map((order) => (
-              <li key={order.id} data-testid="order-wrapper" data-value={order.id}>
-                <LocalizedClientLink
-                  href={`/account/orders/details/${order.id}`}
-                  className="flex items-center justify-between rounded-xl border border-black/10 p-4 hover:border-black/20 transition-colors"
-                >
-                  <div className="flex flex-col gap-y-0.5 text-sm">
-                    <span
-                      className="font-semibold text-black"
-                      data-testid="order-id"
-                      data-value={order.display_id}
-                    >
-                      #{order.display_id}
-                    </span>
-                    <span className="text-black/60" data-testid="order-created-date">
-                      {new Date(order.created_at).toLocaleDateString("tr-TR")}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-x-3">
-                    <span className="text-sm font-medium text-black" data-testid="order-amount">
-                      {convertToLocale({
-                        amount: order.total,
-                        currency_code: order.currency_code,
-                      })}
-                    </span>
-                    <ChevronDown className="-rotate-90 text-black/40" />
-                  </div>
-                </LocalizedClientLink>
-              </li>
-            ))
-          ) : (
-            <span className="text-black/50" data-testid="no-orders-message">
-              Henüz sipariş yok
-            </span>
-          )}
-        </ul>
-      </section>
+      {/* Kept apart from the tiles so it isn't hit by accident. */}
+      <div className="mt-12 pt-6 border-t border-black/10 flex justify-center">
+        <LogoutButton />
+      </div>
     </div>
   )
 }
