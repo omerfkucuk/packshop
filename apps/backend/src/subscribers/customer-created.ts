@@ -1,6 +1,6 @@
 import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
-import { upsertPerson } from "../lib/twenty-client"
+import { personEmails, upsertPerson } from "../lib/twenty-client"
 import { CRM_LINK_MODULE } from "../modules/crm-link"
 import CrmLinkModuleService from "../modules/crm-link/services/crm-link-module-service"
 
@@ -21,7 +21,7 @@ export default async function customerCreatedHandler({
     }
 
     const personId = await upsertPerson({
-      email: customer.email,
+      ...personEmails(customer),
       firstName: customer.first_name,
       lastName: customer.last_name,
       phone: customer.phone,

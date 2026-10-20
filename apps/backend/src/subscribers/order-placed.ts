@@ -1,6 +1,6 @@
 import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
-import { createOrderOpportunity, upsertPerson } from "../lib/twenty-client"
+import { createOrderOpportunity, personEmails, upsertPerson } from "../lib/twenty-client"
 import { syncCompanyFromAddress } from "../lib/sync-company-from-address"
 import { CRM_LINK_MODULE } from "../modules/crm-link"
 import CrmLinkModuleService from "../modules/crm-link/services/crm-link-module-service"
@@ -34,7 +34,9 @@ export default async function orderPlacedHandler({
 
     const pointOfContactId = await upsertPerson(
       {
-        email: order.email,
+        // A registered customer's company email must not be overwritten by
+        // the order's (account) email; guests only have the order email.
+        ...(customer ? personEmails(customer) : { email: order.email }),
         firstName: customer?.first_name,
         lastName: customer?.last_name,
         phone: customer?.phone,

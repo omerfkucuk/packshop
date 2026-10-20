@@ -26,6 +26,10 @@ export type TwentyCompany = {
 // case the fields are ever recreated with different labels.
 const TAX_NUMBER_FIELD = process.env.TWENTY_COMPANY_TAX_NUMBER_FIELD || "vergiNumarasi"
 const TAX_OFFICE_FIELD = process.env.TWENTY_COMPANY_TAX_OFFICE_FIELD || "vergiDairesi"
+// Same story for Person: a custom EMAILS field labeled "Kişisel E-posta"
+// holds the account/login email, so the default `emails` field is free for
+// the company email.
+const PERSONAL_EMAIL_FIELD = process.env.TWENTY_PERSON_PERSONAL_EMAIL_FIELD || "kisiselEPosta"
 
 async function twentyFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const baseUrl = process.env.TWENTY_API_URL
@@ -78,7 +82,10 @@ export async function fetchCompany(id: string): Promise<TwentyCompany | undefine
 }
 
 export type UpsertPersonInput = {
+  /** Goes to Twenty's main E-posta field - the company email when we have one. */
   email: string
+  /** The account/login email, for the custom Kişisel E-posta field. */
+  personalEmail?: string | null
   firstName?: string | null
   lastName?: string | null
   phone?: string | null
@@ -102,6 +109,24 @@ function normalizeTurkishPhone(phone: string): string {
 }
 
 /**
+ * Splits a customer's addresses into Twenty's two email fields: the company
+ * email (metadata.business_email) is the main one, the account email is the
+ * personal one. Until a company email is entered, the account email fills
+ * both so the main field is never empty.
+ */
+export function personEmails(customer: {
+  email?: string | null
+  metadata?: Record<string, unknown> | null
+}): { email: string; personalEmail: string | null } {
+  const businessEmail = customer.metadata?.business_email
+  const personalEmail = customer.email ?? null
+  return {
+    email: typeof businessEmail === "string" && businessEmail ? businessEmail : personalEmail ?? "",
+    personalEmail,
+  }
+}
+
+/**
  * Creates/updates the person in Twenty. Pass `knownPersonId` (from the
  * `crm-link` module) whenever we already have one, to update by id
  * directly instead of re-searching by email - required so a later email
@@ -118,6 +143,9 @@ export async function upsertPerson(
   // order-placed only has the order's email, not the customer's name).
   const buildPayload = (includePhone: boolean) => ({
     emails: { primaryEmail: input.email },
+    ...(input.personalEmail
+      ? { [PERSONAL_EMAIL_FIELD]: { primaryEmail: input.personalEmail } }
+      : {}),
     ...(input.firstName || input.lastName
       ? { name: { firstName: input.firstName ?? "", lastName: input.lastName ?? "" } }
       : {}),

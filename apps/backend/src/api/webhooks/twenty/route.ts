@@ -74,8 +74,11 @@ async function handlePersonUpdated(
   if (incomingPhone !== undefined && incomingPhone !== customer.phone) {
     update.phone = incomingPhone
   }
+  // personEmails() fills the main field with the account email until a
+  // company email exists - that echo must not be saved as business_email.
   if (
     incomingBusinessEmail !== undefined &&
+    incomingBusinessEmail !== customer.email &&
     incomingBusinessEmail !== customer.metadata?.business_email
   ) {
     update.metadata = { ...customer.metadata, business_email: incomingBusinessEmail }
