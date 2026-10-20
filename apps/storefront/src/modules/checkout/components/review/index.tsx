@@ -1,6 +1,7 @@
 "use client"
 
-import { Heading, Text, clx } from "@modules/common/components/ui"
+import { Text } from "@modules/common/components/ui"
+import StepHeading from "../step-heading"
 
 import PaymentButton from "../payment-button"
 import { useSearchParams } from "next/navigation"
@@ -22,28 +23,16 @@ const Review = ({ cart }: { cart: HttpTypes.StoreCart }) => {
 
   return (
     <div className="bg-white">
-      <div className="flex flex-row items-center justify-between mb-6">
-        <Heading
-          level="h2"
-          className={clx(
-            "flex flex-row text-3xl-regular gap-x-2 items-baseline",
-            {
-              "opacity-50 pointer-events-none select-none": !isOpen,
-            }
-          )}
-        >
-          Review
-        </Heading>
-      </div>
+      <StepHeading number={4} title="Onay" inactive={!isOpen} />
       {isOpen && previousStepsCompleted && (
         <>
           <div className="flex items-start gap-x-1 w-full mb-6">
             <div className="w-full">
               <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                By clicking the Place Order button, you confirm that you have
-                read, understand and accept our Terms of Use, Terms of Sale and
-                Returns Policy and acknowledge that you have read Medusa
-                Store&apos;s Privacy Policy.
+                &quot;Siparişi tamamla&quot; butonuna tıklayarak Kullanım Koşulları,
+                Satış Koşulları ve İade Politikası&apos;nı okuduğunuzu ve kabul
+                ettiğinizi, Gizlilik Politikası&apos;nı okuduğunuzu onaylamış
+                olursunuz.
               </Text>
             </div>
           </div>

@@ -1,6 +1,4 @@
 import { HttpTypes } from "@medusajs/types"
-import { Container } from "@modules/common/components/ui"
-import Checkbox from "@modules/common/components/checkbox"
 import Input from "@modules/common/components/input"
 import { mapKeys } from "lodash"
 import React, { useEffect, useMemo, useState } from "react"
@@ -10,13 +8,9 @@ import CountrySelect from "../country-select"
 const ShippingAddress = ({
   customer,
   cart,
-  checked,
-  onChange,
 }: {
   customer: HttpTypes.StoreCustomer | null
   cart: HttpTypes.StoreCart | null
-  checked: boolean
-  onChange: () => void
 }) => {
   const [formData, setFormData] = useState<Record<string, string>>({
     "shipping_address.first_name": cart?.shipping_address?.first_name || "",
@@ -94,13 +88,41 @@ const ShippingAddress = ({
     })
   }
 
+  const singleCountry =
+    countriesInRegion?.length === 1 ? countriesInRegion[0] : undefined
+
   return (
-    <>
-      {customer && (addressesInRegion?.length || 0) > 0 && (
-        <Container className="mb-6 flex flex-col gap-y-4 p-5">
-          <p className="text-small-regular">
-            {`Hi ${customer.first_name}, do you want to use one of your saved addresses?`}
-          </p>
+    <div className="flex flex-col gap-y-8">
+      <section className="flex flex-col gap-y-3">
+        <h3 className="text-base font-semibold text-black">İletişim</h3>
+        <div className="grid grid-cols-1 small:grid-cols-2 gap-3">
+          <Input
+            label="E-posta"
+            name="email"
+            type="email"
+            title="Geçerli bir e-posta adresi girin."
+            autoComplete="email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+            data-testid="shipping-email-input"
+          />
+          <Input
+            label="Telefon"
+            name="shipping_address.phone"
+            type="tel"
+            autoComplete="tel"
+            value={formData["shipping_address.phone"]}
+            onChange={handleChange}
+            required
+            data-testid="shipping-phone-input"
+          />
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-y-3">
+        <h3 className="text-base font-semibold text-black">Teslimat adresi</h3>
+        {customer && (addressesInRegion?.length || 0) > 0 && (
           <AddressSelect
             addresses={customer.addresses}
             addressInput={
@@ -110,38 +132,29 @@ const ShippingAddress = ({
             }
             onSelect={setFormAddress}
           />
-        </Container>
-      )}
-      <div className="grid grid-cols-2 gap-4">
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            label="Ad"
+            name="shipping_address.first_name"
+            autoComplete="given-name"
+            value={formData["shipping_address.first_name"]}
+            onChange={handleChange}
+            required
+            data-testid="shipping-first-name-input"
+          />
+          <Input
+            label="Soyad"
+            name="shipping_address.last_name"
+            autoComplete="family-name"
+            value={formData["shipping_address.last_name"]}
+            onChange={handleChange}
+            required
+            data-testid="shipping-last-name-input"
+          />
+        </div>
         <Input
-          label="First name"
-          name="shipping_address.first_name"
-          autoComplete="given-name"
-          value={formData["shipping_address.first_name"]}
-          onChange={handleChange}
-          required
-          data-testid="shipping-first-name-input"
-        />
-        <Input
-          label="Last name"
-          name="shipping_address.last_name"
-          autoComplete="family-name"
-          value={formData["shipping_address.last_name"]}
-          onChange={handleChange}
-          required
-          data-testid="shipping-last-name-input"
-        />
-        <Input
-          label="Address"
-          name="shipping_address.address_1"
-          autoComplete="address-line1"
-          value={formData["shipping_address.address_1"]}
-          onChange={handleChange}
-          required
-          data-testid="shipping-address-input"
-        />
-        <Input
-          label="Firma"
+          label="Firma (isteğe bağlı)"
           name="shipping_address.company"
           value={formData["shipping_address.company"]}
           onChange={handleChange}
@@ -149,72 +162,48 @@ const ShippingAddress = ({
           data-testid="shipping-company-input"
         />
         <Input
-          label="Postal code"
-          name="shipping_address.postal_code"
-          autoComplete="postal-code"
-          value={formData["shipping_address.postal_code"]}
+          label="Açık adres (mahalle, cadde/sokak, no, ilçe)"
+          name="shipping_address.address_1"
+          autoComplete="street-address"
+          value={formData["shipping_address.address_1"]}
           onChange={handleChange}
           required
-          data-testid="shipping-postal-code-input"
+          data-testid="shipping-address-input"
         />
-        <Input
-          label="City"
-          name="shipping_address.city"
-          autoComplete="address-level2"
-          value={formData["shipping_address.city"]}
-          onChange={handleChange}
-          required
-          data-testid="shipping-city-input"
-        />
-        <CountrySelect
-          name="shipping_address.country_code"
-          autoComplete="country"
-          region={cart?.region}
-          value={formData["shipping_address.country_code"]}
-          onChange={handleChange}
-          required
-          data-testid="shipping-country-select"
-        />
-        <Input
-          label="State / Province"
-          name="shipping_address.province"
-          autoComplete="address-level1"
-          value={formData["shipping_address.province"]}
-          onChange={handleChange}
-          data-testid="shipping-province-input"
-        />
-      </div>
-      <div className="my-8">
-        <Checkbox
-          label="Billing address same as shipping address"
-          name="same_as_billing"
-          checked={checked}
-          onChange={onChange}
-          data-testid="billing-address-checkbox"
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <Input
-          label="Email"
-          name="email"
-          type="email"
-          title="Enter a valid email address."
-          autoComplete="email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-          data-testid="shipping-email-input"
-        />
-        <Input
-          label="Phone"
-          name="shipping_address.phone"
-          autoComplete="tel"
-          value={formData["shipping_address.phone"]}
-          onChange={handleChange}
-          data-testid="shipping-phone-input"
-        />
-      </div>
-    </>
+        <div className="grid grid-cols-[1fr_140px] gap-3">
+          <Input
+            label="İl"
+            name="shipping_address.city"
+            autoComplete="address-level1"
+            value={formData["shipping_address.city"]}
+            onChange={handleChange}
+            required
+            data-testid="shipping-city-input"
+          />
+          <Input
+            label="Posta kodu"
+            name="shipping_address.postal_code"
+            autoComplete="postal-code"
+            value={formData["shipping_address.postal_code"]}
+            onChange={handleChange}
+            data-testid="shipping-postal-code-input"
+          />
+        </div>
+        {singleCountry ? (
+          <input type="hidden" name="shipping_address.country_code" value={singleCountry} />
+        ) : (
+          <CountrySelect
+            name="shipping_address.country_code"
+            autoComplete="country"
+            region={cart?.region}
+            value={formData["shipping_address.country_code"]}
+            onChange={handleChange}
+            required
+            data-testid="shipping-country-select"
+          />
+        )}
+      </section>
+    </div>
   )
 }
 
