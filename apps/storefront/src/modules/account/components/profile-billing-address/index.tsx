@@ -126,7 +126,7 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
             />
           </div>
           <Input
-            label="Şirket"
+            label="Firma unvanı"
             name="company"
             defaultValue={billingAddress?.company || undefined}
             data-testid="billing-company-input"

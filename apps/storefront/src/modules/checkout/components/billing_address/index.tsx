@@ -77,7 +77,7 @@ const BillingAddress = ({
           data-testid="billing-address-input"
         />
         <Input
-          label="Company"
+          label="Firma unvanı"
           name="billing_address.company"
           value={formData["billing_address.company"]}
           onChange={handleChange}
