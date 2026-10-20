@@ -23,6 +23,11 @@ export default defineMiddlewares({
       ],
     },
     {
+      method: ["POST"],
+      matcher: "/store/customers/me/visit",
+      middlewares: [authenticate("customer", ["session", "bearer"])],
+    },
+    {
       method: ["GET", "POST"],
       matcher: "/store/brands",
       middlewares: [authenticate("customer", ["session", "bearer"])],

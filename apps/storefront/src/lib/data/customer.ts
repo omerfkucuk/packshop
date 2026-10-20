@@ -84,6 +84,29 @@ export const updateCustomer = async (body: HttpTypes.StoreUpdateCustomer) => {
   return updateRes
 }
 
+// Fire-and-forget "last visit" ping for logged-in customers (see
+// VisitTracker). Never throws - visit tracking must not break a page.
+export async function recordVisit(): Promise<void> {
+  const headers = await getAuthHeaders()
+  if (!("authorization" in headers)) {
+    return
+  }
+
+  try {
+    const { updated } = await sdk.client.fetch<{ updated: boolean }>(
+      "/store/customers/me/visit",
+      { method: "POST", headers }
+    )
+    // Refresh the cached customer so forms that spread customer.metadata
+    // don't write a stale last_seen_at back.
+    if (updated) {
+      revalidateTag(await getCacheTag("customers"))
+    }
+  } catch {
+    // ignore
+  }
+}
+
 export async function signup(
   _currentState: unknown,
   formData: FormData

@@ -30,6 +30,8 @@ const TAX_OFFICE_FIELD = process.env.TWENTY_COMPANY_TAX_OFFICE_FIELD || "vergiDa
 // holds the account/login email, so the default `emails` field is free for
 // the company email.
 const PERSONAL_EMAIL_FIELD = process.env.TWENTY_PERSON_PERSONAL_EMAIL_FIELD || "kisiselEPosta"
+// Custom DATE field "Son Ziyaret" - day only, matching metadata.last_seen_at.
+const LAST_VISIT_FIELD = process.env.TWENTY_PERSON_LAST_VISIT_FIELD || "sonZiyaret"
 
 async function twentyFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const baseUrl = process.env.TWENTY_API_URL
@@ -86,6 +88,8 @@ export type UpsertPersonInput = {
   email: string
   /** The account/login email, for the custom Kişisel E-posta field. */
   personalEmail?: string | null
+  /** Last site visit as YYYY-MM-DD (customer.metadata.last_seen_at). */
+  lastVisit?: string | null
   firstName?: string | null
   lastName?: string | null
   phone?: string | null
@@ -146,6 +150,7 @@ export async function upsertPerson(
     ...(input.personalEmail
       ? { [PERSONAL_EMAIL_FIELD]: { primaryEmail: input.personalEmail } }
       : {}),
+    ...(input.lastVisit ? { [LAST_VISIT_FIELD]: input.lastVisit } : {}),
     ...(input.firstName || input.lastName
       ? { name: { firstName: input.firstName ?? "", lastName: input.lastName ?? "" } }
       : {}),

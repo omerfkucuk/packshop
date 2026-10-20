@@ -27,6 +27,10 @@ export default async function customerUpdatedHandler({
     const personId = await upsertPerson(
       {
         ...personEmails(customer),
+        lastVisit:
+          typeof customer.metadata?.last_seen_at === "string"
+            ? customer.metadata.last_seen_at
+            : null,
         firstName: customer.first_name,
         lastName: customer.last_name,
         phone: customer.phone,
