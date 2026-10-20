@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import BackToAccount from "@modules/account/components/back-to-account"
 import { redirect } from "next/navigation"
 
 import { retrieveCustomer } from "@lib/data/customer"
@@ -27,6 +28,7 @@ export default async function MarkaMerkeziPage(props: {
       className="max-w-6xl w-full mx-auto px-4 py-12"
       data-testid="brand-center-page-wrapper"
     >
+      <BackToAccount />
       <div className="mb-8 flex flex-col gap-y-4">
         <h1 className="text-2xl font-bold tracking-tight text-black">
           Marka Merkezi

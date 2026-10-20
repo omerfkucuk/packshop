@@ -1,6 +1,6 @@
 import { authenticate, defineMiddlewares } from "@medusajs/framework/http"
 import multer from "multer"
-import { validateBusinessEmailMiddleware } from "./store/customers/validate-business-email"
+import { validateCustomerMetadataMiddleware } from "./store/customers/validate-customer-metadata"
 
 const upload = multer({ storage: multer.memoryStorage() })
 
@@ -19,7 +19,7 @@ export default defineMiddlewares({
       matcher: "/store/customers/me",
       middlewares: [
         authenticate("customer", ["session", "bearer"]),
-        validateBusinessEmailMiddleware,
+        validateCustomerMetadataMiddleware,
       ],
     },
     {

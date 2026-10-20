@@ -84,6 +84,24 @@ async function handlePersonUpdated(
     update.metadata = { ...customer.metadata, business_email: incomingBusinessEmail }
   }
 
+  // Job title / LinkedIn edited by a rep in Twenty flow back into the
+  // profile's metadata, merged on top of any business_email change above.
+  const incomingJobTitle: string | undefined = record.jobTitle ?? undefined
+  const incomingLinkedin: string | undefined = record.linkedinLink?.primaryLinkUrl ?? undefined
+  const metadataPatch: Record<string, unknown> = {}
+  if (incomingJobTitle !== undefined && incomingJobTitle !== (customer.metadata?.job_title ?? "")) {
+    metadataPatch.job_title = incomingJobTitle
+  }
+  if (incomingLinkedin !== undefined && incomingLinkedin !== (customer.metadata?.linkedin_url ?? "")) {
+    metadataPatch.linkedin_url = incomingLinkedin
+  }
+  if (Object.keys(metadataPatch).length > 0) {
+    update.metadata = {
+      ...((update.metadata as Record<string, unknown>) ?? customer.metadata),
+      ...metadataPatch,
+    }
+  }
+
   if (Object.keys(update).length > 0) {
     await customerModuleService.updateCustomers({ id: customer.id, ...update })
   }

@@ -27,10 +27,9 @@ export default async function customerUpdatedHandler({
     const personId = await upsertPerson(
       {
         ...personEmails(customer),
-        lastVisit:
-          typeof customer.metadata?.last_seen_at === "string"
-            ? customer.metadata.last_seen_at
-            : null,
+        lastVisit: metadataString(customer.metadata, "last_seen_at"),
+        jobTitle: metadataString(customer.metadata, "job_title"),
+        linkedinUrl: metadataString(customer.metadata, "linkedin_url"),
         firstName: customer.first_name,
         lastName: customer.last_name,
         phone: customer.phone,
@@ -49,6 +48,13 @@ export default async function customerUpdatedHandler({
   } catch (error) {
     logger.error(`Failed to sync customer ${data.id} to Twenty CRM: ${error}`)
   }
+}
+
+function metadataString(
+  metadata: Record<string, unknown> | null | undefined,
+  key: string
+): string | null {
+  return typeof metadata?.[key] === "string" ? (metadata[key] as string) : null
 }
 
 export const config: SubscriberConfig = {

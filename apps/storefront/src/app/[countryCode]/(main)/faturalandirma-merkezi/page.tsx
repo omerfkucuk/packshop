@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import BackToAccount from "@modules/account/components/back-to-account"
 import { notFound, redirect } from "next/navigation"
 
 import { retrieveCustomer } from "@lib/data/customer"
@@ -34,6 +35,7 @@ export default async function BillingCenterPage(props: {
       className="max-w-6xl w-full mx-auto px-4 py-12"
       data-testid="billing-center-page-wrapper"
     >
+      <BackToAccount />
       <BillingForm region={region} billingAddress={billingAddress} />
     </div>
   )

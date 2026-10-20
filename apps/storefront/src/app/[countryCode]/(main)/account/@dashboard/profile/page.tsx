@@ -1,13 +1,13 @@
 import { Metadata } from "next"
+import { HttpTypes } from "@medusajs/types"
 
 import ProfilePhone from "@modules/account/components/profile-phone"
 import User from "@modules/common/icons/user"
-import ProfileBillingAddress from "@modules/account/components/profile-billing-address"
 import ProfileBusinessEmail from "@modules/account/components/profile-business-email"
 import ProfileEmail from "@modules/account/components/profile-email"
+import ProfileMetadataField from "@modules/account/components/profile-metadata-field"
 import ProfileName from "@modules/account/components/profile-name"
 import { notFound } from "next/navigation"
-import { listRegions } from "@lib/data/regions"
 import { retrieveCustomer } from "@lib/data/customer"
 
 export const metadata: Metadata = {
@@ -17,9 +17,8 @@ export const metadata: Metadata = {
 
 export default async function Profile() {
   const customer = await retrieveCustomer()
-  const regions = await listRegions()
 
-  if (!customer || !regions) {
+  if (!customer) {
     notFound()
   }
 
@@ -36,8 +35,31 @@ export default async function Profile() {
         <ProfilePhone customer={customer} />
         <ProfileEmail customer={customer} />
         <ProfileBusinessEmail customer={customer} />
-        <ProfileBillingAddress customer={customer} regions={regions} />
+        {hasCompanyInfo(customer) && (
+          <>
+            <ProfileMetadataField
+              customer={customer}
+              field="job_title"
+              label="İş unvanı"
+              placeholder="İş unvanı (ör. Satın Alma Müdürü)"
+            />
+            <ProfileMetadataField
+              customer={customer}
+              field="linkedin_url"
+              label="LinkedIn profili"
+              type="url"
+              placeholder="LinkedIn profil adresi"
+              hint="Örn. https://www.linkedin.com/in/adiniz"
+            />
+          </>
+        )}
       </div>
     </div>
   )
 }
+
+// Job title / LinkedIn only make sense for B2B customers - shown once a
+// company email or a Firma bilgileri company name exists.
+const hasCompanyInfo = (customer: HttpTypes.StoreCustomer) =>
+  !!customer.metadata?.business_email ||
+  !!customer.addresses?.some((addr) => addr.is_default_billing && addr.company)

@@ -92,6 +92,8 @@ export type UpsertPersonInput = {
   companyEmail?: string | null
   /** Last site visit as YYYY-MM-DD (customer.metadata.last_seen_at). */
   lastVisit?: string | null
+  jobTitle?: string | null
+  linkedinUrl?: string | null
   firstName?: string | null
   lastName?: string | null
   phone?: string | null
@@ -151,6 +153,11 @@ export async function upsertPerson(
       ? { [COMPANY_EMAIL_FIELD]: { primaryEmail: input.companyEmail } }
       : {}),
     ...(input.lastVisit ? { [LAST_VISIT_FIELD]: input.lastVisit } : {}),
+    // Built-in Person fields. Sent whenever known (empty string clears).
+    ...(input.jobTitle != null ? { jobTitle: input.jobTitle } : {}),
+    ...(input.linkedinUrl != null
+      ? { linkedinLink: { primaryLinkUrl: input.linkedinUrl } }
+      : {}),
     ...(input.firstName || input.lastName
       ? { name: { firstName: input.firstName ?? "", lastName: input.lastName ?? "" } }
       : {}),
