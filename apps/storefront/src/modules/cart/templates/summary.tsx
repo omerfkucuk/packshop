@@ -38,6 +38,13 @@ const Summary = ({ cart, shippingOptions }: SummaryProps) => {
       >
         Ödemeye geç
       </LocalizedClientLink>
+      <LocalizedClientLink
+        href="/teklif"
+        className="text-center text-sm text-black underline underline-offset-4 hover:no-underline"
+        data-testid="quote-link"
+      >
+        Teklif PDF'i indir
+      </LocalizedClientLink>
       <p className="text-xs text-black/50 text-center">
         Kurumsal siparişlerde faturanız Firma bilgileri sayfanızdaki bilgilerle düzenlenir.
       </p>
