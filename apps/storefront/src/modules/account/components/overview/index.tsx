@@ -7,16 +7,18 @@ import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
 
 import LogoutButton from "./logout-button"
+import { TILE_CLASS } from "./tile-class"
 
 type OverviewProps = {
   customer: HttpTypes.StoreCustomer | null
   orders: HttpTypes.StoreOrder[] | null
 }
 
+// Mirrors the sidebar (which the overview hides) - keep the two in sync.
 const SHORTCUTS = [
-  { href: "/account/profile", label: "Kişisel bilgiler", Icon: User, testId: "shortcut-profile" },
-  { href: "/account/orders", label: "Siparişlerim", Icon: Package, testId: "shortcut-orders" },
-  { href: "/account/addresses", label: "Adreslerim", Icon: MapPin, testId: "shortcut-addresses" },
+  { href: "/account/profile", label: "Profilim", Icon: User, testId: "profile-link" },
+  { href: "/account/addresses", label: "Adreslerim", Icon: MapPin, testId: "addresses-link" },
+  { href: "/account/orders", label: "Siparişlerim", Icon: Package, testId: "orders-link" },
 ]
 
 const Overview = ({ customer, orders }: OverviewProps) => {
@@ -44,18 +46,19 @@ const Overview = ({ customer, orders }: OverviewProps) => {
         </span>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 small:gap-3 mt-8">
+      <div className="grid grid-cols-2 small:grid-cols-4 gap-2 small:gap-3 mt-8">
         {SHORTCUTS.map(({ href, label, Icon, testId }) => (
           <LocalizedClientLink
             key={href}
             href={href}
-            className="flex flex-col items-center justify-center gap-y-3 rounded-xl bg-black/[0.04] px-2 py-5 text-sm font-medium text-black text-center hover:bg-black/[0.08] transition-colors"
+            className={TILE_CLASS}
             data-testid={testId}
           >
             <Icon size={26} />
             <span>{label}</span>
           </LocalizedClientLink>
         ))}
+        <LogoutButton />
       </div>
 
       {suggestions.length > 0 && (
@@ -133,11 +136,6 @@ const Overview = ({ customer, orders }: OverviewProps) => {
           )}
         </ul>
       </section>
-
-      {/* Desktop logs out from the sidebar; on mobile the sidebar is hidden here. */}
-      <div className="small:hidden mt-10 flex justify-center">
-        <LogoutButton />
-      </div>
     </div>
   )
 }

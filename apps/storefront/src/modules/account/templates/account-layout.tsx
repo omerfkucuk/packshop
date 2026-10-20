@@ -2,6 +2,7 @@ import React from "react"
 
 import UnderlineLink from "@modules/common/components/interactive-link"
 
+import AccountGrid from "../components/account-grid"
 import AccountNav from "../components/account-nav"
 import { HttpTypes } from "@medusajs/types"
 
@@ -17,10 +18,9 @@ const AccountLayout: React.FC<AccountLayoutProps> = ({
   return (
     <div className="flex-1 small:py-12" data-testid="account-page">
       <div className="flex-1 content-container h-full max-w-5xl mx-auto bg-white flex flex-col">
-        <div className="grid grid-cols-1  small:grid-cols-[240px_1fr] py-12">
-          <div>{customer && <AccountNav customer={customer} />}</div>
-          <div className="flex-1">{children}</div>
-        </div>
+        <AccountGrid nav={customer && <AccountNav customer={customer} />}>
+          {children}
+        </AccountGrid>
         <div className="flex flex-col small:flex-row items-end justify-between small:border-t border-black/10 py-12 gap-8">
           <div>
             <h3 className="text-xl font-bold text-black mb-4">
