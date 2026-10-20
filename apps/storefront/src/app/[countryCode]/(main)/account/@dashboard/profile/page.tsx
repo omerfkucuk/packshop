@@ -23,7 +23,7 @@ export default async function Profile() {
   }
 
   return (
-    <div className="w-full max-w-2xl" data-testid="profile-page-wrapper">
+    <div className="w-full" data-testid="profile-page-wrapper">
       <h1 className="text-3xl font-bold tracking-tight text-black">
         Kişisel bilgiler
       </h1>

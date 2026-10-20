@@ -18,7 +18,8 @@ const AccountGrid = ({
   const isOverview = pathname === `/${countryCode}/account`
 
   return (
-    <div className="py-12">
+    // Same centered column as the overview, so sub-pages don't hug the left edge.
+    <div className="py-12 mx-auto w-full max-w-2xl">
       {showBackLink && !isOverview && <BackToAccount />}
       {children}
     </div>

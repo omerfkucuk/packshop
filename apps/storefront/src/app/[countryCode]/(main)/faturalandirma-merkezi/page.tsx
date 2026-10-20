@@ -32,7 +32,7 @@ export default async function BillingCenterPage(props: {
 
   return (
     <div
-      className="max-w-6xl w-full mx-auto px-4 py-12"
+      className="max-w-2xl w-full mx-auto px-4 py-12"
       data-testid="billing-center-page-wrapper"
     >
       <BackToAccount />
