@@ -26,10 +26,12 @@ export type TwentyCompany = {
 // case the fields are ever recreated with different labels.
 const TAX_NUMBER_FIELD = process.env.TWENTY_COMPANY_TAX_NUMBER_FIELD || "vergiNumarasi"
 const TAX_OFFICE_FIELD = process.env.TWENTY_COMPANY_TAX_OFFICE_FIELD || "vergiDairesi"
-// Same story for Person: a custom EMAILS field labeled "Kişisel E-posta"
-// holds the account/login email, so the default `emails` field is free for
-// the company email.
-const PERSONAL_EMAIL_FIELD = process.env.TWENTY_PERSON_PERSONAL_EMAIL_FIELD || "kisiselEPosta"
+// Same story for Person: the default `emails` field holds the account/login
+// email, and a custom EMAILS field holds the company email. It was created
+// labeled "Kişisel E-posta" (API name kisiselEPosta) - if it's relabeled in
+// Twenty and its API name changes, set this env var instead of editing code.
+export const COMPANY_EMAIL_FIELD =
+  process.env.TWENTY_PERSON_COMPANY_EMAIL_FIELD || "kisiselEPosta"
 // Custom DATE field "Son Ziyaret" - day only, matching metadata.last_seen_at.
 const LAST_VISIT_FIELD = process.env.TWENTY_PERSON_LAST_VISIT_FIELD || "sonZiyaret"
 
@@ -84,10 +86,10 @@ export async function fetchCompany(id: string): Promise<TwentyCompany | undefine
 }
 
 export type UpsertPersonInput = {
-  /** Goes to Twenty's main E-posta field - the company email when we have one. */
+  /** The account/login email, for Twenty's main E-posta field. */
   email: string
-  /** The account/login email, for the custom Kişisel E-posta field. */
-  personalEmail?: string | null
+  /** The company email (metadata.business_email), for the custom field. */
+  companyEmail?: string | null
   /** Last site visit as YYYY-MM-DD (customer.metadata.last_seen_at). */
   lastVisit?: string | null
   firstName?: string | null
@@ -113,20 +115,18 @@ function normalizeTurkishPhone(phone: string): string {
 }
 
 /**
- * Splits a customer's addresses into Twenty's two email fields: the company
- * email (metadata.business_email) is the main one, the account email is the
- * personal one. Until a company email is entered, the account email fills
- * both so the main field is never empty.
+ * Splits a customer's addresses into Twenty's two email fields: the account
+ * email goes to the main E-posta field, the company email
+ * (metadata.business_email) to COMPANY_EMAIL_FIELD.
  */
 export function personEmails(customer: {
   email?: string | null
   metadata?: Record<string, unknown> | null
-}): { email: string; personalEmail: string | null } {
+}): { email: string; companyEmail: string | null } {
   const businessEmail = customer.metadata?.business_email
-  const personalEmail = customer.email ?? null
   return {
-    email: typeof businessEmail === "string" && businessEmail ? businessEmail : personalEmail ?? "",
-    personalEmail,
+    email: customer.email ?? "",
+    companyEmail: typeof businessEmail === "string" && businessEmail ? businessEmail : null,
   }
 }
 
@@ -147,8 +147,8 @@ export async function upsertPerson(
   // order-placed only has the order's email, not the customer's name).
   const buildPayload = (includePhone: boolean) => ({
     emails: { primaryEmail: input.email },
-    ...(input.personalEmail
-      ? { [PERSONAL_EMAIL_FIELD]: { primaryEmail: input.personalEmail } }
+    ...(input.companyEmail
+      ? { [COMPANY_EMAIL_FIELD]: { primaryEmail: input.companyEmail } }
       : {}),
     ...(input.lastVisit ? { [LAST_VISIT_FIELD]: input.lastVisit } : {}),
     ...(input.firstName || input.lastName

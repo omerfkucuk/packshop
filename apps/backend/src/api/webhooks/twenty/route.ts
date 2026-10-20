@@ -1,6 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { verifyTwentyWebhookSignature } from "../../../lib/verify-twenty-webhook"
+import { COMPANY_EMAIL_FIELD } from "../../../lib/twenty-client"
 import { CRM_LINK_MODULE } from "../../../modules/crm-link"
 import CrmLinkModuleService from "../../../modules/crm-link/services/crm-link-module-service"
 
@@ -65,7 +66,9 @@ async function handlePersonUpdated(
   const customer = await customerModuleService.retrieveCustomer(link.customer_id)
 
   const incomingPhone: string | undefined = record.phones?.primaryPhoneNumber || undefined
-  const incomingBusinessEmail: string | undefined = record.emails?.primaryEmail || undefined
+  // The main `emails` field is the login email and is never written back.
+  const incomingBusinessEmail: string | undefined =
+    record[COMPANY_EMAIL_FIELD]?.primaryEmail || undefined
 
   const update: Record<string, unknown> = {}
   // Diff-before-write breaks the Packshop<->Twenty loop: our own outbound
@@ -74,11 +77,8 @@ async function handlePersonUpdated(
   if (incomingPhone !== undefined && incomingPhone !== customer.phone) {
     update.phone = incomingPhone
   }
-  // personEmails() fills the main field with the account email until a
-  // company email exists - that echo must not be saved as business_email.
   if (
     incomingBusinessEmail !== undefined &&
-    incomingBusinessEmail !== customer.email &&
     incomingBusinessEmail !== customer.metadata?.business_email
   ) {
     update.metadata = { ...customer.metadata, business_email: incomingBusinessEmail }

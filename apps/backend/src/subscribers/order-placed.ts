@@ -34,8 +34,8 @@ export default async function orderPlacedHandler({
 
     const pointOfContactId = await upsertPerson(
       {
-        // A registered customer's company email must not be overwritten by
-        // the order's (account) email; guests only have the order email.
+        // Registered customers send both their emails; guests only have
+        // the order email.
         ...(customer ? personEmails(customer) : { email: order.email }),
         firstName: customer?.first_name,
         lastName: customer?.last_name,
