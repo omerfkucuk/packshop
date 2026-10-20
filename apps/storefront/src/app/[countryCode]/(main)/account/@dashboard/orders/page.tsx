@@ -20,16 +20,12 @@ export default async function Orders() {
 
   return (
     <div className="w-full" data-testid="orders-page-wrapper">
-      <div className="mb-8 flex flex-col gap-y-4">
-        <h1 className="text-2xl font-bold tracking-tight text-black">
-          Siparişlerim
-        </h1>
-        <p className="text-base text-black/70">
-          Önceki siparişlerinizi ve durumlarını görüntüleyebilirsiniz.
-          Gerekirse siparişleriniz için iade veya değişim talebinde
-          bulunabilirsiniz.
-        </p>
-      </div>
+      <h1 className="text-3xl font-bold tracking-tight text-black">
+        Siparişlerim
+      </h1>
+      <p className="mt-2 mb-6 text-base text-black/60">
+        Önceki siparişleriniz ve durumları.
+      </p>
       <div>
         <OrderOverview orders={orders} />
         <Divider className="mb-8 mt-8" />

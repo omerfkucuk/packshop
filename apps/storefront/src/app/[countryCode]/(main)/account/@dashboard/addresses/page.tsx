@@ -25,16 +25,12 @@ export default async function Addresses(props: {
 
   return (
     <div className="w-full" data-testid="addresses-page-wrapper">
-      <div className="mb-8 flex flex-col gap-y-4">
-        <h1 className="text-2xl font-bold tracking-tight text-black">
-          Teslimat Adreslerim
-        </h1>
-        <p className="text-base text-black/70">
-          Teslimat adreslerinizi görüntüleyip güncelleyebilir, dilediğiniz
-          kadar adres ekleyebilirsiniz. Kaydettiğiniz adresler ödeme sırasında
-          kullanılabilir.
-        </p>
-      </div>
+      <h1 className="text-3xl font-bold tracking-tight text-black">
+        Adreslerim
+      </h1>
+      <p className="mt-2 mb-6 text-base text-black/60">
+        Ödeme sırasında seçebileceğiniz teslimat adresleri.
+      </p>
       <AddressBook customer={customer} region={region} />
     </div>
   )

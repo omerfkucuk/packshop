@@ -30,7 +30,7 @@ export default async function MarkaMerkeziPage(props: {
     >
       <BackToAccount />
       <div className="mb-8 flex flex-col gap-y-4">
-        <h1 className="text-2xl font-bold tracking-tight text-black">
+        <h1 className="text-3xl font-bold tracking-tight text-black">
           Marka Merkezi
         </h1>
         <p className="text-base text-black/70">

@@ -27,6 +27,9 @@ export default async function Profile() {
       <h1 className="text-3xl font-bold tracking-tight text-black">
         Kişisel bilgiler
       </h1>
+      <p className="mt-2 text-base text-black/60">
+        Hesabınıza ve iletişim bilgilerinize ait bilgiler.
+      </p>
       <div className="mt-6 mb-4 flex items-center justify-center h-24 w-24 rounded-full bg-black/60 text-white">
         <User size={44} />
       </div>
