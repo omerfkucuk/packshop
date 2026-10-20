@@ -8,16 +8,14 @@ import { HttpTypes } from "@medusajs/types"
 import { saveBillingAddress } from "@lib/data/billing"
 import { deleteCustomerAddress } from "@lib/data/customer"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
-import CountrySelect from "@modules/checkout/components/country-select"
 import Input from "@modules/common/components/input"
 import Spinner from "@modules/common/icons/spinner"
 
 type BillingFormProps = {
-  region: HttpTypes.StoreRegion
   billingAddress: HttpTypes.StoreCustomerAddress | null
 }
 
-const BillingForm = ({ region, billingAddress }: BillingFormProps) => {
+const BillingForm = ({ billingAddress }: BillingFormProps) => {
   const router = useRouter()
   const hasBillingAddress = !!billingAddress
   const [removing, setRemoving] = useState(false)
@@ -42,8 +40,8 @@ const BillingForm = ({ region, billingAddress }: BillingFormProps) => {
           Firma bilgileri
         </h1>
         <p className="text-base text-black/70">
-          Faturalarınızda kullanılacak firma unvanı ve fatura adresini buradan
-          düzenleyebilirsiniz.
+          Faturalarınızda kullanılacak firma unvanı, vergi bilgileri ve fatura
+          adresini buradan düzenleyebilirsiniz.
         </p>
         {hasBillingAddress && (
           <div className="flex items-center gap-x-4">
@@ -65,105 +63,66 @@ const BillingForm = ({ region, billingAddress }: BillingFormProps) => {
           <input type="hidden" name="addressId" value={billingAddress.id} />
         )}
 
-        <div className="grid grid-cols-2 gap-x-2">
+        <section className="flex flex-col gap-y-3">
+          <h2 className="text-base font-semibold text-black">Firma</h2>
           <Input
-            label="Ad"
-            name="first_name"
+            label="Firma unvanı"
+            name="company"
             required
-            autoComplete="given-name"
-            defaultValue={billingAddress?.first_name || undefined}
-            data-testid="first-name-input"
+            autoComplete="organization"
+            defaultValue={billingAddress?.company || undefined}
+            data-testid="company-input"
           />
+          <div className="grid grid-cols-1 small:grid-cols-2 gap-3">
+            <Input
+              label="Vergi dairesi"
+              name="metadata.tax_office"
+              required
+              defaultValue={
+                (billingAddress?.metadata?.tax_office as string) || undefined
+              }
+              data-testid="tax-office-input"
+            />
+            <Input
+              label="Vergi numarası / TCKN"
+              name="metadata.tax_number"
+              required
+              inputMode="numeric"
+              pattern="[0-9]{10,11}"
+              title="10 haneli vergi numarası veya 11 haneli T.C. kimlik numarası"
+              defaultValue={
+                (billingAddress?.metadata?.tax_number as string) || undefined
+              }
+              data-testid="tax-number-input"
+            />
+          </div>
+        </section>
+
+        <section className="flex flex-col gap-y-3">
+          <h2 className="text-base font-semibold text-black">Fatura adresi</h2>
           <Input
-            label="Soyad"
-            name="last_name"
+            label="Açık adres (mahalle, cadde/sokak, no, ilçe)"
+            name="address_1"
             required
-            autoComplete="family-name"
-            defaultValue={billingAddress?.last_name || undefined}
-            data-testid="last-name-input"
-          />
-        </div>
-        <Input
-          label="Firma unvanı"
-          name="company"
-          autoComplete="organization"
-          defaultValue={billingAddress?.company || undefined}
-          data-testid="company-input"
-        />
-        <div className="grid grid-cols-2 gap-x-2">
-          <Input
-            label="Vergi numarası"
-            name="metadata.tax_number"
-            defaultValue={
-              (billingAddress?.metadata?.tax_number as string) || undefined
-            }
-            data-testid="tax-number-input"
+            autoComplete="street-address"
+            defaultValue={billingAddress?.address_1 || undefined}
+            data-testid="address-1-input"
           />
           <Input
-            label="Vergi dairesi"
-            name="metadata.tax_office"
-            defaultValue={
-              (billingAddress?.metadata?.tax_office as string) || undefined
-            }
-            data-testid="tax-office-input"
-          />
-        </div>
-        <Input
-          label="Adres"
-          name="address_1"
-          required
-          autoComplete="address-line1"
-          defaultValue={billingAddress?.address_1 || undefined}
-          data-testid="address-1-input"
-        />
-        <Input
-          label="Daire, kat vb."
-          name="address_2"
-          autoComplete="address-line2"
-          defaultValue={billingAddress?.address_2 || undefined}
-          data-testid="address-2-input"
-        />
-        <div className="grid grid-cols-[144px_1fr] gap-x-2">
-          <Input
-            label="Posta kodu"
-            name="postal_code"
-            required
-            autoComplete="postal-code"
-            defaultValue={billingAddress?.postal_code || undefined}
-            data-testid="postal-code-input"
-          />
-          <Input
-            label="Şehir"
+            label="İl"
             name="city"
             required
-            autoComplete="locality"
+            autoComplete="address-level1"
             defaultValue={billingAddress?.city || undefined}
             data-testid="city-input"
           />
-        </div>
-        <Input
-          label="Bölge"
-          name="province"
-          autoComplete="address-level1"
-          defaultValue={billingAddress?.province || undefined}
-          data-testid="state-input"
-        />
-        <CountrySelect
-          name="country_code"
-          region={region}
-          required
-          autoComplete="country"
-          defaultValue={billingAddress?.country_code || undefined}
-          data-testid="country-select"
-        />
-        <Input
-          label="Telefon"
-          name="phone"
-          autoComplete="phone"
-          defaultValue={billingAddress?.phone || undefined}
-          data-testid="phone-input"
-        />
+        </section>
 
+        {formState.success && !formState.error && (
+          <div className="text-green-700 text-sm" data-testid="billing-success">
+            Firma bilgileriniz kaydedildi.
+          </div>
+        )}
         {formState.error && (
           <div className="text-rose-500 text-sm" data-testid="billing-error">
             {formState.error}

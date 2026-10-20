@@ -1,10 +1,9 @@
 import { Metadata } from "next"
 import BackToAccount from "@modules/account/components/back-to-account"
-import { notFound, redirect } from "next/navigation"
+import { redirect } from "next/navigation"
 
 import { retrieveCustomer } from "@lib/data/customer"
 import { retrieveBillingAddress } from "@lib/data/billing"
-import { getRegion } from "@lib/data/regions"
 import BillingForm from "@modules/billing-center/components/billing-form"
 
 export const metadata: Metadata = {
@@ -22,12 +21,6 @@ export default async function BillingCenterPage(props: {
     redirect(`/${countryCode}/account`)
   }
 
-  const region = await getRegion(countryCode)
-
-  if (!region) {
-    notFound()
-  }
-
   const billingAddress = await retrieveBillingAddress()
 
   return (
@@ -36,7 +29,7 @@ export default async function BillingCenterPage(props: {
       data-testid="billing-center-page-wrapper"
     >
       <BackToAccount />
-      <BillingForm region={region} billingAddress={billingAddress} />
+      <BillingForm billingAddress={billingAddress} />
     </div>
   )
 }

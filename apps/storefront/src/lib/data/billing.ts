@@ -21,17 +21,20 @@ export const saveBillingAddress = async (
   const addressId = formData.get("addressId") as string
   const headers = { ...(await getAuthHeaders()) }
 
+  // The form only asks for what goes on an invoice (company, tax info,
+  // address, city). Contact name/phone come from the profile and the
+  // country is fixed, so checkout's billing form - which prefills from this
+  // address - still gets a complete record.
+  const customer = await retrieveCustomer()
+
   const fields = {
-    first_name: formData.get("first_name") as string,
-    last_name: formData.get("last_name") as string,
+    first_name: customer?.first_name ?? "",
+    last_name: customer?.last_name ?? "",
+    phone: customer?.phone ?? "",
     company: formData.get("company") as string,
     address_1: formData.get("address_1") as string,
-    address_2: formData.get("address_2") as string,
     city: formData.get("city") as string,
-    postal_code: formData.get("postal_code") as string,
-    province: formData.get("province") as string,
-    country_code: formData.get("country_code") as string,
-    phone: formData.get("phone") as string,
+    country_code: "tr",
     metadata: {
       tax_number: formData.get("metadata.tax_number") as string,
       tax_office: formData.get("metadata.tax_office") as string,
