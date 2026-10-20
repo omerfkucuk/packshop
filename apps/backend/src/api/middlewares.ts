@@ -1,5 +1,6 @@
 import { authenticate, defineMiddlewares } from "@medusajs/framework/http"
 import multer from "multer"
+import { validateBusinessEmailMiddleware } from "./store/customers/validate-business-email"
 
 const upload = multer({ storage: multer.memoryStorage() })
 
@@ -12,6 +13,14 @@ export default defineMiddlewares({
       method: ["POST"],
       matcher: "/webhooks/twenty",
       bodyParser: { preserveRawBody: true },
+    },
+    {
+      method: ["POST"],
+      matcher: "/store/customers/me",
+      middlewares: [
+        authenticate("customer", ["session", "bearer"]),
+        validateBusinessEmailMiddleware,
+      ],
     },
     {
       method: ["GET", "POST"],

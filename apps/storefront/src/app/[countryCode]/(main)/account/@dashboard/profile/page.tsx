@@ -2,6 +2,7 @@ import { Metadata } from "next"
 
 import ProfilePhone from "@modules/account//components/profile-phone"
 import ProfileBillingAddress from "@modules/account/components/profile-billing-address"
+import ProfileBusinessEmail from "@modules/account/components/profile-business-email"
 import ProfileEmail from "@modules/account/components/profile-email"
 import ProfileName from "@modules/account/components/profile-name"
 import { notFound } from "next/navigation"
@@ -28,7 +29,7 @@ export default async function Profile() {
           Profilim
         </h1>
         <p className="text-base text-black/70">
-          İsim, e-posta ve telefon numaranız dahil profil bilgilerinizi
+          İsim, e-posta, şirket e-postası ve telefon numaranız dahil profil bilgilerinizi
           görüntüleyip güncelleyebilirsiniz. Fatura adresinizi de buradan
           değiştirebilirsiniz.
         </p>
@@ -37,6 +38,8 @@ export default async function Profile() {
         <ProfileName customer={customer} />
         <Divider />
         <ProfileEmail customer={customer} />
+        <Divider />
+        <ProfileBusinessEmail customer={customer} />
         <Divider />
         <ProfilePhone customer={customer} />
         <Divider />

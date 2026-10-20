@@ -39,7 +39,11 @@ const ProfilePrompt = ({ customer }: { customer: HttpTypes.StoreCustomer | null 
       })
       return { success: true, error: null }
     } catch (error) {
-      return { success: false, error: String(error) }
+      // Surfaces the backend's free-mail-domain rejection as-is.
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      }
     }
   }
 
@@ -58,14 +62,14 @@ const ProfilePrompt = ({ customer }: { customer: HttpTypes.StoreCustomer | null 
         Bilgilerinizi tamamlayın
       </Heading>
       <Text className="text-ui-fg-subtle mb-4">
-        Siparişinizle ilgili sizinle iletişime geçebilmemiz için iş
+        Siparişinizle ilgili sizinle iletişime geçebilmemiz için şirket
         e-postanızı ve telefon numaranızı alalım.
       </Text>
       <form action={formAction}>
         <div className="grid grid-cols-1 gap-y-2">
           {needsBusinessEmail && (
             <Input
-              label="İş e-postası"
+              label="Şirket e-postası"
               name="business_email"
               type="email"
               autoComplete="email"
