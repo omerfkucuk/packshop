@@ -16,7 +16,7 @@ type OverviewProps = {
 
 // Mirrors the sidebar (which the overview hides) - keep the two in sync.
 const SHORTCUTS = [
-  { href: "/account/profile", label: "Profilim", Icon: User, testId: "profile-link" },
+  { href: "/account/profile", label: "Kişisel bilgiler", Icon: User, testId: "profile-link" },
   { href: "/account/addresses", label: "Adreslerim", Icon: MapPin, testId: "addresses-link" },
   { href: "/account/orders", label: "Siparişlerim", Icon: Package, testId: "orders-link" },
 ]

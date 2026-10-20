@@ -72,7 +72,7 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
       )?.label || billingAddress.country_code?.toUpperCase()
 
     return (
-      <div className="flex flex-col font-semibold" data-testid="current-info">
+      <div className="flex flex-col text-base text-black/60" data-testid="current-info">
         <span>
           {billingAddress.first_name} {billingAddress.last_name}
         </span>

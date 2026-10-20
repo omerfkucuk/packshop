@@ -58,7 +58,7 @@ const AccountNav = ({
                   route={route!}
                   data-testid="profile-link"
                 >
-                  Profilim
+                  Kişisel bilgiler
                 </AccountNavLink>
               </li>
               <li className="w-full">
