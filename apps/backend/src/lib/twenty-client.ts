@@ -27,11 +27,12 @@ export type TwentyCompany = {
 const TAX_NUMBER_FIELD = process.env.TWENTY_COMPANY_TAX_NUMBER_FIELD || "vergiNumarasi"
 const TAX_OFFICE_FIELD = process.env.TWENTY_COMPANY_TAX_OFFICE_FIELD || "vergiDairesi"
 // Same story for Person: the default `emails` field holds the account/login
-// email, and a custom EMAILS field holds the company email. It was created
-// labeled "Kişisel E-posta" (API name kisiselEPosta) - if it's relabeled in
-// Twenty and its API name changes, set this env var instead of editing code.
+// email, and a custom EMAILS field labeled "Kurumsal E-posta" (API name
+// kurumsalEPosta, confirmed live) holds the company email. Relabeling a
+// field in Twenty renames its API name too (it was kisiselEPosta before) -
+// set this env var instead of editing code if that happens again.
 export const COMPANY_EMAIL_FIELD =
-  process.env.TWENTY_PERSON_COMPANY_EMAIL_FIELD || "kisiselEPosta"
+  process.env.TWENTY_PERSON_COMPANY_EMAIL_FIELD || "kurumsalEPosta"
 // Custom DATE field "Son Ziyaret" - day only, matching metadata.last_seen_at.
 const LAST_VISIT_FIELD = process.env.TWENTY_PERSON_LAST_VISIT_FIELD || "sonZiyaret"
 
