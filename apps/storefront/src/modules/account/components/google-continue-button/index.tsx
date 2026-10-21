@@ -27,7 +27,7 @@ const GoogleContinueButton = () => {
     <form action={loginWithGoogle} className="w-full">
       <SubmitButton
         variant="secondary"
-        className="w-full"
+        className="w-full h-12 rounded-full"
         data-testid="google-continue-button"
       >
         <GoogleIcon />

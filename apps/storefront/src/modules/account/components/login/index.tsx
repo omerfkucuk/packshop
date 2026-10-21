@@ -18,11 +18,11 @@ const Login = ({ setCurrentView, googleError, googleLoginPending }: Props) => {
 
   return (
     <div
-      className="max-w-sm w-full flex flex-col items-center"
+      className="w-full flex flex-col"
       data-testid="login-page"
     >
       <GoogleLoginRetry active={!!googleLoginPending} />
-      <h1 className="text-2xl font-bold tracking-tight text-black mb-6">
+      <h1 className="text-2xl font-bold tracking-tight text-black text-center">
         Tekrar hoş geldiniz
       </h1>
       {googleLoginPending && (
@@ -33,8 +33,8 @@ const Login = ({ setCurrentView, googleError, googleLoginPending }: Props) => {
           Google ile giriş tamamlanıyor...
         </p>
       )}
-      <p className="text-center text-base text-black/70 mb-8">
-        Hesabınıza giriş yapın.
+      <p className="mt-2 mb-6 text-center text-sm text-black/60">
+        Siparişlerinizi, markalarınızı ve tasarımlarınızı görmek için giriş yapın.
       </p>
       <ErrorMessage error={googleError} data-testid="google-error-message" />
       <GoogleContinueButton />
@@ -53,7 +53,7 @@ const Login = ({ setCurrentView, googleError, googleLoginPending }: Props) => {
         </div>
       )}
       <form className="w-full" action={formAction}>
-        <div className="flex flex-col w-full gap-y-2">
+        <div className="flex flex-col w-full gap-y-3">
           <Input
             label="E-posta"
             name="email"
@@ -76,11 +76,11 @@ const Login = ({ setCurrentView, googleError, googleLoginPending }: Props) => {
           error={message?.state === "error" ? message.error : null}
           data-testid="login-error-message"
         />
-        <SubmitButton data-testid="sign-in-button" className="w-full mt-6">
+        <SubmitButton data-testid="sign-in-button" className="w-full h-12 mt-6 rounded-full">
           Giriş yap
         </SubmitButton>
       </form>
-      <span className="text-center text-black/70 text-sm mt-6">
+      <span className="text-center text-black/60 text-sm mt-6">
         Üye değil misiniz?{" "}
         <button
           onClick={() => setCurrentView(LOGIN_VIEW.REGISTER)}

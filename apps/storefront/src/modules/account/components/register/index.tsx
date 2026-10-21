@@ -18,14 +18,15 @@ const Register = ({ setCurrentView }: Props) => {
 
   return (
     <div
-      className="max-w-sm flex flex-col items-center"
+      className="w-full flex flex-col"
       data-testid="register-page"
     >
-      <h1 className="text-2xl font-bold tracking-tight text-black mb-6">
+      <h1 className="text-2xl font-bold tracking-tight text-black text-center">
         Hesap oluşturun
       </h1>
-      <p className="text-center text-base text-black/70 mb-4">
-        Packshop&apos;ta hesap oluşturun ve alışverişe hemen başlayın.
+      <p className="mt-2 mb-6 text-center text-sm text-black/60">
+        Siparişlerinizi takip edin, marka kitinizi kaydedin, firma bilgilerinizle tek tıkla
+        faturalandırın.
       </p>
       <GoogleContinueButton />
       <div className="w-full flex items-center gap-x-4 my-6">
@@ -44,21 +45,23 @@ const Register = ({ setCurrentView }: Props) => {
         </div>
       )}
       <form className="w-full flex flex-col" action={formAction}>
-        <div className="flex flex-col w-full gap-y-2">
-          <Input
-            label="Ad"
-            name="first_name"
-            required
-            autoComplete="given-name"
-            data-testid="first-name-input"
-          />
-          <Input
-            label="Soyad"
-            name="last_name"
-            required
-            autoComplete="family-name"
-            data-testid="last-name-input"
-          />
+        <div className="flex flex-col w-full gap-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Ad"
+              name="first_name"
+              required
+              autoComplete="given-name"
+              data-testid="first-name-input"
+            />
+            <Input
+              label="Soyad"
+              name="last_name"
+              required
+              autoComplete="family-name"
+              data-testid="last-name-input"
+            />
+          </div>
           <Input
             label="E-posta"
             name="email"
@@ -87,7 +90,7 @@ const Register = ({ setCurrentView }: Props) => {
           error={message?.state === "error" ? message.error : null}
           data-testid="register-error"
         />
-        <span className="text-center text-black/70 text-sm mt-6">
+        <span className="text-center text-black/50 text-xs mt-5">
           Hesap oluşturarak Packshop&apos;un{" "}
           <LocalizedClientLink
             href="/content/privacy-policy"
@@ -104,11 +107,11 @@ const Register = ({ setCurrentView }: Props) => {
           </LocalizedClientLink>
           &apos;nı kabul etmiş olursunuz.
         </span>
-        <SubmitButton className="w-full mt-6" data-testid="register-button">
+        <SubmitButton className="w-full h-12 mt-5 rounded-full" data-testid="register-button">
           Kayıt ol
         </SubmitButton>
       </form>
-      <span className="text-center text-black/70 text-sm mt-6">
+      <span className="text-center text-black/60 text-sm mt-6">
         Zaten üye misiniz?{" "}
         <button
           onClick={() => setCurrentView(LOGIN_VIEW.SIGN_IN)}
