@@ -1,82 +1,125 @@
 "use client"
 
+import { XMark } from "@medusajs/icons"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { useCallback, useMemo } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
 import {
   OPTION_VALUE_QUERY_KEY,
   parseOptionValueIds,
 } from "@lib/util/product-option-filters"
 import OptionsPicker from "./options-picker"
-import SortProducts, { SortOptions } from "./sort-products"
+import { SortOptions } from "./sort-products"
 
 type RefinementListProps = {
-  sortBy: SortOptions
+  /** Sorting now lives in the grid's top bar (SortSelect); kept for callers. */
+  sortBy?: SortOptions
   search?: boolean
   hideOptionsPicker?: boolean
   "data-testid"?: string
 }
 
-const RefinementList = ({
-  sortBy,
-  hideOptionsPicker = false,
-  "data-testid": dataTestId,
-}: RefinementListProps) => {
+// Option filters: a sidebar of collapsed groups on desktop, a "Filtrele"
+// button opening a bottom sheet on mobile.
+const RefinementList = ({ hideOptionsPicker = false }: RefinementListProps) => {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-
-  const updateQueryParams = useCallback(
-    (updater: (params: URLSearchParams) => void) => {
-      const params = new URLSearchParams(searchParams.toString())
-      updater(params)
-
-      params.delete("page")
-
-      const queryString = params.toString()
-      const currentQuery = searchParams.toString()
-      const nextPath = queryString ? `${pathname}?${queryString}` : pathname
-      const currentPath = currentQuery
-        ? `${pathname}?${currentQuery}`
-        : pathname
-
-      if (nextPath !== currentPath) {
-        router.push(nextPath)
-      }
-    },
-    [pathname, router, searchParams]
-  )
-
-  const setQueryParams = (name: string, value: string) =>
-    updateQueryParams((params) => params.set(name, value))
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   const selectedOptionValueIds = useMemo(
     () => parseOptionValueIds(searchParams),
     [searchParams]
   )
 
-  const setOptionValueIds = (valueIds: string[]) =>
-    updateQueryParams((params) => {
+  const setOptionValueIds = useCallback(
+    (valueIds: string[]) => {
+      const params = new URLSearchParams(searchParams.toString())
       params.delete(OPTION_VALUE_QUERY_KEY)
-      valueIds.forEach((valueId) =>
-        params.append(OPTION_VALUE_QUERY_KEY, valueId)
-      )
-    })
+      valueIds.forEach((valueId) => params.append(OPTION_VALUE_QUERY_KEY, valueId))
+      params.delete("page")
+      const query = params.toString()
+      router.push(query ? `${pathname}?${query}` : pathname)
+    },
+    [pathname, router, searchParams]
+  )
+
+  // Lock page scroll behind the sheet.
+  useEffect(() => {
+    document.body.style.overflow = sheetOpen ? "hidden" : ""
+    return () => {
+      document.body.style.overflow = ""
+    }
+  }, [sheetOpen])
+
+  if (hideOptionsPicker) {
+    return null
+  }
+
+  const count = selectedOptionValueIds.length
 
   return (
-    <div className="flex flex-col gap-12 py-4 mb-8 small:px-0 pl-6 small:min-w-[250px] small:ml-[1.675rem]">
-      <SortProducts
-        sortBy={sortBy}
-        setQueryParams={setQueryParams}
-        data-testid={dataTestId}
-      />
-      {!hideOptionsPicker && (
+    <>
+      <div className="small:hidden mb-4">
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          className="flex h-10 items-center gap-x-2 rounded-lg border border-black/15 bg-white px-4 text-sm font-medium text-black"
+          data-testid="open-filters-button"
+        >
+          Filtrele{count > 0 && ` (${count})`}
+        </button>
+      </div>
+
+      {sheetOpen && (
+        <div className="small:hidden fixed inset-0 z-50 flex flex-col justify-end">
+          <button
+            type="button"
+            aria-label="Filtreleri kapat"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setSheetOpen(false)}
+          />
+          <div className="relative flex max-h-[85vh] flex-col rounded-t-2xl bg-white pb-[env(safe-area-inset-bottom)]">
+            <div className="flex items-center justify-between border-b border-black/10 px-5 py-4">
+              <span className="text-base font-semibold text-black">Filtreler</span>
+              <button type="button" onClick={() => setSheetOpen(false)} aria-label="Kapat">
+                <XMark />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto py-4">
+              <OptionsPicker
+                selectedValueIds={selectedOptionValueIds}
+                setOptionValueIds={setOptionValueIds}
+              />
+            </div>
+            <div className="flex gap-3 border-t border-black/10 px-5 py-4">
+              <button
+                type="button"
+                onClick={() => setOptionValueIds([])}
+                disabled={count === 0}
+                className="h-12 flex-1 rounded-full border border-black/15 text-sm font-medium text-black disabled:opacity-40"
+              >
+                Temizle
+              </button>
+              <button
+                type="button"
+                onClick={() => setSheetOpen(false)}
+                className="h-12 flex-1 rounded-full bg-black text-sm font-medium text-white"
+              >
+                Sonuçları göster
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <aside className="hidden small:block small:w-[240px] shrink-0 small:mr-10">
         <OptionsPicker
           selectedValueIds={selectedOptionValueIds}
           setOptionValueIds={setOptionValueIds}
         />
-      )}
-    </div>
+      </aside>
+    </>
   )
 }
 

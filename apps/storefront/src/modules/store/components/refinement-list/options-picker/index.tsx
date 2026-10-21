@@ -44,10 +44,17 @@ const OptionsPicker = ({
     fetchOptions()
   }, [])
 
+  // Start collapsed - only groups that already have a selection open, so
+  // the list stays short (it used to open every group, a wall on mobile).
   useEffect(() => {
     if (options.length) {
-      setOpenItems(options.map((option) => option.id))
+      setOpenItems(
+        options
+          .filter((option) => option.values?.some((v) => selectedValueIds.includes(v.id)))
+          .map((option) => option.id)
+      )
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options])
 
   if (!options.length) {

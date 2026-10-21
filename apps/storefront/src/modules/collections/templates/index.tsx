@@ -43,6 +43,7 @@ export default function CollectionTemplate({
             collectionId={collection.id}
             countryCode={countryCode}
             optionValueIds={optionValueIds}
+            showToolbar
           />
         </Suspense>
       </div>
