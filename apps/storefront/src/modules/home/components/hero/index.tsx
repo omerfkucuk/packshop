@@ -5,7 +5,7 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 // The green area is meant to later illustrate the kargo poşeti print process.
 const Hero = () => {
   return (
-    <section className="w-full bg-[#0E8345] text-black">
+    <section data-nav-hero className="w-full bg-[#0E8345] text-black">
       <div className="content-container flex min-h-[calc(100svh-64px)] small:min-h-[640px] small:h-[calc(100vh-64px)] small:max-h-[860px] flex-col justify-center py-16">
         <h1 className="max-w-4xl text-5xl xsmall:text-6xl medium:text-7xl font-bold tracking-tight leading-[1.05]">
           Packshop ile markanıza özel kargo poşetinizi yaptırın.

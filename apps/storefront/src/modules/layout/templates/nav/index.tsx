@@ -28,7 +28,7 @@ export default async function Nav() {
   return (
     <NavShell>
       <GoogleOneTap customer={customer} />
-      <header className="relative mx-auto border-b duration-200 bg-white border-black/10 group-data-[home=true]/nav:bg-transparent">
+      <header className="relative mx-auto border-b transition-colors duration-200 bg-white border-black/10 group-data-[home=true]/nav:bg-transparent">
         <div className="content-container flex items-center justify-between h-16 gap-x-6">
           <div className="flex items-center gap-x-2 h-full">
             <SideMenu
