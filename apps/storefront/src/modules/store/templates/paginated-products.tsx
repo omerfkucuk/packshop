@@ -4,6 +4,7 @@ import { OptionValueIds } from "@lib/util/product-option-filters"
 import ProductPreview from "@modules/products/components/product-preview"
 import { Pagination } from "@modules/store/components/pagination"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
+import SortSelect from "@modules/store/components/sort-select"
 
 const PRODUCT_LIMIT = 12
 
@@ -25,6 +26,7 @@ export default async function PaginatedProducts({
   countryCode,
   optionValueIds,
   q,
+  showToolbar = false,
 }: {
   sortBy?: SortOptions
   page: number
@@ -34,6 +36,8 @@ export default async function PaginatedProducts({
   countryCode: string
   optionValueIds?: OptionValueIds
   q?: string
+  /** Packhelp-style bar with the product count and a sort dropdown. */
+  showToolbar?: boolean
 }) {
   const queryParams: PaginatedProductsParams = {
     limit: 12,
@@ -79,8 +83,16 @@ export default async function PaginatedProducts({
 
   return (
     <>
+      {showToolbar && (
+        <div className="mb-6 flex items-center justify-between gap-4 border-b border-black/10 pb-4">
+          <span className="text-sm text-black/60" data-testid="product-count">
+            {count} ürün
+          </span>
+          <SortSelect sortBy={sortBy ?? "created_at"} />
+        </div>
+      )}
       <ul
-        className="grid grid-cols-2 w-full small:grid-cols-3 medium:grid-cols-4 gap-x-6 gap-y-8"
+        className="grid grid-cols-2 w-full small:grid-cols-3 large:grid-cols-4 gap-x-4 small:gap-x-6 gap-y-8 small:gap-y-10"
         data-testid="products-list"
       >
         {products.map((p) => {
