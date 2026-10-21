@@ -3,60 +3,57 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 
 import HeroSlider, { HeroSlide } from "./hero-slider"
 
-// Curated slides win when present (real packaging photos/videos, e.g. from
-// customers); until then the slider falls back to the top-level categories.
+// Stock clip (Pexels #7464140, free for commercial use), self-hosted in
+// /public. Swap for real Packshop footage; each slide can have its own.
+const HERO_VIDEO = "/videos/hero-packaging.mp4"
+
+// Curated slides win when present; until then one slide per top-level
+// category (its label/thumbnail drive the tabs) all playing HERO_VIDEO.
 const CURATED_SLIDES: HeroSlide[] = []
 
 async function getSlides(): Promise<HeroSlide[]> {
   if (CURATED_SLIDES.length) return CURATED_SLIDES
   const categories = await listCategories().catch(() => null)
-  return (categories ?? [])
+  const slides = (categories ?? [])
     .filter((c) => !c.parent_category)
+    .slice(0, 4)
     .map((c) => ({
       label: c.name,
       href: `/categories/${c.handle}`,
       image: c.products?.find((p) => p.thumbnail)?.thumbnail ?? undefined,
+      video: HERO_VIDEO,
     }))
-    .filter((s) => s.image)
-    .slice(0, 5)
+  return slides.length ? slides : [{ label: "Ürünler", href: "/store", video: HERO_VIDEO }]
 }
 
-// noissue-style hero: copy on the left over a warm background, an
-// auto-rotating media slider with labeled tabs on the right. The extra
-// bottom padding is room for PromoCards, which overlaps it by -mt-12/-mt-16.
+// noissue.co hero layout: copy on the left, a full-bleed auto-rotating
+// video slider filling the right half edge to edge.
 const Hero = async () => {
   const slides = await getSlides()
 
   return (
-    <section className="w-full bg-[#F5F0E8]">
-      <div className="content-container grid grid-cols-1 small:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] items-center gap-8 small:gap-14 pt-8 pb-20 small:pt-14 small:pb-28">
-        <div className="flex flex-col gap-4 small:gap-5">
-          <span className="text-xs small:text-sm font-semibold uppercase tracking-widest text-black/50">
+    <section className="w-full bg-ui-bg-subtle">
+      <div className="grid grid-cols-1 small:grid-cols-2 small:min-h-[calc(100vh-64px)] small:max-h-[820px]">
+        <div className="flex flex-col justify-center gap-5 px-6 py-12 small:pl-[max(2rem,calc((100vw-1440px)/2+2rem))] small:pr-12 small:py-16">
+          <h1 className="text-5xl small:text-6xl medium:text-7xl font-semibold tracking-tight text-black">
             Markalar için ambalaj
-          </span>
-          <h1 className="text-4xl xsmall:text-5xl medium:text-6xl font-bold tracking-tight text-black">
-            İlk Temas.
           </h1>
-          <p className="max-w-md text-base medium:text-lg text-black/70">
-            Müşteriniz markanızla ilk kez ambalajınız üzerinden tanışır. Packshop, bu ilk teması
-            unutulmaz kılmanız için ihtiyacınız olan her şeyi tek platformda sunar.
+          <p className="max-w-lg text-base medium:text-lg text-black/70">
+            Markanızın varlığını ve etkisini, önemli olan her yerde güçlendiren uçtan uca özel
+            ambalaj çözümleri.
           </p>
-          <div className="mt-1 flex flex-col xsmall:flex-row gap-3">
+          <div className="mt-2">
             <LocalizedClientLink
               href="/store"
               className="inline-flex h-12 items-center justify-center rounded-full bg-black px-8 text-sm font-semibold text-white hover:bg-black/85 transition-colors"
             >
-              Ürünleri keşfet
-            </LocalizedClientLink>
-            <LocalizedClientLink
-              href="/tasarla"
-              className="inline-flex h-12 items-center justify-center rounded-full border border-black/20 bg-white/60 px-8 text-sm font-semibold text-black hover:border-black/50 transition-colors"
-            >
-              Tasarla&apos;da tasarla
+              Ürünleri ara
             </LocalizedClientLink>
           </div>
         </div>
-        {slides.length > 0 && <HeroSlider slides={slides} />}
+        <div className="relative aspect-[4/5] xsmall:aspect-[4/3] small:aspect-auto small:h-full">
+          <HeroSlider slides={slides} />
+        </div>
       </div>
     </section>
   )

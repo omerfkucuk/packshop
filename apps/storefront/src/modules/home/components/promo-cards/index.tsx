@@ -38,7 +38,7 @@ const cards: PromoCard[] = [
 
 const PromoCards = () => {
   return (
-    <div className="content-container -mt-12 small:-mt-16 relative z-10">
+    <div className="content-container mt-8 small:mt-12 relative z-10">
       <div className="grid grid-cols-1 small:grid-cols-3 gap-4">
         {cards.map((card) => (
           <div

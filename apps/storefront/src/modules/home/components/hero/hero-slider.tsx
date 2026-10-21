@@ -8,13 +8,16 @@ import { clx } from "@modules/common/components/ui"
 export type HeroSlide = {
   label: string
   href: string
+  /** Thumbnail for the tab (and poster for the video). */
   image?: string
-  /** Optional muted looping video (mp4); `image` is its poster. */
+  /** Muted looping mp4; falls back to `image` when absent. */
   video?: string
 }
 
 const INTERVAL_MS = 6500
 
+// Fills its (positioned) parent: media full-bleed, story-style progress
+// segments on top, thumbnail tabs overlaid at the bottom - noissue-style.
 const HeroSlider = ({ slides }: { slides: HeroSlide[] }) => {
   const [active, setActive] = useState(0)
   const [paused, setPaused] = useState(false)
@@ -22,8 +25,7 @@ const HeroSlider = ({ slides }: { slides: HeroSlide[] }) => {
   const touchStartX = useRef<number | null>(null)
 
   useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
-    setReducedMotion(mq.matches)
+    setReducedMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches)
   }, [])
 
   const go = useCallback(
@@ -31,7 +33,7 @@ const HeroSlider = ({ slides }: { slides: HeroSlide[] }) => {
     [slides.length]
   )
 
-  // Autoplay; restarts whenever the slide changes so a manual pick gets a full interval.
+  // Restarts on every change so a manual pick gets a full interval.
   useEffect(() => {
     if (paused || reducedMotion || slides.length < 2) return
     const t = setTimeout(() => go(1), INTERVAL_MS)
@@ -39,34 +41,45 @@ const HeroSlider = ({ slides }: { slides: HeroSlide[] }) => {
   }, [active, paused, reducedMotion, slides.length, go])
 
   const autoplaying = !paused && !reducedMotion && slides.length > 1
+  // Slides sharing one video file share one <video>, so switching tabs
+  // doesn't restart the clip.
+  const sharedVideo = slides.every((s) => s.video && s.video === slides[0].video)
+    ? slides[0].video
+    : undefined
 
   return (
     <div
-      className="flex flex-col gap-4"
+      className="absolute inset-0 overflow-hidden bg-black/10"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
+      onTouchStart={(e) => (touchStartX.current = e.touches[0].clientX)}
+      onTouchEnd={(e) => {
+        if (touchStartX.current === null) return
+        const dx = e.changedTouches[0].clientX - touchStartX.current
+        if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1)
+        touchStartX.current = null
+      }}
       aria-roledescription="carousel"
-      aria-label="Öne çıkan ürünler"
+      aria-label="Öne çıkanlar"
     >
-      <div
-        className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl small:rounded-3xl bg-white max-h-[62vh]"
-        onTouchStart={(e) => (touchStartX.current = e.touches[0].clientX)}
-        onTouchEnd={(e) => {
-          if (touchStartX.current === null) return
-          const dx = e.changedTouches[0].clientX - touchStartX.current
-          if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1)
-          touchStartX.current = null
-        }}
-      >
-        {slides.map((slide, i) => (
-          <LocalizedClientLink
+      {sharedVideo ? (
+        <video
+          src={sharedVideo}
+          className="absolute inset-0 h-full w-full object-cover"
+          autoPlay={!reducedMotion}
+          muted
+          loop
+          playsInline
+          preload="auto"
+        />
+      ) : (
+        slides.map((slide, i) => (
+          <div
             key={slide.href + i}
-            href={slide.href}
             aria-hidden={i !== active}
-            tabIndex={i === active ? 0 : -1}
             className={clx(
               "absolute inset-0 transition-opacity duration-700",
-              i === active ? "opacity-100" : "opacity-0 pointer-events-none"
+              i === active ? "opacity-100" : "opacity-0"
             )}
           >
             {slide.video ? (
@@ -74,76 +87,73 @@ const HeroSlider = ({ slides }: { slides: HeroSlide[] }) => {
                 src={slide.video}
                 poster={slide.image}
                 className="h-full w-full object-cover"
-                autoPlay
+                autoPlay={!reducedMotion}
                 muted
                 loop
                 playsInline
               />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={slide.image}
-                alt={slide.label}
-                className="h-full w-full object-cover"
-                loading={i === 0 ? "eager" : "lazy"}
-              />
+              <img src={slide.image} alt={slide.label} className="h-full w-full object-cover" />
             )}
-            <span className="absolute bottom-4 left-4 rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-black shadow-sm">
-              {slide.label} →
-            </span>
-          </LocalizedClientLink>
-        ))}
-
-        {/* Story-style progress segments */}
-        {slides.length > 1 && (
-          <div className="absolute inset-x-4 top-4 flex gap-1.5">
-            {slides.map((_, i) => (
-              <span key={i} className="h-1 flex-1 overflow-hidden rounded-full bg-black/15">
-                <span
-                  key={i === active ? `on-${active}-${autoplaying}` : "off"}
-                  className={clx(
-                    "block h-full rounded-full bg-black/70",
-                    i < active && "w-full",
-                    i > active && "w-0",
-                    i === active && (autoplaying ? "animate-hero-progress" : "w-full")
-                  )}
-                  style={i === active && autoplaying ? { animationDuration: `${INTERVAL_MS}ms` } : undefined}
-                />
-              </span>
-            ))}
           </div>
-        )}
-      </div>
+        ))
+      )}
+
+      {/* Legibility gradients behind the overlays */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/30 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/40 to-transparent" />
 
       {slides.length > 1 && (
-        <div className="-mx-4 overflow-x-auto px-4 no-scrollbar">
-          <div className="flex w-max gap-2" role="tablist">
-            {slides.map((slide, i) => (
-              <button
-                key={slide.href + i}
-                type="button"
-                role="tab"
-                aria-selected={i === active}
-                onClick={() => setActive(i)}
+        <div className="absolute inset-x-4 small:inset-x-6 top-4 small:top-6 flex gap-1.5">
+          {slides.map((_, i) => (
+            <span key={i} className="h-1 flex-1 overflow-hidden rounded-full bg-white/35">
+              <span
+                key={i === active ? `on-${active}-${autoplaying}` : "off"}
                 className={clx(
-                  "flex items-center gap-x-2 rounded-full border py-1.5 pl-1.5 pr-4 text-sm font-medium transition-colors whitespace-nowrap",
-                  i === active
-                    ? "border-black bg-white text-black"
-                    : "border-black/10 bg-white/50 text-black/60 hover:text-black"
+                  "block h-full rounded-full bg-white",
+                  i < active && "w-full",
+                  i > active && "w-0",
+                  i === active && (autoplaying ? "animate-hero-progress" : "w-full")
                 )}
-              >
-                <span className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-black/[0.06]">
-                  {slide.image && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={slide.image} alt="" className="h-full w-full object-cover" />
-                  )}
-                </span>
-                {slide.label}
-              </button>
-            ))}
-          </div>
+                style={i === active && autoplaying ? { animationDuration: `${INTERVAL_MS}ms` } : undefined}
+              />
+            </span>
+          ))}
         </div>
       )}
+
+      <div className="absolute inset-x-0 bottom-4 small:bottom-6 overflow-x-auto px-4 small:px-6 no-scrollbar">
+        <div className="flex w-max gap-2" role="tablist">
+          {slides.map((slide, i) => (
+            <button
+              key={slide.href + i}
+              type="button"
+              role="tab"
+              aria-selected={i === active}
+              onClick={() => setActive(i)}
+              className={clx(
+                "flex items-center gap-x-2 rounded-full py-1.5 pl-1.5 pr-4 text-sm font-medium whitespace-nowrap transition-colors backdrop-blur",
+                i === active ? "bg-white text-black" : "bg-white/25 text-white hover:bg-white/40"
+              )}
+            >
+              <span className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-white/60">
+                {slide.image && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={slide.image} alt="" className="h-full w-full object-cover" />
+                )}
+              </span>
+              {slide.label}
+            </button>
+          ))}
+          <LocalizedClientLink
+            href={slides[active].href}
+            className="flex items-center rounded-full bg-black/60 px-4 text-sm font-medium text-white whitespace-nowrap backdrop-blur hover:bg-black/80"
+          >
+            İncele →
+          </LocalizedClientLink>
+        </div>
+      </div>
     </div>
   )
 }
