@@ -117,50 +117,52 @@ const CartItemCard = ({ item, currencyCode }: CartItemCardProps) => {
       className="rounded-xl border border-black/10 bg-white p-5 small:p-8"
       data-testid="product-row"
     >
-      <div className="flex gap-x-4 small:gap-x-8">
+      {/* Below `medium` (1280px) the quantity/price controls get their own
+          full-width row - beside the thumbnail and title they'd squeeze the
+          title to nothing (the summary column already takes 380px from 1024px).
+          From `medium` up all three sit side by side. */}
+      <div className="grid grid-cols-[80px_1fr] small:grid-cols-[144px_1fr] medium:grid-cols-[144px_1fr_auto] gap-x-4 small:gap-x-8 gap-y-4">
         <LocalizedClientLink
           href={`/products/${item.product_handle}`}
-          className="w-20 small:w-36 shrink-0 self-start overflow-hidden rounded-lg bg-black/[0.04]"
+          className="self-start overflow-hidden rounded-lg bg-black/[0.04]"
         >
           <Thumbnail thumbnail={item.thumbnail} images={item.product?.images} size="square" />
         </LocalizedClientLink>
 
-        <div className="flex flex-1 flex-col small:flex-row small:items-start gap-4 min-w-0">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg small:text-xl font-semibold text-black" data-testid="product-title">
-              {item.product_title}
-            </h3>
-            <ul className="mt-2 flex flex-col gap-y-0.5 text-sm text-black/70" data-testid="product-variant">
-              {options.length > 0 ? (
-                options.map((o) => <li key={o}>{o}</li>)
-              ) : (
-                <li>{item.variant_title || item.variant?.title}</li>
-              )}
-              {customSize && <li>Özel ölçü: {customSize}</li>}
-            </ul>
-          </div>
+        <div className="min-w-0">
+          <h3 className="text-lg small:text-xl font-semibold text-black break-words" data-testid="product-title">
+            {item.product_title}
+          </h3>
+          <ul className="mt-2 flex flex-col gap-y-0.5 text-sm text-black/70" data-testid="product-variant">
+            {options.length > 0 ? (
+              options.map((o) => <li key={o}>{o}</li>)
+            ) : (
+              <li>{item.variant_title || item.variant?.title}</li>
+            )}
+            {customSize && <li>Özel ölçü: {customSize}</li>}
+          </ul>
+        </div>
 
-          <div className="flex items-center justify-between small:justify-end gap-x-6">
-            <div className="flex items-center gap-x-2">
-              <select
-                value={item.quantity}
-                onChange={(e) => changeQuantity(parseInt(e.target.value))}
-                disabled={updating}
-                className="h-12 min-w-[110px] rounded-lg border border-black/15 bg-white px-4 text-base text-black focus:outline-none focus:border-black"
-                aria-label="Adet"
-                data-testid="product-select-button"
-              >
-                {quantityOptions.map((q) => (
-                  <option key={q} value={q}>
-                    {q} adet
-                  </option>
-                ))}
-              </select>
-              {updating && <Spinner />}
-            </div>
-            <span className="text-lg font-semibold text-black whitespace-nowrap">
-              <LineItemPrice item={item} style="tight" currencyCode={currencyCode} />
-            </span>
+        <div className="col-span-2 medium:col-span-1 flex items-center justify-between medium:justify-end gap-x-4 medium:gap-x-6 border-t border-black/10 pt-4 medium:border-0 medium:pt-0 medium:self-start">
+          <div className="flex items-center gap-x-2">
+            <select
+              value={item.quantity}
+              onChange={(e) => changeQuantity(parseInt(e.target.value))}
+              disabled={updating}
+              className="h-12 min-w-[110px] rounded-lg border border-black/15 bg-white px-4 text-base text-black focus:outline-none focus:border-black"
+              aria-label="Adet"
+              data-testid="product-select-button"
+            >
+              {quantityOptions.map((q) => (
+                <option key={q} value={q}>
+                  {q} adet
+                </option>
+              ))}
+            </select>
+            {updating && <Spinner />}
+          </div>
+          <div className="text-lg font-semibold text-black whitespace-nowrap">
+            <LineItemPrice item={item} style="tight" currencyCode={currencyCode} />
           </div>
         </div>
       </div>
