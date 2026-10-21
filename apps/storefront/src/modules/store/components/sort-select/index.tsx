@@ -25,11 +25,11 @@ const SortSelect = ({ sortBy }: { sortBy: SortOptions }) => {
 
   return (
     <label className="flex items-center gap-x-2 text-sm text-black/60">
-      <span className="hidden xsmall:inline">Sırala</span>
+      <span className="hidden small:inline">Sırala</span>
       <select
         value={sortBy}
         onChange={(e) => onChange(e.target.value)}
-        className="h-10 rounded-lg border border-black/15 bg-white px-3 text-sm text-black focus:outline-none focus:border-black"
+        className="h-10 w-full small:w-auto rounded-lg border border-black/15 bg-white px-3 text-sm text-black focus:outline-none focus:border-black"
         data-testid="sort-by-container"
       >
         {OPTIONS.map((o) => (

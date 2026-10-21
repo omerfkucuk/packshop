@@ -81,7 +81,7 @@ const RefinementList = ({ hideOptionsPicker = false, variant = "sidebar" }: Refi
         <button
           type="button"
           onClick={() => setSheetOpen(true)}
-          className="flex h-10 items-center gap-x-2 rounded-lg border border-black/15 bg-white px-4 text-sm font-medium text-black"
+          className="flex h-10 w-full items-center justify-center gap-x-2 rounded-lg border border-black/15 bg-white px-4 text-sm font-medium text-black"
           data-testid="open-filters-button"
         >
           Filtrele{count > 0 && ` (${count})`}

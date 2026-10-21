@@ -87,14 +87,18 @@ export default async function PaginatedProducts({
   return (
     <>
       {showToolbar && (
-        <div className="mb-6 flex items-center justify-between gap-4 border-b border-black/10 pb-4">
-          <div className="flex items-center gap-x-3">
-            {toolbarStart}
-            <span className="text-sm text-black/60" data-testid="product-count">
-              {count} ürün
-            </span>
+        // Mobile: the two controls side by side (equal width) with the count
+        // underneath. Desktop: count left, sort right.
+        <div className="mb-6 flex flex-col-reverse gap-3 border-b border-black/10 pb-4 small:flex-row small:items-center small:justify-between">
+          <span className="text-sm text-black/60" data-testid="product-count">
+            {count} ürün
+          </span>
+          <div className="flex items-center gap-2">
+            {toolbarStart && <div className="flex-1 small:hidden">{toolbarStart}</div>}
+            <div className="flex-1 small:flex-none">
+              <SortSelect sortBy={sortBy ?? "created_at"} />
+            </div>
           </div>
-          <SortSelect sortBy={sortBy ?? "created_at"} />
         </div>
       )}
       <ul
