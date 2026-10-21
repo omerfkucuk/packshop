@@ -12,13 +12,20 @@ export default async function orderPlacedHandler({
   container,
 }: SubscriberArgs<{ id: string }>) {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
-  const orderModuleService = container.resolve(Modules.ORDER)
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const customerModuleService = container.resolve(Modules.CUSTOMER)
   const crmLinkService: CrmLinkModuleService = container.resolve(CRM_LINK_MODULE)
 
   try {
-    const order = await orderModuleService.retrieveOrder(data.id, {
-      relations: ["billing_address"],
+    // Query (not orderModuleService.retrieveOrder) because totals like
+    // `total` are only computed when requested as fields - retrieveOrder
+    // left it undefined, so every opportunity got an empty amount.
+    const {
+      data: [order],
+    } = await query.graph({
+      entity: "order",
+      fields: ["id", "display_id", "email", "customer_id", "currency_code", "total", "billing_address.*"],
+      filters: { id: data.id },
     })
     if (!order.email) {
       return
@@ -68,7 +75,7 @@ export default async function orderPlacedHandler({
       : undefined
 
     await createOrderOpportunity({
-      displayId: order.display_id,
+      displayId: Number(order.display_id),
       total: Number(order.total),
       currencyCode: order.currency_code,
       pointOfContactId,
