@@ -49,7 +49,7 @@ const HeroSlider = ({ slides }: { slides: HeroSlide[] }) => {
       aria-label="Öne çıkan ürünler"
     >
       <div
-        className="relative aspect-[4/5] xsmall:aspect-[5/4] small:aspect-[4/5] w-full overflow-hidden rounded-3xl bg-white"
+        className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl small:rounded-3xl bg-white max-h-[62vh]"
         onTouchStart={(e) => (touchStartX.current = e.touches[0].clientX)}
         onTouchEnd={(e) => {
           if (touchStartX.current === null) return

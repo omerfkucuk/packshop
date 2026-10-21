@@ -28,19 +28,19 @@ const Hero = async () => {
 
   return (
     <section className="w-full bg-[#F5F0E8]">
-      <div className="content-container grid grid-cols-1 small:grid-cols-2 items-center gap-10 small:gap-16 py-10 small:py-20">
-        <div className="flex flex-col gap-5">
-          <span className="text-sm font-semibold uppercase tracking-widest text-black/50">
+      <div className="content-container grid grid-cols-1 small:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] items-center gap-8 small:gap-14 py-8 small:py-14">
+        <div className="flex flex-col gap-4 small:gap-5">
+          <span className="text-xs small:text-sm font-semibold uppercase tracking-widest text-black/50">
             Markalar için ambalaj
           </span>
-          <h1 className="text-5xl small:text-7xl font-bold tracking-tight text-black">
+          <h1 className="text-4xl xsmall:text-5xl medium:text-6xl font-bold tracking-tight text-black">
             İlk Temas.
           </h1>
-          <p className="max-w-lg text-base small:text-lg text-black/70">
+          <p className="max-w-md text-base medium:text-lg text-black/70">
             Müşteriniz markanızla ilk kez ambalajınız üzerinden tanışır. Packshop, bu ilk teması
             unutulmaz kılmanız için ihtiyacınız olan her şeyi tek platformda sunar.
           </p>
-          <div className="mt-2 flex flex-col xsmall:flex-row gap-3">
+          <div className="mt-1 flex flex-col xsmall:flex-row gap-3">
             <LocalizedClientLink
               href="/store"
               className="inline-flex h-12 items-center justify-center rounded-full bg-black px-8 text-sm font-semibold text-white hover:bg-black/85 transition-colors"
