@@ -1,58 +1,26 @@
-import { listCategories } from "@lib/data/categories"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
-import HeroSlider, { HeroSlide } from "./hero-slider"
-
-// Stock clip (Pexels #7464140, free for commercial use), self-hosted in
-// /public. Swap for real Packshop footage; each slide can have its own.
-const HERO_VIDEO = "/videos/hero-packaging.mp4"
-
-// Curated slides win when present; until then one slide per top-level
-// category (its label/thumbnail drive the tabs) all playing HERO_VIDEO.
-const CURATED_SLIDES: HeroSlide[] = []
-
-async function getSlides(): Promise<HeroSlide[]> {
-  if (CURATED_SLIDES.length) return CURATED_SLIDES
-  const categories = await listCategories().catch(() => null)
-  const slides = (categories ?? [])
-    .filter((c) => !c.parent_category)
-    .slice(0, 4)
-    .map((c) => ({
-      label: c.name,
-      href: `/categories/${c.handle}`,
-      image: c.products?.find((p) => p.thumbnail)?.thumbnail ?? undefined,
-      video: HERO_VIDEO,
-    }))
-  return slides.length ? slides : [{ label: "Ürünler", href: "/store", video: HERO_VIDEO }]
-}
-
-// noissue.co hero layout: copy on the left, a full-bleed auto-rotating
-// video slider filling the right half edge to edge.
-const Hero = async () => {
-  const slides = await getSlides()
-
+// Postmates-style hero: one flat Packshop-green field that the homepage
+// nav blends into (see NavShell), a big left-aligned headline and one CTA.
+// The green area is meant to later illustrate the kargo poşeti print process.
+const Hero = () => {
   return (
-    <section className="w-full bg-ui-bg-subtle">
-      <div className="grid grid-cols-1 small:grid-cols-2 small:min-h-[calc(100vh-64px)] small:max-h-[820px]">
-        <div className="flex flex-col justify-center gap-5 px-6 py-12 small:pl-[max(2rem,calc((100vw-1440px)/2+2rem))] small:pr-12 small:py-16">
-          <h1 className="text-5xl small:text-6xl medium:text-7xl font-semibold tracking-tight text-black">
-            Markalar için ambalaj
-          </h1>
-          <p className="max-w-lg text-base medium:text-lg text-black/70">
-            Markanızın varlığını ve etkisini, önemli olan her yerde güçlendiren uçtan uca özel
-            ambalaj çözümleri.
-          </p>
-          <div className="mt-2">
-            <LocalizedClientLink
-              href="/store"
-              className="inline-flex h-12 items-center justify-center rounded-full bg-black px-8 text-sm font-semibold text-white hover:bg-black/85 transition-colors"
-            >
-              Ürünleri ara
-            </LocalizedClientLink>
-          </div>
-        </div>
-        <div className="relative aspect-[4/5] xsmall:aspect-[4/3] small:aspect-auto small:h-full">
-          <HeroSlider slides={slides} />
+    <section className="w-full bg-[#0E8345] text-white">
+      <div className="content-container flex min-h-[calc(100svh-64px)] small:min-h-[640px] small:h-[calc(100vh-64px)] small:max-h-[860px] flex-col justify-center py-16">
+        <h1 className="max-w-4xl text-5xl xsmall:text-6xl medium:text-7xl font-bold tracking-tight leading-[1.05]">
+          Packshop ile markanıza özel kargo poşetinizi yaptırın.
+        </h1>
+        <p className="mt-5 max-w-xl text-base small:text-xl text-white/85">
+          Logonuzu ekleyin, ölçünüzü seçin; baskılı kargo poşetleriniz kapınıza gelsin.
+        </p>
+        <div className="mt-8">
+          <LocalizedClientLink
+            href="/categories/kargo-posetleri"
+            className="inline-flex h-14 items-center justify-center rounded-full bg-white px-8 text-base font-semibold text-black hover:bg-white/90 transition-colors"
+            data-testid="hero-cta"
+          >
+            Kargo poşetini tasarla
+          </LocalizedClientLink>
         </div>
       </div>
     </section>

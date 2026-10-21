@@ -49,7 +49,7 @@ const SideMenu = ({
         type="button"
         onClick={() => setOpen(true)}
         data-testid="nav-menu-button"
-        className="flex items-center justify-center h-10 w-10 rounded-lg hover:bg-black/[0.04] transition-colors"
+        className="flex items-center justify-center h-10 w-10 rounded-lg hover:bg-black/[0.04] group-data-[home=true]/nav:hover:bg-white/10 transition-colors"
       >
         <MenuIcon />
       </button>
