@@ -28,7 +28,7 @@ export default async function Nav() {
   return (
     <NavShell>
       <GoogleOneTap customer={customer} />
-      <header className="relative mx-auto border-b duration-200 bg-white border-black/10 group-data-[home=true]/nav:bg-transparent group-data-[home=true]/nav:border-transparent">
+      <header className="relative mx-auto border-b duration-200 bg-white border-black/10 group-data-[home=true]/nav:bg-transparent">
         <div className="content-container flex items-center justify-between h-16 gap-x-6">
           <div className="flex items-center gap-x-2 h-full">
             <SideMenu
@@ -40,7 +40,7 @@ export default async function Nav() {
 
             <LocalizedClientLink
               href="/"
-              className="txt-compact-xlarge-plus font-bold hover:text-ui-fg-base group-data-[home=true]/nav:hover:text-white uppercase tracking-tight whitespace-nowrap"
+              className="txt-compact-xlarge-plus font-bold hover:text-ui-fg-base uppercase tracking-tight whitespace-nowrap"
               data-testid="nav-store-link"
             >
               Packshop
@@ -53,7 +53,7 @@ export default async function Nav() {
             {/* Straight to /account - it shows the login form when signed out. */}
             <LocalizedClientLink
               href="/account"
-              className="flex items-center justify-center h-10 w-10 rounded-lg hover:bg-black/[0.04] group-data-[home=true]/nav:hover:bg-white/10 transition-colors"
+              className="flex items-center justify-center h-10 w-10 rounded-lg hover:bg-black/[0.04] transition-colors"
               aria-label="Hesabım"
               data-testid="nav-account-link"
             >

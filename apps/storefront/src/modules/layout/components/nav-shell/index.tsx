@@ -13,7 +13,7 @@ const NavShell = ({ children }: { children: React.ReactNode }) => {
   return (
     <div
       data-home={isHome}
-      className="group/nav sticky top-0 inset-x-0 z-50 bg-white data-[home=true]:bg-[#0E8345] data-[home=true]:text-white"
+      className="group/nav sticky top-0 inset-x-0 z-50 bg-white data-[home=true]:bg-[#0E8345]"
     >
       {children}
     </div>
