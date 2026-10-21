@@ -70,6 +70,10 @@ module.exports = {
         ],
       },
       keyframes: {
+        "hero-progress": {
+          "0%": { width: "0%" },
+          "100%": { width: "100%" },
+        },
         ring: {
           "0%": { transform: "rotate(0deg)" },
           "100%": { transform: "rotate(360deg)" },
@@ -141,6 +145,8 @@ module.exports = {
         },
       },
       animation: {
+        // Duration is overridden inline by the hero slider's interval.
+        "hero-progress": "hero-progress 6.5s linear forwards",
         ring: "ring 2.2s cubic-bezier(0.5, 0, 0.5, 1) infinite",
         "fade-in-right":
           "fade-in-right 0.3s cubic-bezier(0.5, 0, 0.5, 1) forwards",
