@@ -22,13 +22,14 @@ async function getSlides(): Promise<HeroSlide[]> {
 }
 
 // noissue-style hero: copy on the left over a warm background, an
-// auto-rotating media slider with labeled tabs on the right.
+// auto-rotating media slider with labeled tabs on the right. The extra
+// bottom padding is room for PromoCards, which overlaps it by -mt-12/-mt-16.
 const Hero = async () => {
   const slides = await getSlides()
 
   return (
     <section className="w-full bg-[#F5F0E8]">
-      <div className="content-container grid grid-cols-1 small:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] items-center gap-8 small:gap-14 py-8 small:py-14">
+      <div className="content-container grid grid-cols-1 small:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] items-center gap-8 small:gap-14 pt-8 pb-20 small:pt-14 small:pb-28">
         <div className="flex flex-col gap-4 small:gap-5">
           <span className="text-xs small:text-sm font-semibold uppercase tracking-widest text-black/50">
             Markalar için ambalaj
