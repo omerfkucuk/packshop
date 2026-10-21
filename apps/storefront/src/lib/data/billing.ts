@@ -59,5 +59,25 @@ export const updateBillingFields = async (patch: BillingPatch): Promise<void> =>
       .catch(medusaError)
   }
 
+  // The address is the source of truth, but Medusa admin only shows the
+  // customer's own company_name (Customers list/detail) and customer
+  // metadata - mirror company and tax info there so staff can see them.
+  if (patch.company !== undefined || tax_number !== undefined || tax_office !== undefined) {
+    await sdk.store.customer
+      .update(
+        {
+          ...(patch.company !== undefined ? { company_name: patch.company } : {}),
+          metadata: {
+            ...(customer?.metadata ?? {}),
+            ...(tax_number !== undefined ? { tax_number } : {}),
+            ...(tax_office !== undefined ? { tax_office } : {}),
+          },
+        },
+        {},
+        headers
+      )
+      .catch(medusaError)
+  }
+
   revalidateTag(await getCacheTag("customers"))
 }
