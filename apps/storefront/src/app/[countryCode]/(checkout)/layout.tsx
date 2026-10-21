@@ -8,7 +8,8 @@ export default function CheckoutLayout({
 }) {
   return (
     <div className="w-full bg-white relative small:min-h-screen">
-      <div className="h-16 bg-white border-b ">
+      {/* Sticky like the main site nav, so it doesn't scroll away mid-checkout. */}
+      <div className="sticky top-0 z-50 h-16 bg-white border-b border-black/10">
         <nav className="flex h-full items-center content-container justify-between">
           <LocalizedClientLink
             href="/cart"
