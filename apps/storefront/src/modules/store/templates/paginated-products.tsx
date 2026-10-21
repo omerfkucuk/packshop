@@ -27,6 +27,7 @@ export default async function PaginatedProducts({
   optionValueIds,
   q,
   showToolbar = false,
+  toolbarStart,
 }: {
   sortBy?: SortOptions
   page: number
@@ -38,6 +39,8 @@ export default async function PaginatedProducts({
   q?: string
   /** Packhelp-style bar with the product count and a sort dropdown. */
   showToolbar?: boolean
+  /** Rendered at the start of the top bar (e.g. the mobile Filtrele button). */
+  toolbarStart?: React.ReactNode
 }) {
   const queryParams: PaginatedProductsParams = {
     limit: 12,
@@ -85,9 +88,12 @@ export default async function PaginatedProducts({
     <>
       {showToolbar && (
         <div className="mb-6 flex items-center justify-between gap-4 border-b border-black/10 pb-4">
-          <span className="text-sm text-black/60" data-testid="product-count">
-            {count} ürün
-          </span>
+          <div className="flex items-center gap-x-3">
+            {toolbarStart}
+            <span className="text-sm text-black/60" data-testid="product-count">
+              {count} ürün
+            </span>
+          </div>
           <SortSelect sortBy={sortBy ?? "created_at"} />
         </div>
       )}

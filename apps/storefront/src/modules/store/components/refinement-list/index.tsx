@@ -16,12 +16,18 @@ type RefinementListProps = {
   sortBy?: SortOptions
   search?: boolean
   hideOptionsPicker?: boolean
+  /**
+   * "sidebar": desktop filter column only. "mobile": just the Filtrele
+   * button + bottom sheet, meant to sit inside the grid's top bar so it
+   * lines up with the sort dropdown.
+   */
+  variant?: "sidebar" | "mobile"
   "data-testid"?: string
 }
 
 // Option filters: a sidebar of collapsed groups on desktop, a "Filtrele"
 // button opening a bottom sheet on mobile.
-const RefinementList = ({ hideOptionsPicker = false }: RefinementListProps) => {
+const RefinementList = ({ hideOptionsPicker = false, variant = "sidebar" }: RefinementListProps) => {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -58,9 +64,20 @@ const RefinementList = ({ hideOptionsPicker = false }: RefinementListProps) => {
 
   const count = selectedOptionValueIds.length
 
+  if (variant === "sidebar") {
+    return (
+      <aside className="hidden small:block small:w-[240px] shrink-0 small:mr-10">
+        <OptionsPicker
+          selectedValueIds={selectedOptionValueIds}
+          setOptionValueIds={setOptionValueIds}
+        />
+      </aside>
+    )
+  }
+
   return (
     <>
-      <div className="small:hidden mb-4">
+      <div className="small:hidden">
         <button
           type="button"
           onClick={() => setSheetOpen(true)}
@@ -112,13 +129,6 @@ const RefinementList = ({ hideOptionsPicker = false }: RefinementListProps) => {
           </div>
         </div>
       )}
-
-      <aside className="hidden small:block small:w-[240px] shrink-0 small:mr-10">
-        <OptionsPicker
-          selectedValueIds={selectedOptionValueIds}
-          setOptionValueIds={setOptionValueIds}
-        />
-      </aside>
     </>
   )
 }

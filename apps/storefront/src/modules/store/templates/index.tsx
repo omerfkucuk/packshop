@@ -34,7 +34,7 @@ const StoreTemplate = ({
         </h1>
       </header>
       <div className="flex flex-col small:flex-row small:items-start">
-        <RefinementList sortBy={sort} />
+        <RefinementList sortBy={sort} variant="sidebar" />
         <div className="w-full min-w-0">
           <Suspense fallback={<SkeletonProductGrid />}>
             <PaginatedProducts
@@ -44,6 +44,7 @@ const StoreTemplate = ({
               optionValueIds={optionValueIds}
               q={q}
               showToolbar
+              toolbarStart={<RefinementList variant="mobile" />}
             />
           </Suspense>
         </div>
