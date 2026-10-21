@@ -5,53 +5,34 @@ type OrderSummaryProps = {
   order: HttpTypes.StoreOrder
 }
 
+// Gray totals box, same look as the cart/checkout "Sipariş özeti".
 const OrderSummary = ({ order }: OrderSummaryProps) => {
-  const getAmount = (amount?: number | null) => {
-    if (!amount) {
-      return
-    }
+  const money = (amount?: number | null) =>
+    convertToLocale({ amount: amount ?? 0, currency_code: order.currency_code })
 
-    return convertToLocale({
-      amount,
-      currency_code: order.currency_code,
-    })
-  }
+  const rows: [string, string][] = [
+    ["Ara toplam", money(order.item_subtotal ?? order.subtotal)],
+    ...(order.discount_total > 0 ? [["İndirim", `- ${money(order.discount_total)}`] as [string, string]] : []),
+    ...(order.gift_card_total > 0 ? [["Hediye kartı", `- ${money(order.gift_card_total)}`] as [string, string]] : []),
+    ["Kargo", money(order.shipping_total)],
+    ["KDV", money(order.tax_total)],
+  ]
 
   return (
-    <div>
-      <h2 className="text-base font-semibold text-black">Sipariş Özeti</h2>
-      <div className="text-sm text-black my-2">
-        <div className="flex items-center justify-between text-base text-black mb-2">
-          <span>Ara toplam</span>
-          <span>{getAmount(order.subtotal)}</span>
-        </div>
-        <div className="flex flex-col gap-y-1">
-          {order.discount_total > 0 && (
-            <div className="flex items-center justify-between">
-              <span>İndirim</span>
-              <span>- {getAmount(order.discount_total)}</span>
-            </div>
-          )}
-          {order.gift_card_total > 0 && (
-            <div className="flex items-center justify-between">
-              <span>İndirim</span>
-              <span>- {getAmount(order.gift_card_total)}</span>
-            </div>
-          )}
-          <div className="flex items-center justify-between">
-            <span>Kargo</span>
-            <span>{getAmount(order.shipping_total)}</span>
+    <div className="rounded-xl bg-black/[0.04] p-5 small:p-6 text-sm">
+      <div className="flex flex-col gap-y-2 text-black/70">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex items-center justify-between gap-x-4">
+            <span>{label}</span>
+            <span className="whitespace-nowrap">{value}</span>
           </div>
-          <div className="flex items-center justify-between">
-            <span>Vergi</span>
-            <span>{getAmount(order.tax_total)}</span>
-          </div>
-        </div>
-        <div className="h-px w-full border-b border-black/10 border-dashed my-4" />
-        <div className="flex items-center justify-between text-base text-black mb-2">
-          <span>Toplam</span>
-          <span>{getAmount(order.total)}</span>
-        </div>
+        ))}
+      </div>
+      <div className="mt-4 flex items-center justify-between gap-x-4 border-t border-black/10 pt-4 text-base font-bold text-black">
+        <span>Toplam</span>
+        <span className="whitespace-nowrap" data-testid="order-total">
+          {money(order.total)}
+        </span>
       </div>
     </div>
   )

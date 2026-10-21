@@ -1,12 +1,11 @@
 "use client"
 
-import { XMark } from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
-import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Help from "@modules/order/components/help"
 import Items from "@modules/order/components/items"
 import OrderDetails from "@modules/order/components/order-details"
 import OrderSummary from "@modules/order/components/order-summary"
+import PaymentDetails from "@modules/order/components/payment-details"
 import ShippingDetails from "@modules/order/components/shipping-details"
 import React from "react"
 
@@ -14,31 +13,22 @@ type OrderDetailsTemplateProps = {
   order: HttpTypes.StoreOrder
 }
 
-const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({
-  order,
-}) => {
+// The account layout already renders the "← Hesabım" back link above this.
+const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({ order }) => {
   return (
-    <div className="flex flex-col justify-center gap-y-4">
-      <div className="flex gap-2 justify-between items-center">
-        <h1 className="text-2xl font-bold text-black">Sipariş Detayı</h1>
-        <LocalizedClientLink
-          href="/account/orders"
-          className="flex gap-2 items-center text-black/50 hover:text-black"
-          data-testid="back-to-overview-button"
-        >
-          <XMark /> Genele dön
-        </LocalizedClientLink>
-      </div>
-      <div
-        className="flex flex-col gap-4 h-full bg-white w-full"
-        data-testid="order-details-container"
-      >
+    <div className="flex flex-col gap-y-8" data-testid="order-details-container">
+      <h1 className="text-3xl font-bold tracking-tight text-black">Sipariş #{order.display_id}</h1>
+      <div className="rounded-xl border border-black/10 p-5 small:p-6">
         <OrderDetails order={order} showStatus />
-        <Items order={order} />
-        <ShippingDetails order={order} />
-        <OrderSummary order={order} />
-        <Help />
       </div>
+      <section className="flex flex-col gap-y-2">
+        <h2 className="text-lg font-bold text-black">Ürünler</h2>
+        <Items order={order} />
+        <OrderSummary order={order} />
+      </section>
+      <ShippingDetails order={order} />
+      <PaymentDetails order={order} />
+      <Help />
     </div>
   )
 }

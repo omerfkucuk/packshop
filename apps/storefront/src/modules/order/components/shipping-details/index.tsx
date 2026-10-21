@@ -1,72 +1,65 @@
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
-import { Heading, Text } from "@modules/common/components/ui"
-
-import Divider from "@modules/common/components/divider"
 
 type ShippingDetailsProps = {
   order: HttpTypes.StoreOrder
 }
 
+const Block = ({ title, lines, testId }: { title: string; lines: (string | null | undefined)[]; testId?: string }) => (
+  <div className="flex flex-col text-sm min-w-0" data-testid={testId}>
+    <span className="mb-1 font-medium text-black">{title}</span>
+    {lines.filter(Boolean).map((line, i) => (
+      <span key={i} className="text-black/60 break-words">
+        {line}
+      </span>
+    ))}
+  </div>
+)
+
+// Stacks on phones, 2 columns from 512px, 4 from 1024px.
 const ShippingDetails = ({ order }: ShippingDetailsProps) => {
+  const ship = order.shipping_address
+  const bill = order.billing_address
+  const method = order.shipping_methods?.[0] as { name?: string; total?: number } | undefined
+  const taxNumber = bill?.metadata?.tax_number as string | undefined
+  const taxOffice = bill?.metadata?.tax_office as string | undefined
+
   return (
-    <div>
-      <Heading level="h2" className="flex flex-row text-2xl font-bold text-black my-6">
-        Teslimat
-      </Heading>
-      <div className="flex items-start gap-x-8">
-        <div
-          className="flex flex-col w-1/3"
-          data-testid="shipping-address-summary"
-        >
-          <Text className="txt-medium-plus text-black mb-1">
-            Teslimat Adresi
-          </Text>
-          <Text className="txt-medium text-black/70">
-            {order.shipping_address?.first_name}{" "}
-            {order.shipping_address?.last_name}
-          </Text>
-          <Text className="txt-medium text-black/70">
-            {order.shipping_address?.address_1}{" "}
-            {order.shipping_address?.address_2}
-          </Text>
-          <Text className="txt-medium text-black/70">
-            {order.shipping_address?.postal_code},{" "}
-            {order.shipping_address?.city}
-          </Text>
-          <Text className="txt-medium text-black/70">
-            {order.shipping_address?.country_code?.toUpperCase()}
-          </Text>
-        </div>
-
-        <div
-          className="flex flex-col w-1/3 "
-          data-testid="shipping-contact-summary"
-        >
-          <Text className="txt-medium-plus text-black mb-1">İletişim</Text>
-          <Text className="txt-medium text-black/70">
-            {order.shipping_address?.phone}
-          </Text>
-          <Text className="txt-medium text-black/70">{order.email}</Text>
-        </div>
-
-        <div
-          className="flex flex-col w-1/3"
-          data-testid="shipping-method-summary"
-        >
-          <Text className="txt-medium-plus text-black mb-1">Yöntem</Text>
-          <Text className="txt-medium text-black/70">
-            {(order.shipping_methods?.[0] as { name?: string })?.name} (
-            {convertToLocale({
-              amount: order.shipping_methods?.[0].total ?? 0,
-              currency_code: order.currency_code,
-            })}
-            )
-          </Text>
-        </div>
+    <section>
+      <h2 className="text-lg font-bold text-black mb-4">Teslimat ve fatura</h2>
+      <div className="grid grid-cols-1 xsmall:grid-cols-2 small:grid-cols-4 gap-6">
+        <Block
+          title="Teslimat adresi"
+          testId="shipping-address-summary"
+          lines={[
+            `${ship?.first_name ?? ""} ${ship?.last_name ?? ""}`.trim(),
+            ship?.company,
+            ship?.address_1,
+            [ship?.postal_code, ship?.city].filter(Boolean).join(" "),
+          ]}
+        />
+        <Block title="İletişim" testId="shipping-contact-summary" lines={[order.email, ship?.phone]} />
+        <Block
+          title="Kargo"
+          testId="shipping-method-summary"
+          lines={[
+            method?.name,
+            method
+              ? convertToLocale({ amount: method.total ?? 0, currency_code: order.currency_code })
+              : null,
+          ]}
+        />
+        <Block
+          title="Fatura"
+          testId="billing-address-summary"
+          lines={[
+            bill?.company,
+            taxNumber ? `${taxOffice ?? ""} V.D. · ${taxNumber}` : null,
+            [bill?.address_1, bill?.city].filter(Boolean).join(", "),
+          ]}
+        />
       </div>
-      <Divider className="mt-8" />
-    </div>
+    </section>
   )
 }
 

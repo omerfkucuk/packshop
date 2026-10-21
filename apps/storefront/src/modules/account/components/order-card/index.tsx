@@ -1,84 +1,66 @@
-import { Button } from "@modules/common/components/ui"
-import { useMemo } from "react"
-
-import Thumbnail from "@modules/products/components/thumbnail"
-import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import ChevronDown from "@modules/common/icons/chevron-down"
+import { fulfillmentLabel } from "@modules/order/components/order-details"
+import Thumbnail from "@modules/products/components/thumbnail"
 
 type OrderCardProps = {
   order: HttpTypes.StoreOrder
 }
 
+// Whole card links to the order; small thumbnails keep it compact on phones.
 const OrderCard = ({ order }: OrderCardProps) => {
-  const numberOfLines = useMemo(() => {
-    return (
-      order.items?.reduce((acc, item) => {
-        return acc + item.quantity
-      }, 0) ?? 0
-    )
-  }, [order])
-
-  const numberOfProducts = useMemo(() => {
-    return order.items?.length ?? 0
-  }, [order])
+  const items = order.items ?? []
+  const totalUnits = items.reduce((acc, item) => acc + item.quantity, 0)
+  const shown = items.slice(0, 4)
 
   return (
-    <div className="bg-white flex flex-col" data-testid="order-card">
-      <div className="font-semibold text-lg text-black mb-1">
-        #<span data-testid="order-display-id">{order.display_id}</span>
+    <LocalizedClientLink
+      href={`/account/orders/details/${order.id}`}
+      className="block rounded-xl border border-black/10 p-4 small:p-5 hover:border-black/25 transition-colors"
+      data-testid="order-card"
+    >
+      <div className="flex items-start justify-between gap-x-4">
+        <div className="flex flex-col min-w-0">
+          <span className="text-base font-semibold text-black">
+            Sipariş #<span data-testid="order-display-id">{order.display_id}</span>
+          </span>
+          <span className="text-sm text-black/60" data-testid="order-created-at">
+            {new Date(order.created_at).toLocaleDateString("tr-TR")} · {totalUnits} adet
+          </span>
+        </div>
+        <div className="flex flex-col items-end shrink-0">
+          <span className="text-base font-semibold text-black whitespace-nowrap" data-testid="order-amount">
+            {convertToLocale({ amount: order.total, currency_code: order.currency_code })}
+          </span>
+          <span className="mt-0.5 rounded-full bg-black/[0.06] px-2 py-0.5 text-xs text-black/70">
+            {fulfillmentLabel(order)}
+          </span>
+        </div>
       </div>
-      <div className="flex items-center divide-x divide-black/10 text-sm text-black/70">
-        <span className="pr-2" data-testid="order-created-at">
-          {new Date(order.created_at).toLocaleDateString("tr-TR")}
-        </span>
-        <span className="px-2" data-testid="order-amount">
-          {convertToLocale({
-            amount: order.total,
-            currency_code: order.currency_code,
-          })}
-        </span>
-        <span className="pl-2">{numberOfLines} ürün</span>
-      </div>
-      <div className="grid grid-cols-2 small:grid-cols-4 gap-4 my-4">
-        {order.items?.slice(0, 3).map((i) => {
-          return (
+      <div className="mt-4 flex items-center justify-between gap-x-3">
+        <div className="flex items-center gap-x-2 min-w-0">
+          {shown.map((i) => (
             <div
               key={i.id}
-              className="flex flex-col gap-y-2"
+              className="w-12 h-12 shrink-0 overflow-hidden rounded-lg bg-black/[0.04]"
+              title={`${i.title} × ${i.quantity}`}
               data-testid="order-item"
             >
-              <Thumbnail thumbnail={i.thumbnail} images={[]} size="full" />
-              <div className="flex items-center text-sm text-black/70">
-                <span
-                  className="text-black font-semibold"
-                  data-testid="item-title"
-                >
-                  {i.title}
-                </span>
-                <span className="ml-2">x</span>
-                <span data-testid="item-quantity">{i.quantity}</span>
-              </div>
+              <Thumbnail thumbnail={i.thumbnail} images={[]} size="square" />
             </div>
-          )
-        })}
-        {numberOfProducts > 4 && (
-          <div className="w-full h-full flex flex-col items-center justify-center">
-            <span className="text-sm text-black/70">
-              + {numberOfLines - 4}
-            </span>
-            <span className="text-sm text-black/70">daha</span>
-          </div>
-        )}
+          ))}
+          {items.length > shown.length && (
+            <span className="text-sm text-black/60 whitespace-nowrap">+{items.length - shown.length}</span>
+          )}
+        </div>
+        <span className="flex items-center gap-x-1 text-sm text-black/60 shrink-0" data-testid="order-details-link">
+          Detay
+          <ChevronDown className="-rotate-90" />
+        </span>
       </div>
-      <div className="flex justify-end">
-        <LocalizedClientLink href={`/account/orders/details/${order.id}`}>
-          <Button data-testid="order-details-link" variant="secondary">
-            Detayları gör
-          </Button>
-        </LocalizedClientLink>
-      </div>
-    </div>
+    </LocalizedClientLink>
   )
 }
 

@@ -1,13 +1,14 @@
-import { Heading } from "@modules/common/components/ui"
+import { CheckCircleSolid } from "@medusajs/icons"
 import { cookies as nextCookies } from "next/headers"
 
-import CartTotals from "@modules/common/components/cart-totals"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Help from "@modules/order/components/help"
 import Items from "@modules/order/components/items"
 import OnboardingCta from "@modules/order/components/onboarding-cta"
 import OrderDetails from "@modules/order/components/order-details"
-import ShippingDetails from "@modules/order/components/shipping-details"
+import OrderSummary from "@modules/order/components/order-summary"
 import PaymentDetails from "@modules/order/components/payment-details"
+import ShippingDetails from "@modules/order/components/shipping-details"
 import { HttpTypes } from "@medusajs/types"
 
 type OrderCompletedTemplateProps = {
@@ -22,28 +23,48 @@ export default async function OrderCompletedTemplate({
   const isOnboarding = cookies.get("_medusa_onboarding")?.value === "true"
 
   return (
-    <div className="py-6 min-h-[calc(100vh-64px)]">
-      <div className="content-container flex flex-col justify-center items-center gap-y-10 max-w-4xl h-full w-full">
+    <div className="py-8 small:py-12">
+      <div className="content-container mx-auto flex max-w-2xl flex-col gap-y-8">
         {isOnboarding && <OnboardingCta orderId={order.id} />}
-        <div
-          className="flex flex-col gap-4 max-w-4xl h-full bg-white w-full py-10"
-          data-testid="order-complete-container"
-        >
-          <Heading
-            level="h1"
-            className="flex flex-col gap-y-3 text-black text-3xl font-bold mb-4"
-          >
-            <span>Teşekkürler!</span>
-            <span>Siparişiniz başarıyla oluşturuldu.</span>
-          </Heading>
-          <OrderDetails order={order} />
-          <Heading level="h2" className="flex flex-row text-2xl font-bold text-black">
-            Özet
-          </Heading>
-          <Items order={order} />
-          <CartTotals totals={order} />
+        <div className="flex flex-col gap-y-8" data-testid="order-complete-container">
+          <div className="flex flex-col items-center text-center gap-y-3">
+            <CheckCircleSolid className="h-14 w-14 text-green-600" />
+            <h1 className="text-2xl small:text-3xl font-bold tracking-tight text-black">
+              Teşekkürler, siparişiniz alındı!
+            </h1>
+            <p className="text-base text-black/60">
+              Sipariş onayını <span className="font-medium text-black">{order.email}</span> adresine
+              gönderdik.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-black/10 p-5 small:p-6">
+            <OrderDetails order={order} />
+          </div>
+
+          <section className="flex flex-col gap-y-2">
+            <h2 className="text-lg font-bold text-black">Ürünler</h2>
+            <Items order={order} />
+            <OrderSummary order={order} />
+          </section>
+
           <ShippingDetails order={order} />
           <PaymentDetails order={order} />
+
+          <div className="flex flex-col xsmall:flex-row gap-3">
+            <LocalizedClientLink
+              href="/account/orders"
+              className="flex h-12 flex-1 items-center justify-center rounded-full bg-black px-6 text-sm font-medium text-white hover:bg-black/85 transition-colors"
+            >
+              Siparişlerime git
+            </LocalizedClientLink>
+            <LocalizedClientLink
+              href="/"
+              className="flex h-12 flex-1 items-center justify-center rounded-full border border-black/15 px-6 text-sm font-medium text-black hover:border-black/40 transition-colors"
+            >
+              Alışverişe devam et
+            </LocalizedClientLink>
+          </div>
           <Help />
         </div>
       </div>
