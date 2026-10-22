@@ -690,6 +690,43 @@ const DesignerShell = ({
           </LocalizedClientLink>
         </div>
 
+        {/* Step bar (desktop) - numbered, done steps get a check, steps past
+            the furthest unlocked one are disabled. Mobile shows the same
+            progress over the canvas instead. */}
+        <nav className="flex items-center gap-x-1 min-w-0" aria-label="Tasarım adımları">
+          {STEPS.map((step, i) => {
+            const active = i === stepIndex
+            const done = i < maxStep && !active
+            const locked = i > maxStep
+            return (
+              <div key={step.id} className="flex items-center gap-x-1">
+                {i > 0 && (
+                  <span className={`h-px w-6 medium:w-10 ${i <= maxStep ? "bg-black/40" : "bg-black/15"}`} aria-hidden />
+                )}
+                <button
+                  onClick={() => goToStep(i)}
+                  disabled={locked}
+                  className={`flex items-center gap-x-2 rounded-full px-3 py-1.5 text-sm whitespace-nowrap transition-colors ${
+                    active ? "bg-black/[0.06] font-medium text-black" : locked ? "text-black/30" : "text-black/70 hover:bg-black/[0.04]"
+                  }`}
+                  aria-current={active ? "step" : undefined}
+                  data-testid={`designer-step-${step.id}`}
+                >
+                  <span
+                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                      active ? "bg-black text-white" : done ? "bg-green-600 text-white" : "bg-black/[0.06] text-black/50"
+                    }`}
+                  >
+                    {done ? "✓" : i + 1}
+                  </span>
+                  {/* 1024-1279px: only the active step keeps its label */}
+                  <span className={active ? "" : "hidden medium:inline"}>{step.label}</span>
+                </button>
+              </div>
+            )
+          })}
+        </nav>
+
         <div className="flex items-center gap-x-4 min-w-0">
           {product ? (
             <div className="hidden small:flex items-center gap-x-3 min-w-0">
@@ -726,39 +763,8 @@ const DesignerShell = ({
 
       {/* Main row */}
       <div className="flex-1 flex flex-col min-h-0 small:flex-row small:gap-6 small:p-6">
-        {/* Step rail (desktop) - numbered, done steps get a check, steps past
-            the furthest unlocked one are disabled. Mobile shows the same
-            progress over the canvas instead. */}
-        <nav className="hidden small:flex w-44 shrink-0 flex-col gap-y-1 self-start">
-          {STEPS.map((step, i) => {
-            const active = i === stepIndex
-            const done = i < maxStep && !active
-            const locked = i > maxStep
-            return (
-              <button
-                key={step.id}
-                onClick={() => goToStep(i)}
-                disabled={locked}
-                className={`flex items-center gap-x-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${
-                  active ? "bg-black/[0.06] font-medium text-black" : locked ? "text-black/30" : "text-black/70 hover:bg-black/[0.04]"
-                }`}
-                data-testid={`designer-step-${step.id}`}
-              >
-                <span
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                    active ? "bg-black text-white" : done ? "bg-green-600 text-white" : "bg-black/[0.06] text-black/50"
-                  }`}
-                >
-                  {done ? "✓" : i + 1}
-                </span>
-                {step.label}
-              </button>
-            )
-          })}
-        </nav>
-
-        {/* Tool panel - a bottom sheet on mobile (swipe down to close), a
-            floating card beside the rail from `small` up. */}
+        {/* Tool panel - the bottom 3/7 on mobile, a floating card beside
+            the canvas from `small` up. */}
         <div
           className="order-2 relative flex h-[calc(100%*3/7)] shrink-0 flex-col border-t border-black/10 bg-white small:order-none small:h-auto small:max-h-full small:w-[340px] small:self-start small:overflow-hidden small:rounded-2xl small:border"
         >
