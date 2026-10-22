@@ -131,15 +131,7 @@ const DesignerShell = ({
   // instead of an always-visible sidebar, so whether it's open needs
   // tracking separately from which tool is active. Ignored at `small` and
   // up, where the sidebar is always shown regardless of this value.
-  const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(true)
-  const handleToolTap = (tool: Tool) => {
-    if (tool === activeTool) {
-      setIsMobilePanelOpen((open) => !open)
-      return
-    }
-    setActiveTool(tool)
-    setIsMobilePanelOpen(true)
-  }
+  const handleToolTap = (tool: Tool) => setActiveTool(tool)
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
   // 3D is a read-only preview (orbit/rotate only) - all editing stays on
   // the 2D dieline regardless of which view is currently showing. Clicking
@@ -263,7 +255,6 @@ const DesignerShell = ({
     ) {
       hasAutoAdvancedToBrandKit.current = true
       setActiveTool("marka-kiti")
-      setIsMobilePanelOpen(true)
     }
   }, [selectedVariant, activeTool])
 
@@ -706,14 +697,14 @@ const DesignerShell = ({
               {displayPrice.calculated_price}
             </span>
           )}
-          <div className="small:hidden">{primaryAction("h-10 shrink-0")}</div>
+
         </div>
       </header>
 
       {/* Main row */}
-      <div className="flex-1 flex flex-col min-h-0 small:flex-row small:gap-6 small:p-6">
+      <div className="flex-1 flex flex-col min-h-0 overflow-y-auto pb-24 small:overflow-visible small:pb-6 small:flex-row small:gap-6 small:p-6">
         {/* Icon rail - a bottom tab bar on mobile, a left rail from `small` up */}
-        <nav className="fixed inset-x-0 bottom-0 z-40 flex h-16 w-full items-stretch justify-around border-t border-black/10 bg-white small:static small:z-auto small:h-auto small:w-20 small:shrink-0 small:flex-col small:items-center small:justify-start small:gap-y-1 small:self-start small:border-t-0 small:bg-transparent">
+        <nav className="order-2 flex shrink-0 gap-2 overflow-x-auto px-4 pt-4 no-scrollbar small:order-none small:w-20 small:flex-col small:items-center small:gap-y-1 small:self-start small:overflow-visible small:p-0">
           {TOOLS.map((tool) => {
             const Icon = tool.icon
             const active = activeTool === tool.id
@@ -721,40 +712,25 @@ const DesignerShell = ({
               <button
                 key={tool.id}
                 onClick={() => handleToolTap(tool.id)}
-                className={`flex flex-1 min-w-0 flex-col items-center justify-center gap-y-0.5 px-1 text-[10px] transition-colors small:flex-none small:w-20 small:justify-start small:gap-y-1 small:py-2 small:rounded-lg ${
+                className={`flex h-9 shrink-0 items-center gap-x-1.5 rounded-full border px-3.5 text-sm whitespace-nowrap transition-colors small:h-auto small:w-20 small:flex-col small:justify-start small:gap-x-0 small:gap-y-1 small:rounded-lg small:border-0 small:px-1 small:py-2 small:text-[10px] ${
                   active
-                    ? "text-black font-medium small:bg-black/[0.06]"
-                    : "text-black/50 hover:text-black small:hover:bg-black/[0.04]"
+                    ? "border-black bg-black text-white font-medium small:bg-black/[0.06] small:text-black"
+                    : "border-black/15 text-black/70 hover:text-black small:hover:bg-black/[0.04]"
                 }`}
                 data-testid={`designer-tool-${tool.id}`}
               >
-                <Icon className="h-5 w-5" />
+                <Icon className="h-4 w-4 small:h-5 small:w-5" />
                 <span className="max-w-full truncate">{tool.label}</span>
               </button>
             )
           })}
         </nav>
 
-        {/* Backdrop - mobile only, taps outside the sheet close it */}
-        {isMobilePanelOpen && (
-          <div
-            className="fixed inset-0 z-20 bg-black/20 small:hidden"
-            onClick={() => setIsMobilePanelOpen(false)}
-          />
-        )}
-
-        {/* Tool panel - a bottom sheet over the canvas on mobile, a fixed
-            sidebar from `small` up. isMobilePanelOpen only ever affects the
-            mobile sheet's transform; the `small:` variants below always win
-            past that breakpoint regardless of its value. */}
+        {/* Tool panel - an inline section under the tool chips on mobile, a
+            floating card beside the rail from `small` up. */}
         <div
-          className={`fixed inset-x-0 bottom-16 z-30 max-h-[65vh] overflow-y-auto rounded-t-2xl border-t border-black/10 bg-white shadow-[0_-8px_24px_rgba(0,0,0,0.08)] transition-transform duration-200 ease-out small:static small:z-auto small:flex small:max-h-full small:w-[340px] small:shrink-0 small:flex-col small:self-start small:translate-y-0 small:overflow-hidden small:rounded-2xl small:border small:border-black/10 small:shadow-none ${
-            isMobilePanelOpen ? "translate-y-0" : "pointer-events-none translate-y-full"
-          }`}
+          className="order-3 bg-white small:order-none small:flex small:max-h-full small:w-[340px] small:shrink-0 small:flex-col small:self-start small:overflow-hidden small:rounded-2xl small:border small:border-black/10"
         >
-          <div className="flex items-center justify-center pt-2.5 pb-1 small:hidden">
-            <span className="h-1 w-10 rounded-full bg-black/10" />
-          </div>
           <div className="p-5 small:flex-1 small:overflow-y-auto">
           {activeTool === "urun" && (
             <div className="flex flex-col gap-y-4">
@@ -1012,15 +988,16 @@ const DesignerShell = ({
             <TextPanel onAddCombo={toggleElement} />
           )}
           </div>
-          {/* Uber's full-width black "Search": the card's primary action */}
-          <div className="hidden small:block border-t border-black/10 p-4">
+          {/* Uber's full-width black "Search": the card's primary action -
+              inside the card on desktop, a sticky bottom bar on mobile */}
+          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-black/10 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] small:static small:z-auto small:pb-4">
             {primaryAction("h-12 w-full rounded-lg")}
           </div>
         </div>
 
         {/* Canvas + AI bar - pb-16 on mobile keeps content clear of the
             fixed bottom tab bar, which sits outside normal flow there */}
-        <div className="relative flex-1 flex flex-col min-h-0 pb-16 small:pb-0 small:overflow-hidden small:rounded-2xl small:bg-black/[0.03]">
+        <div className="order-1 relative mx-4 mt-4 flex h-[56vh] shrink-0 flex-col overflow-hidden rounded-2xl bg-black/[0.03] small:order-none small:m-0 small:h-auto small:flex-1 small:shrink small:min-h-0">
           <div className="relative flex-1 bg-black/[0.02] small:bg-transparent flex items-center justify-center overflow-auto p-4 small:p-8">
             {geometryPanels && (
               <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
@@ -1111,7 +1088,7 @@ const DesignerShell = ({
           )}
 
           {/* AI bar */}
-          <div className="shrink-0 border-t border-black/10 p-4 small:m-4 small:mt-0 small:rounded-xl small:border small:bg-white small:shadow-sm">
+          <div className="m-3 mt-0 shrink-0 rounded-xl border border-black/10 bg-white p-3 shadow-sm small:m-4 small:mt-0 small:p-4">
             {selectedElements.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
                 {selectedElements.map((el) => (
