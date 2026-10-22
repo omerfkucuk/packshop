@@ -16,11 +16,19 @@ const VisitTracker = ({ customerId }: { customerId: string }) => {
       if (localStorage.getItem(storageKey) === today) {
         return
       }
-      localStorage.setItem(storageKey, today)
     } catch {
       // storage unavailable - just ping
     }
-    recordVisit()
+    // Mark the day only after the backend accepted it, so a failed ping
+    // (backend down/deploying) is retried on the next page load.
+    recordVisit().then((ok) => {
+      if (!ok) return
+      try {
+        localStorage.setItem(storageKey, today)
+      } catch {
+        // ignore
+      }
+    })
   }, [customerId])
 
   return null

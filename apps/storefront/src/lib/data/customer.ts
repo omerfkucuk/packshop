@@ -86,10 +86,11 @@ export const updateCustomer = async (body: HttpTypes.StoreUpdateCustomer) => {
 
 // Fire-and-forget "last visit" ping for logged-in customers (see
 // VisitTracker). Never throws - visit tracking must not break a page.
-export async function recordVisit(): Promise<void> {
+/** Resolves true once the backend has accepted the visit. */
+export async function recordVisit(): Promise<boolean> {
   const headers = await getAuthHeaders()
   if (!("authorization" in headers)) {
-    return
+    return false
   }
 
   try {
@@ -102,8 +103,9 @@ export async function recordVisit(): Promise<void> {
     if (updated) {
       revalidateTag(await getCacheTag("customers"))
     }
+    return true
   } catch {
-    // ignore
+    return false
   }
 }
 
