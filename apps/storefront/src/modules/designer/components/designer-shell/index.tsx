@@ -760,9 +760,9 @@ const DesignerShell = ({
         {/* Tool panel - a bottom sheet on mobile (swipe down to close), a
             floating card beside the rail from `small` up. */}
         <div
-          className="order-2 flex h-[40%] shrink-0 flex-col border-t border-black/10 bg-white small:order-none small:h-auto small:max-h-full small:w-[340px] small:self-start small:overflow-hidden small:rounded-2xl small:border"
+          className="order-2 relative flex h-[calc(100%*3/7)] shrink-0 flex-col border-t border-black/10 bg-white small:order-none small:h-auto small:max-h-full small:w-[340px] small:self-start small:overflow-hidden small:rounded-2xl small:border"
         >
-          <div className="flex-1 overflow-y-auto p-5">
+          <div className="flex-1 overflow-y-auto px-4 pb-24 pt-4 small:p-5">
           {activeTool === "urun" && (
             <div className="flex flex-col gap-y-4">
               <h2 className="text-lg font-semibold text-black">Ürün</h2>
@@ -1125,14 +1125,26 @@ const DesignerShell = ({
           </div>
           {/* Uber's full-width black "Search": the card's primary action -
               inside the card on desktop, a sticky bottom bar on mobile */}
-          <div className="shrink-0 border-t border-black/10 bg-white px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 small:p-4">
-            {primaryAction("h-12 w-full rounded-lg")}
+          <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex gap-2 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] small:pointer-events-auto small:static small:border-t small:border-black/10 small:p-4">
+            {stepIndex > 0 && (
+              <button
+                type="button"
+                onClick={() => goToStep(stepIndex - 1)}
+                className="pointer-events-auto h-12 shrink-0 rounded-full border border-black/15 bg-white px-5 text-sm font-medium text-black shadow-sm small:rounded-lg small:shadow-none"
+                data-testid="designer-back"
+              >
+                Geri
+              </button>
+            )}
+            <div className="pointer-events-auto flex-1">
+              {primaryAction("h-12 w-full rounded-full shadow-lg small:rounded-lg small:shadow-none")}
+            </div>
           </div>
         </div>
 
         {/* Canvas + AI bar - pb-16 on mobile keeps content clear of the
             fixed bottom tab bar, which sits outside normal flow there */}
-        <div className="order-1 relative flex h-[60%] shrink-0 flex-col overflow-hidden bg-black/[0.03] small:order-none small:h-auto small:min-h-0 small:flex-1 small:shrink small:rounded-2xl">
+        <div className="order-1 relative flex h-[calc(100%*4/7)] shrink-0 flex-col overflow-hidden bg-black/[0.03] small:order-none small:h-auto small:min-h-0 small:flex-1 small:shrink small:rounded-2xl">
           {/* Mobile: no header band - logo and step progress float on the view */}
           <div className="absolute inset-x-3 top-3 z-10 flex flex-col gap-y-2 small:hidden">
             <LocalizedClientLink
@@ -1234,13 +1246,6 @@ const DesignerShell = ({
             )}
           </div>
 
-          {themedDesign && !aiDesign && selectedElements.length > 0 && (
-            <p className="shrink-0 px-4 py-2 text-xs text-black/50 border-t border-black/10">
-              Şu an &quot;{listThemes().find((t) => t.id === selectedTheme)?.label}&quot; teması
-              gösteriliyor - Marka Kiti&apos;nden seçtiğiniz öğeler AI ile Oluştur&apos;a
-              basana kadar kanvasa yansımaz.
-            </p>
-          )}
 
         </div>
       </div>

@@ -252,8 +252,8 @@ const BrandKitPanel = ({
       <div>
         <h2 className="text-lg font-semibold text-black">Marka Kiti</h2>
         <p className="text-xs text-black/50 mt-1">
-          Kullanmak istediğiniz öğelere tıklayın, aşağıdaki AI alanına
-          eklensin.
+          Kullanmak istediğiniz öğelere tıklayın; tasarımınıza eklenir ve
+          son adımda AI ile düzeltebilirsiniz.
         </p>
       </div>
       {brands.length === 0 ? (
