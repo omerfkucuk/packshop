@@ -640,16 +640,63 @@ const DesignerShell = ({
     }
   }
 
+  const primaryAction = (className: string) =>
+    useCustomSize ? (
+      <Button
+        onClick={handleRequestCustomQuote}
+        disabled={!product || isAdding || customSizeErrors.length > 0}
+        isLoading={isAdding}
+        className={className}
+        data-testid="designer-request-quote"
+      >
+        Teklif İste
+      </Button>
+    ) : (
+      <Button
+        onClick={handleAddToCart}
+        disabled={!selectedVariant || isAdding}
+        isLoading={isAdding}
+        className={className}
+        data-testid="designer-add-to-cart"
+      >
+        Sepete Ekle
+      </Button>
+    )
+
   return (
     <div className="h-full w-full flex flex-col bg-white">
       {/* Top bar */}
       <header className="h-16 shrink-0 border-b border-black/10 flex items-center justify-between px-4 gap-x-4">
-        <LocalizedClientLink
-          href="/"
-          className="font-bold text-lg text-black shrink-0"
-        >
-          Packshop
-        </LocalizedClientLink>
+        <div className="flex h-full items-center gap-x-8 min-w-0">
+          <LocalizedClientLink
+            href="/"
+            className="font-bold text-lg text-black shrink-0"
+          >
+            Packshop
+          </LocalizedClientLink>
+          {/* Uber-style tool tabs (desktop); mobile keeps the bottom tab bar */}
+          <nav className="hidden small:flex h-full items-stretch gap-x-1 overflow-x-auto no-scrollbar">
+            {TOOLS.map((tool) => {
+              const Icon = tool.icon
+              const active = activeTool === tool.id
+              return (
+                <button
+                  key={tool.id}
+                  onClick={() => handleToolTap(tool.id)}
+                  className={`flex items-center gap-x-2 border-b-[3px] px-3 text-sm whitespace-nowrap transition-colors ${
+                    active
+                      ? "border-black font-medium text-black"
+                      : "border-transparent text-black/60 hover:text-black"
+                  }`}
+                  data-testid={`designer-tab-${tool.id}`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {tool.label}
+                </button>
+              )
+            })}
+          </nav>
+        </div>
 
         <div className="flex items-center gap-x-4 min-w-0">
           {product ? (
@@ -681,34 +728,14 @@ const DesignerShell = ({
               {displayPrice.calculated_price}
             </span>
           )}
-          {useCustomSize ? (
-            <Button
-              onClick={handleRequestCustomQuote}
-              disabled={!product || isAdding || customSizeErrors.length > 0}
-              isLoading={isAdding}
-              className="h-10 shrink-0"
-              data-testid="designer-request-quote"
-            >
-              Teklif İste
-            </Button>
-          ) : (
-            <Button
-              onClick={handleAddToCart}
-              disabled={!selectedVariant || isAdding}
-              isLoading={isAdding}
-              className="h-10 shrink-0"
-              data-testid="designer-add-to-cart"
-            >
-              Sepete Ekle
-            </Button>
-          )}
+          <div className="small:hidden">{primaryAction("h-10 shrink-0")}</div>
         </div>
       </header>
 
       {/* Main row */}
-      <div className="flex-1 flex flex-col min-h-0 small:flex-row">
+      <div className="flex-1 flex flex-col min-h-0 small:flex-row small:gap-6 small:p-6">
         {/* Icon rail - a bottom tab bar on mobile, a left rail from `small` up */}
-        <nav className="fixed inset-x-0 bottom-0 z-40 flex h-16 w-full items-stretch justify-around border-t border-black/10 bg-white small:static small:z-auto small:h-auto small:w-24 small:flex-col small:items-center small:justify-start small:gap-y-1 small:overflow-y-auto small:border-r small:border-t-0 small:py-4">
+        <nav className="fixed inset-x-0 bottom-0 z-40 flex h-16 w-full items-stretch justify-around border-t border-black/10 bg-white small:hidden">
           {TOOLS.map((tool) => {
             const Icon = tool.icon
             const active = activeTool === tool.id
@@ -743,14 +770,14 @@ const DesignerShell = ({
             mobile sheet's transform; the `small:` variants below always win
             past that breakpoint regardless of its value. */}
         <div
-          className={`fixed inset-x-0 bottom-16 z-30 max-h-[65vh] overflow-y-auto rounded-t-2xl border-t border-black/10 bg-white shadow-[0_-8px_24px_rgba(0,0,0,0.08)] transition-transform duration-200 ease-out small:static small:z-auto small:max-h-none small:w-80 small:shrink-0 small:translate-y-0 small:overflow-y-auto small:rounded-none small:border-r small:border-t-0 small:shadow-none ${
+          className={`fixed inset-x-0 bottom-16 z-30 max-h-[65vh] overflow-y-auto rounded-t-2xl border-t border-black/10 bg-white shadow-[0_-8px_24px_rgba(0,0,0,0.08)] transition-transform duration-200 ease-out small:static small:z-auto small:flex small:max-h-full small:w-[340px] small:shrink-0 small:flex-col small:self-start small:translate-y-0 small:overflow-hidden small:rounded-2xl small:border small:border-black/10 small:shadow-none ${
             isMobilePanelOpen ? "translate-y-0" : "pointer-events-none translate-y-full"
           }`}
         >
           <div className="flex items-center justify-center pt-2.5 pb-1 small:hidden">
             <span className="h-1 w-10 rounded-full bg-black/10" />
           </div>
-          <div className="p-5">
+          <div className="p-5 small:flex-1 small:overflow-y-auto">
           {activeTool === "urun" && (
             <div className="flex flex-col gap-y-4">
               <h2 className="text-lg font-semibold text-black">Ürün</h2>
@@ -1007,12 +1034,16 @@ const DesignerShell = ({
             <TextPanel onAddCombo={toggleElement} />
           )}
           </div>
+          {/* Uber's full-width black "Search": the card's primary action */}
+          <div className="hidden small:block border-t border-black/10 p-4">
+            {primaryAction("h-12 w-full rounded-lg")}
+          </div>
         </div>
 
         {/* Canvas + AI bar - pb-16 on mobile keeps content clear of the
             fixed bottom tab bar, which sits outside normal flow there */}
-        <div className="flex-1 flex flex-col min-h-0 pb-16 small:pb-0">
-          <div className="relative flex-1 bg-black/[0.02] flex items-center justify-center overflow-auto p-4 small:p-8">
+        <div className="relative flex-1 flex flex-col min-h-0 pb-16 small:pb-0 small:overflow-hidden small:rounded-2xl small:bg-black/[0.03]">
+          <div className="relative flex-1 bg-black/[0.02] small:bg-transparent flex items-center justify-center overflow-auto p-4 small:p-8">
             {geometryPanels && (
               <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
                 {focusedPanelName && viewMode === "2d" && (
@@ -1102,7 +1133,7 @@ const DesignerShell = ({
           )}
 
           {/* AI bar */}
-          <div className="shrink-0 border-t border-black/10 p-4">
+          <div className="shrink-0 border-t border-black/10 p-4 small:m-4 small:mt-0 small:rounded-xl small:border small:bg-white small:shadow-sm">
             {selectedElements.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
                 {selectedElements.map((el) => (
