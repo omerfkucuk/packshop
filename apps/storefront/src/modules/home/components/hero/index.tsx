@@ -44,7 +44,7 @@ const Hero = async ({ countryCode }: { countryCode: string }) => {
 
   return (
     <section className="w-full bg-white">
-      <div className="content-container grid grid-cols-1 small:grid-cols-2 items-center gap-10 small:gap-16 py-10 small:py-16">
+      <div className="content-container grid grid-cols-1 small:grid-cols-[minmax(0,520px)_minmax(0,560px)] small:justify-center items-center gap-10 small:gap-12 py-10 small:py-16">
         <div className="flex flex-col">
           <CityPicker city={city} />
           <h1 className="max-w-xl text-4xl xsmall:text-5xl medium:text-6xl font-bold tracking-tight text-black">
@@ -64,7 +64,7 @@ const Hero = async ({ countryCode }: { countryCode: string }) => {
 
         {/* Uber-style collage: two staggered photo columns clipped to a fixed
             height, with a call-out bar over the faded bottom edge. */}
-        <div className="relative mx-auto small:mr-0 h-[440px] small:h-[560px] w-full max-w-[560px] overflow-hidden rounded-2xl">
+        <div className="relative mx-auto h-[440px] small:h-[560px] w-full max-w-[560px] overflow-hidden rounded-2xl">
           <div className="grid h-full grid-cols-2 gap-3">
             {columns.map((column, c) => (
               <div key={c} className={c === 0 ? "flex flex-col gap-3 pt-10" : "flex flex-col gap-3"}>
