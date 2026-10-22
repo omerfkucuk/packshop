@@ -31,7 +31,7 @@ export default async function Home(props: {
 
   return (
     <>
-      <Hero />
+      <Hero countryCode={countryCode} />
       <PromoCards />
       <CategoryGrid />
       <div className="py-12">

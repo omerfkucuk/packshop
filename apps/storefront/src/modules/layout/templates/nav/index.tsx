@@ -11,7 +11,6 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import User from "@modules/common/icons/user"
 import CartButton from "@modules/layout/components/cart-button"
 import GoogleOneTap from "@modules/layout/components/google-one-tap"
-import NavShell from "@modules/layout/components/nav-shell"
 import SideMenu from "@modules/layout/components/side-menu"
 import SearchBar from "@modules/layout/components/search-bar"
 
@@ -26,9 +25,9 @@ export default async function Nav() {
     ])
 
   return (
-    <NavShell>
+    <div className="sticky top-0 inset-x-0 z-50 group bg-white">
       <GoogleOneTap customer={customer} />
-      <header className="relative mx-auto border-b transition-colors duration-200 bg-white border-black/10 group-data-[home=true]/nav:bg-transparent">
+      <header className="relative mx-auto border-b duration-200 bg-white border-black/10">
         <div className="content-container flex items-center justify-between h-16 gap-x-6">
           <div className="flex items-center gap-x-2 h-full">
             <SideMenu
@@ -75,6 +74,6 @@ export default async function Nav() {
           </div>
         </div>
       </header>
-    </NavShell>
+    </div>
   )
 }
