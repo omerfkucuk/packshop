@@ -5,15 +5,6 @@ import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { isEqual } from "lodash"
 import { HttpTypes } from "@medusajs/types"
-import {
-  CogSixTooth,
-  Puzzle,
-  Sparkles,
-  Swatch,
-  Text as TextIcon,
-  Photo,
-} from "@medusajs/icons"
-
 // Imported from the box-styles subpath specifically (not the package root)
 // so client bundles never pull in export/dxf.ts's @tarikjabiri/dxf
 // dependency, which is only ever needed server-side.
@@ -59,7 +50,7 @@ import { getLibraryElement } from "../../utils/element-library"
 import { measureText, fontSizeForInkHeight } from "../../utils/measure-text"
 import { SelectedElement } from "../../types"
 
-type Tool = "urun" | "komponent" | "marka-kiti" | "tema" | "yazi" | "elementler"
+type Tool = "urun" | "komponent" | "marka-kiti" | "tema" | "ai"
 
 // Die-cutting/corrugator constraints for custom sizes: Boy (length) and En
 // (width) together, and En and Yükseklik (height) together, each need at
@@ -79,13 +70,16 @@ const PANEL_DISPLAY_NAME: Record<string, string> = {
   "Panel-W2": "Sol",
 }
 
-const TOOLS: { id: Tool; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: "urun", label: "Ürün", icon: Photo },
-  { id: "komponent", label: "Konfigürasyon", icon: CogSixTooth },
-  { id: "marka-kiti", label: "Marka Kiti", icon: Swatch },
-  { id: "tema", label: "Tema", icon: Sparkles },
-  { id: "yazi", label: "Yazı", icon: TextIcon },
-  { id: "elementler", label: "Elementler", icon: Puzzle },
+
+// The design flow as five sequential steps. Configuration ends by adding
+// the item to the cart ("Sepete ekle ve tasarla"); the last step holds the
+// AI prompt plus text/element tools and leads on to the cart.
+const STEPS: { id: Tool; label: string }[] = [
+  { id: "urun", label: "Ürün" },
+  { id: "komponent", label: "Konfigürasyon" },
+  { id: "marka-kiti", label: "Marka Kiti" },
+  { id: "tema", label: "Tema" },
+  { id: "ai", label: "AI ile düzelt" },
 ]
 
 type DesignerShellProps = {
@@ -118,30 +112,27 @@ const DesignerShell = ({
 
   const initialVariant = product?.variants?.find((v) => v.id === initialVariantId)
 
-  // Skip straight to the next step when we already have what it needs: no
-  // product yet -> pick one, a product but no variant -> configure it, a
-  // variant already chosen (e.g. arriving from a product page) -> brand kit.
-  const [activeTool, setActiveTool] = useState<Tool>(() => {
-    if (!product) return "urun"
-    if (initialVariant) return "marka-kiti"
-    return "komponent"
-  })
-  const hasAutoAdvancedToBrandKit = useRef(!!initialVariant)
-  // Mobile only - below `small` the tool panel becomes a bottom sheet
-  // instead of an always-visible sidebar, so whether it's open needs
-  // tracking separately from which tool is active. Ignored at `small` and
-  // up, where the sidebar is always shown regardless of this value.
+  // No product yet -> step 1; otherwise step 2 (a variant passed in, e.g.
+  // from the homepage configurator, is just preselected there - the item
+  // still gets added to the cart by finishing that step).
+  const [activeTool, setActiveTool] = useState<Tool>(product ? "komponent" : "urun")
+  // Furthest step unlocked; steps can be revisited but not skipped ahead.
+  const [maxStep, setMaxStep] = useState(product ? 1 : 0)
+  const stepIndex = Math.max(0, STEPS.findIndex((st) => st.id === activeTool))
   // Mobile: the tool panel is a bottom sheet - tapping a chip opens it (or
   // closes it if that tool is already showing), dragging it down closes it.
-  const [isSheetOpen, setIsSheetOpen] = useState(false)
+  const [isSheetOpen, setIsSheetOpen] = useState(true)
   const [sheetDrag, setSheetDrag] = useState(0)
   const sheetDragStart = useRef<number | null>(null)
-  const handleToolTap = (tool: Tool) => {
-    if (tool === activeTool && isSheetOpen) {
-      setIsSheetOpen(false)
-      return
-    }
-    setActiveTool(tool)
+  const goToStep = (index: number) => {
+    if (index > maxStep) return
+    setActiveTool(STEPS[index].id)
+    setIsSheetOpen(true)
+  }
+  const advance = () => {
+    const next = Math.min(stepIndex + 1, STEPS.length - 1)
+    setMaxStep((m) => Math.max(m, next))
+    setActiveTool(STEPS[next].id)
     setIsSheetOpen(true)
   }
   const sheetDragHandlers = {
@@ -271,18 +262,6 @@ const DesignerShell = ({
     )
   }, [product, options])
 
-  // First time the customer finishes configuring a variant in this session,
-  // jump them to Marka Kiti - after that, let them click around freely.
-  useEffect(() => {
-    if (
-      selectedVariant &&
-      activeTool === "komponent" &&
-      !hasAutoAdvancedToBrandKit.current
-    ) {
-      hasAutoAdvancedToBrandKit.current = true
-      setActiveTool("marka-kiti")
-    }
-  }, [selectedVariant, activeTool])
 
   const selectedBrand = brands.find((b) => b.id === selectedBrandId) ?? null
 
@@ -579,20 +558,27 @@ const DesignerShell = ({
     router.push(`/${countryCode}/tasarla?product=${handle}`)
   }
 
+  // What this session already put in the cart, so revisiting step 2 and
+  // pressing the button again doesn't add a duplicate line.
+  const addedToCartKey = useRef<string | null>(null)
+
   const handleAddToCart = async () => {
     if (!selectedVariant?.id) return
-
-    setIsAdding(true)
-    await addToCart({
-      variantId: selectedVariant.id,
-      quantity,
-      countryCode,
-      // The design itself is the customer's (customer, product) draft; this
-      // flag lets the cart show "Tasarım: Eklendi" with a link back.
-      metadata: { has_design: true },
-    })
-    setIsAdding(false)
-    router.push(`/${countryCode}/cart`)
+    const key = `${selectedVariant.id}:${quantity}`
+    if (addedToCartKey.current !== key) {
+      setIsAdding(true)
+      await addToCart({
+        variantId: selectedVariant.id,
+        quantity,
+        countryCode,
+        // The design itself is the customer's (customer, product) draft; this
+        // flag lets the cart show "Tasarım: Eklendi" with a link back.
+        metadata: { has_design: true },
+      })
+      setIsAdding(false)
+      addedToCartKey.current = key
+    }
+    advance()
   }
 
   // No variant exists for a custom size, so this adds the product's base
@@ -601,6 +587,8 @@ const DesignerShell = ({
   const handleRequestCustomQuote = async () => {
     const baseVariantId = product?.variants?.[0]?.id
     if (!baseVariantId || customSizeErrors.length > 0) return
+    const key = `custom:${customWidth}x${customHeight}x${customDepth}:${quantity}`
+    if (addedToCartKey.current === key) return advance()
 
     setIsAdding(true)
     await addToCart({
@@ -616,7 +604,8 @@ const DesignerShell = ({
       },
     })
     setIsAdding(false)
-    router.push(`/${countryCode}/cart`)
+    addedToCartKey.current = key
+    advance()
   }
 
   const handleAiSubmit = async (e: React.FormEvent) => {
@@ -657,33 +646,60 @@ const DesignerShell = ({
     }
   }
 
-  const primaryAction = (className: string) =>
-    useCustomSize ? (
-      <Button
-        onClick={handleRequestCustomQuote}
-        disabled={!product || isAdding || customSizeErrors.length > 0}
-        isLoading={isAdding}
-        className={className}
-        data-testid="designer-request-quote"
-      >
-        Teklif İste
-      </Button>
-    ) : (
-      <Button
-        onClick={handleAddToCart}
-        disabled={!selectedVariant || isAdding}
-        isLoading={isAdding}
-        className={className}
-        data-testid="designer-add-to-cart"
-      >
-        Sepete Ekle
-      </Button>
-    )
+  // The card's primary button changes per step.
+  const primaryAction = (className: string) => {
+    switch (activeTool) {
+      case "urun":
+        return (
+          <Button onClick={advance} disabled={!product} className={className} data-testid="designer-next">
+            Devam et
+          </Button>
+        )
+      case "komponent":
+        return useCustomSize ? (
+          <Button
+            onClick={handleRequestCustomQuote}
+            disabled={!product || isAdding || customSizeErrors.length > 0}
+            isLoading={isAdding}
+            className={className}
+            data-testid="designer-request-quote"
+          >
+            Teklif iste ve tasarla
+          </Button>
+        ) : (
+          <Button
+            onClick={handleAddToCart}
+            disabled={!selectedVariant || isAdding}
+            isLoading={isAdding}
+            className={className}
+            data-testid="designer-add-to-cart"
+          >
+            Sepete ekle ve tasarla
+          </Button>
+        )
+      case "ai":
+        return (
+          <Button
+            onClick={() => router.push(`/${countryCode}/cart`)}
+            className={className}
+            data-testid="designer-go-to-cart"
+          >
+            Sepete devam et
+          </Button>
+        )
+      default:
+        return (
+          <Button onClick={advance} className={className} data-testid="designer-next">
+            Devam et
+          </Button>
+        )
+    }
+  }
 
   return (
     <div className="h-full w-full flex flex-col bg-white">
       {/* Top bar */}
-      <header className="h-16 shrink-0 border-b border-black/10 flex items-center justify-between px-4 gap-x-4">
+      <header className="hidden small:flex h-16 shrink-0 border-b border-black/10 items-center justify-between px-4 gap-x-4">
         <div className="flex h-full items-center gap-x-8 min-w-0">
           <LocalizedClientLink
             href="/"
@@ -729,31 +745,49 @@ const DesignerShell = ({
 
       {/* Main row */}
       <div className="flex-1 flex flex-col min-h-0 small:flex-row small:gap-6 small:p-6">
-        {/* Icon rail - a bottom tab bar on mobile, a left rail from `small` up */}
-        <nav className="fixed inset-x-0 bottom-[76px] z-30 flex gap-2 overflow-x-auto border-t border-black/10 bg-white px-4 py-2.5 no-scrollbar small:static small:z-auto small:w-20 small:shrink-0 small:flex-col small:items-center small:gap-y-1 small:self-start small:overflow-visible small:border-0 small:bg-transparent small:p-0">
-          {TOOLS.map((tool) => {
-            const Icon = tool.icon
-            const active = activeTool === tool.id
+        {/* Step rail (desktop) - numbered, done steps get a check, steps past
+            the furthest unlocked one are disabled. Mobile shows the same
+            progress over the canvas instead. */}
+        <nav className="hidden small:flex w-44 shrink-0 flex-col gap-y-1 self-start">
+          {STEPS.map((step, i) => {
+            const active = i === stepIndex
+            const done = i < maxStep && !active
+            const locked = i > maxStep
             return (
               <button
-                key={tool.id}
-                onClick={() => handleToolTap(tool.id)}
-                className={`flex h-9 shrink-0 items-center gap-x-1.5 rounded-full border px-3.5 text-sm whitespace-nowrap transition-colors small:h-auto small:w-20 small:flex-col small:justify-start small:gap-x-0 small:gap-y-1 small:rounded-lg small:border-0 small:px-1 small:py-2 small:text-[10px] ${
-                  active
-                    ? "border-black bg-black text-white font-medium small:bg-black/[0.06] small:text-black"
-                    : "border-black/15 text-black/70 hover:text-black small:hover:bg-black/[0.04]"
+                key={step.id}
+                onClick={() => goToStep(i)}
+                disabled={locked}
+                className={`flex items-center gap-x-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${
+                  active ? "bg-black/[0.06] font-medium text-black" : locked ? "text-black/30" : "text-black/70 hover:bg-black/[0.04]"
                 }`}
-                data-testid={`designer-tool-${tool.id}`}
+                data-testid={`designer-step-${step.id}`}
               >
-                <Icon className="h-4 w-4 small:h-5 small:w-5" />
-                <span className="max-w-full truncate">{tool.label}</span>
+                <span
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                    active ? "bg-black text-white" : done ? "bg-green-600 text-white" : "bg-black/[0.06] text-black/50"
+                  }`}
+                >
+                  {done ? "✓" : i + 1}
+                </span>
+                {step.label}
               </button>
             )
           })}
         </nav>
 
-        {/* Mobile add-to-cart bar (desktop has it inside the card) */}
-        <div className="fixed inset-x-0 bottom-0 z-30 bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-1 small:hidden">
+        {/* Mobile bar while the sheet is collapsed: reopen it, or act */}
+        <div className="fixed inset-x-0 bottom-0 z-30 flex flex-col gap-y-2 rounded-t-2xl bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] small:hidden">
+          <button
+            type="button"
+            onClick={() => setIsSheetOpen(true)}
+            className="flex items-center justify-between text-sm"
+          >
+            <span className="font-medium text-black">
+              Adım {stepIndex + 1}/{STEPS.length} · {STEPS[stepIndex].label}
+            </span>
+            <span className="text-black/50">Aç ▲</span>
+          </button>
           {primaryAction("h-12 w-full rounded-lg")}
         </div>
 
@@ -1025,118 +1059,10 @@ const DesignerShell = ({
             </div>
           )}
 
-          {activeTool === "elementler" && (
-            <ElementLibraryPanel
-              selectedElementIds={selectedElementIds}
-              onToggleElement={toggleElement}
-            />
-          )}
-
-          {activeTool === "yazi" && (
-            <TextPanel onAddCombo={toggleElement} />
-          )}
-          </div>
-          {/* Uber's full-width black "Search": the card's primary action -
-              inside the card on desktop, a sticky bottom bar on mobile */}
-          <div className="shrink-0 border-t border-black/10 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] small:pb-4">
-            {primaryAction("h-12 w-full rounded-lg")}
-          </div>
-        </div>
-
-        {/* Canvas + AI bar - pb-16 on mobile keeps content clear of the
-            fixed bottom tab bar, which sits outside normal flow there */}
-        <div className="relative mx-4 mb-[140px] mt-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl bg-black/[0.03] small:m-0">
-          <div className="relative flex-1 bg-black/[0.02] small:bg-transparent flex items-center justify-center overflow-auto p-4 small:p-8">
-            {geometryPanels && (
-              <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-                {focusedPanelName && viewMode === "2d" && (
-                  <button
-                    type="button"
-                    onClick={() => setFocusedPanelName(null)}
-                    className="flex items-center gap-1 rounded-lg border border-black/10 bg-white px-3 py-1.5 text-xs text-black/60 hover:text-black transition-colors"
-                  >
-                    ← {PANEL_DISPLAY_NAME[focusedPanelName] ?? focusedPanelName} · Tüm yüzler
-                  </button>
-                )}
-                <div className="flex rounded-lg border border-black/10 bg-white p-0.5 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setViewMode("2d")
-                      setFocusedPanelName(null)
-                    }}
-                    className={`px-3 py-1.5 rounded-md transition-colors ${
-                      viewMode === "2d" ? "bg-black text-white" : "text-black/60 hover:text-black"
-                    }`}
-                  >
-                    2D
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setViewMode("3d")
-                      setFocusedPanelName(null)
-                    }}
-                    className={`px-3 py-1.5 rounded-md transition-colors ${
-                      viewMode === "3d" ? "bg-black text-white" : "text-black/60 hover:text-black"
-                    }`}
-                  >
-                    3D
-                  </button>
-                </div>
-              </div>
-            )}
-            {geometryPanels && viewMode === "3d" ? (
-              <BoxPreview3D
-                panels={geometryPanels}
-                resolvedLayout={appliedDesign?.resolvedLayout}
-                backgroundColors={appliedDesign?.backgroundColors}
-                dimensionsMm={geometryDimensionsMm!}
-                className="h-full w-full"
-                onFaceClick={(panelName) => {
-                  setFocusedPanelName(panelName)
-                  setViewMode("2d")
-                }}
-              />
-            ) : geometryPanels ? (
-              <DielinePreview
-                panels={displayedPanels!}
-                resolvedLayout={displayedResolvedLayout}
-                backgroundColors={appliedDesign?.backgroundColors}
-                onDragEnd={handleElementDragEnd}
-                onResize={handleElementResize}
-                onEditText={handleTextEdit}
-                onDeleteElement={removeElement}
-                onDuplicateElement={duplicateElement}
-                className="max-h-full max-w-full"
-              />
-            ) : image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={image}
-                alt={product?.title}
-                className="max-h-full max-w-full object-contain"
-                data-testid="designer-canvas-image"
-              />
-            ) : product ? (
-              <span className="text-sm text-black/50">Görsel bulunamadı.</span>
-            ) : (
-              <span className="text-sm text-black/50">
-                Bir ürün seçerek başlayın.
-              </span>
-            )}
-          </div>
-
-          {themedDesign && !aiDesign && selectedElements.length > 0 && (
-            <p className="shrink-0 px-4 py-2 text-xs text-black/50 border-t border-black/10">
-              Şu an &quot;{listThemes().find((t) => t.id === selectedTheme)?.label}&quot; teması
-              gösteriliyor - Marka Kiti&apos;nden seçtiğiniz öğeler AI ile Oluştur&apos;a
-              basana kadar kanvasa yansımaz.
-            </p>
-          )}
-
-          {/* AI bar */}
-          <div className="m-3 mt-0 shrink-0 rounded-xl border border-black/10 bg-white p-3 shadow-sm small:m-4 small:mt-0 small:p-4">
+          {activeTool === "ai" && (
+            <div className="flex flex-col gap-y-5">
+              <h2 className="text-lg font-semibold text-black">AI ile düzelt</h2>
+          <div>
             {selectedElements.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
                 {selectedElements.map((el) => (
@@ -1230,6 +1156,145 @@ const DesignerShell = ({
               <p className="text-sm text-black/50 mt-2">{aiMessage}</p>
             )}
           </div>
+              <details className="rounded-xl border border-black/10 p-3">
+                <summary className="cursor-pointer text-sm font-medium text-black">Yazı ekle</summary>
+                <div className="pt-3">
+                  <TextPanel onAddCombo={toggleElement} />
+                </div>
+              </details>
+              <details className="rounded-xl border border-black/10 p-3">
+                <summary className="cursor-pointer text-sm font-medium text-black">Öğe ekle</summary>
+                <div className="pt-3">
+                  <ElementLibraryPanel
+                    selectedElementIds={selectedElementIds}
+                    onToggleElement={toggleElement}
+                  />
+                </div>
+              </details>
+            </div>
+          )}
+          </div>
+          {/* Uber's full-width black "Search": the card's primary action -
+              inside the card on desktop, a sticky bottom bar on mobile */}
+          <div className="shrink-0 border-t border-black/10 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] small:pb-4">
+            {primaryAction("h-12 w-full rounded-lg")}
+          </div>
+        </div>
+
+        {/* Canvas + AI bar - pb-16 on mobile keeps content clear of the
+            fixed bottom tab bar, which sits outside normal flow there */}
+        <div className="relative mb-[118px] flex min-h-0 flex-1 flex-col overflow-hidden bg-black/[0.03] small:mb-0 small:rounded-2xl">
+          {/* Mobile: no header band - logo and step progress float on the view */}
+          <div className="absolute inset-x-3 top-3 z-10 flex flex-col gap-y-2 small:hidden">
+            <LocalizedClientLink
+              href="/"
+              className="w-fit rounded-full bg-white/90 px-3 py-1.5 text-sm font-bold text-black shadow-sm"
+            >
+              Packshop
+            </LocalizedClientLink>
+            <button
+              type="button"
+              onClick={() => setIsSheetOpen(true)}
+              className="flex w-full max-w-[60%] gap-1"
+              aria-label={`Adım ${stepIndex + 1}/${STEPS.length}`}
+            >
+              {STEPS.map((step, i) => (
+                <span
+                  key={step.id}
+                  className={`h-1 flex-1 rounded-full ${i <= stepIndex ? "bg-black" : "bg-black/15"}`}
+                />
+              ))}
+            </button>
+          </div>
+          <div className="relative flex-1 bg-black/[0.02] small:bg-transparent flex items-center justify-center overflow-auto p-4 pt-24 small:p-8">
+            {geometryPanels && (
+              <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+                {focusedPanelName && viewMode === "2d" && (
+                  <button
+                    type="button"
+                    onClick={() => setFocusedPanelName(null)}
+                    className="flex items-center gap-1 rounded-lg border border-black/10 bg-white px-3 py-1.5 text-xs text-black/60 hover:text-black transition-colors"
+                  >
+                    ← {PANEL_DISPLAY_NAME[focusedPanelName] ?? focusedPanelName} · Tüm yüzler
+                  </button>
+                )}
+                <div className="flex rounded-lg border border-black/10 bg-white p-0.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewMode("2d")
+                      setFocusedPanelName(null)
+                    }}
+                    className={`px-3 py-1.5 rounded-md transition-colors ${
+                      viewMode === "2d" ? "bg-black text-white" : "text-black/60 hover:text-black"
+                    }`}
+                  >
+                    2D
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewMode("3d")
+                      setFocusedPanelName(null)
+                    }}
+                    className={`px-3 py-1.5 rounded-md transition-colors ${
+                      viewMode === "3d" ? "bg-black text-white" : "text-black/60 hover:text-black"
+                    }`}
+                  >
+                    3D
+                  </button>
+                </div>
+              </div>
+            )}
+            {geometryPanels && viewMode === "3d" ? (
+              <BoxPreview3D
+                panels={geometryPanels}
+                resolvedLayout={appliedDesign?.resolvedLayout}
+                backgroundColors={appliedDesign?.backgroundColors}
+                dimensionsMm={geometryDimensionsMm!}
+                className="h-full w-full"
+                onFaceClick={(panelName) => {
+                  setFocusedPanelName(panelName)
+                  setViewMode("2d")
+                }}
+              />
+            ) : geometryPanels ? (
+              <DielinePreview
+                panels={displayedPanels!}
+                resolvedLayout={displayedResolvedLayout}
+                backgroundColors={appliedDesign?.backgroundColors}
+                onDragEnd={handleElementDragEnd}
+                onResize={handleElementResize}
+                onEditText={handleTextEdit}
+                onDeleteElement={removeElement}
+                onDuplicateElement={duplicateElement}
+                className="max-h-full max-w-full"
+              />
+            ) : image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={image}
+                alt={product?.title}
+                className="max-h-full max-w-full object-contain"
+                data-testid="designer-canvas-image"
+              />
+            ) : product ? (
+              <span className="text-sm text-black/50">Görsel bulunamadı.</span>
+            ) : (
+              <span className="text-sm text-black/50">
+                Bir ürün seçerek başlayın.
+              </span>
+            )}
+          </div>
+
+          {themedDesign && !aiDesign && selectedElements.length > 0 && (
+            <p className="shrink-0 px-4 py-2 text-xs text-black/50 border-t border-black/10">
+              Şu an &quot;{listThemes().find((t) => t.id === selectedTheme)?.label}&quot; teması
+              gösteriliyor - Marka Kiti&apos;nden seçtiğiniz öğeler AI ile Oluştur&apos;a
+              basana kadar kanvasa yansımaz.
+            </p>
+          )}
+
         </div>
       </div>
     </div>
