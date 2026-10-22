@@ -13,7 +13,8 @@ export const convertToLocale = ({
   currency_code,
   minimumFractionDigits,
   maximumFractionDigits,
-  locale = "en-US",
+  // Turkish storefront: "₺14,00" rather than en-US "TRY 14.00".
+  locale = "tr-TR",
 }: ConvertToLocaleParams) => {
   return currency_code && !isEmpty(currency_code)
     ? new Intl.NumberFormat(locale, {

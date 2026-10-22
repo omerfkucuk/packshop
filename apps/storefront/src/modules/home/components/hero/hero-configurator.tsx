@@ -10,6 +10,9 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 
 type Tier = { quantity: number; unit_price: number }
 
+// Offered when a variant has no price-list tiers (priced per unit only).
+const FALLBACK_QUANTITIES = [100, 250, 500, 1000, 2500]
+
 const productLabel = (p: HttpTypes.StoreProduct) =>
   p.handle?.includes("zip") ? "Zip'li kargo poşeti" : "Kargo poşeti"
 
@@ -45,12 +48,12 @@ const HeroConfigurator = ({ products }: { products: HttpTypes.StoreProduct[] }) 
       .then(({ tiers }) => {
         if (cancelled) return
         setTiers(tiers)
-        setQuantity(tiers[0]?.quantity ?? 1)
+        setQuantity(tiers[0]?.quantity ?? FALLBACK_QUANTITIES[0])
       })
       .catch(() => {
         if (cancelled) return
         setTiers([])
-        setQuantity(1)
+        setQuantity(FALLBACK_QUANTITIES[0])
       })
     return () => {
       cancelled = true
@@ -131,7 +134,7 @@ const HeroConfigurator = ({ products }: { products: HttpTypes.StoreProduct[] }) 
             className={fieldClass}
             data-testid="hero-quantity-select"
           >
-            {(tiers.length ? tiers.map((t) => t.quantity) : [1]).map((q) => (
+            {(tiers.length ? tiers.map((t) => t.quantity) : FALLBACK_QUANTITIES).map((q) => (
               <option key={q} value={q}>
                 Adet: {q.toLocaleString("tr-TR")}
               </option>
