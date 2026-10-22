@@ -1087,7 +1087,7 @@ const DesignerShell = ({
                     ? `${selectedBrand.brand_name} marka kitini kullanarak bir tasarım tarif et...`
                     : "Tasarımını tarif et, seçili öğeleri kullanarak senin için oluşturalım..."
                 }
-                className="flex-1 min-w-0 h-11 px-4 border border-black/10 rounded-lg text-sm focus:outline-none focus:border-black transition-colors"
+                className="w-full h-11 px-4 border border-black/10 rounded-lg text-sm focus:outline-none focus:border-black transition-colors"
                 data-testid="designer-ai-input"
               />
               <Button
