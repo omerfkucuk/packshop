@@ -1164,7 +1164,7 @@ const DesignerShell = ({
               ))}
             </div>
           </div>
-          <div className="relative flex-1 bg-black/[0.02] small:bg-transparent flex items-center justify-center overflow-auto p-4 pt-24 small:p-8">
+          <div className="relative flex-1 bg-black/[0.02] small:bg-transparent flex items-center justify-center overflow-hidden touch-none p-4 pt-24 small:overflow-auto small:touch-auto small:p-8">
             {geometryPanels && (
               <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
                 {focusedPanelName && viewMode === "2d" && (
