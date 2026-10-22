@@ -1071,7 +1071,7 @@ const DesignerShell = ({
             )}
             <form
               onSubmit={handleAiSubmit}
-              className="flex items-center gap-x-2 small:gap-x-3"
+              className="flex flex-col gap-2"
             >
               <input
                 type="text"
@@ -1094,11 +1094,10 @@ const DesignerShell = ({
                 type="submit"
                 isLoading={isGeneratingAiDesign}
                 disabled={isGeneratingAiDesign}
-                className="h-11 shrink-0"
+                className="h-11 w-full"
                 data-testid="designer-ai-submit"
               >
-                <span className="small:hidden">Oluştur</span>
-                <span className="hidden small:inline">AI ile Oluştur</span>
+                AI ile Oluştur
               </Button>
             </form>
             {aiMessage && (
