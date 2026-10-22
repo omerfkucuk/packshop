@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState } from "react"
 import { sdk } from "@lib/config"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
-import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 type Tier = { quantity: number; unit_price: number }
 
@@ -196,22 +195,14 @@ const HeroConfigurator = ({ products }: { products: HttpTypes.StoreProduct[] }) 
         </p>
       )}
 
-      <div className="mt-5 flex flex-col gap-4">
-        <button
-          type="button"
-          onClick={start}
-          className="h-12 w-fit rounded-lg bg-black px-6 text-base font-medium text-white hover:bg-black/85 transition-colors"
-          data-testid="hero-cta"
-        >
-          Tasarlamaya başlayın
-        </button>
-        <LocalizedClientLink
-          href="/categories/kargo-posetleri"
-          className="w-fit text-sm text-black underline underline-offset-4 hover:no-underline"
-        >
-          Tüm kargo poşetlerini görün
-        </LocalizedClientLink>
-      </div>
+      <button
+        type="button"
+        onClick={start}
+        className="mt-5 h-12 w-fit rounded-lg bg-black px-6 text-base font-medium text-white hover:bg-black/85 transition-colors"
+        data-testid="hero-cta"
+      >
+        Tasarlamaya başlayın
+      </button>
     </div>
   )
 }
