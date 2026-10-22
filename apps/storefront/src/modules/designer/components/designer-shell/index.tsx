@@ -119,35 +119,14 @@ const DesignerShell = ({
   // Furthest step unlocked; steps can be revisited but not skipped ahead.
   const [maxStep, setMaxStep] = useState(product ? 1 : 0)
   const stepIndex = Math.max(0, STEPS.findIndex((st) => st.id === activeTool))
-  // Mobile: the tool panel is a bottom sheet - tapping a chip opens it (or
-  // closes it if that tool is already showing), dragging it down closes it.
-  const [isSheetOpen, setIsSheetOpen] = useState(true)
-  const [sheetDrag, setSheetDrag] = useState(0)
-  const sheetDragStart = useRef<number | null>(null)
   const goToStep = (index: number) => {
     if (index > maxStep) return
     setActiveTool(STEPS[index].id)
-    setIsSheetOpen(true)
   }
   const advance = () => {
     const next = Math.min(stepIndex + 1, STEPS.length - 1)
     setMaxStep((m) => Math.max(m, next))
     setActiveTool(STEPS[next].id)
-    setIsSheetOpen(true)
-  }
-  const sheetDragHandlers = {
-    onTouchStart: (e: React.TouchEvent) => {
-      sheetDragStart.current = e.touches[0].clientY
-    },
-    onTouchMove: (e: React.TouchEvent) => {
-      if (sheetDragStart.current === null) return
-      setSheetDrag(Math.max(0, e.touches[0].clientY - sheetDragStart.current))
-    },
-    onTouchEnd: () => {
-      if (sheetDrag > 80) setIsSheetOpen(false)
-      setSheetDrag(0)
-      sheetDragStart.current = null
-    },
   }
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
   // 3D is a read-only preview (orbit/rotate only) - all editing stays on
@@ -646,7 +625,9 @@ const DesignerShell = ({
     }
   }
 
-  // The card's primary button changes per step.
+  // The card's primary button reads "Devam et" on every step; what it does
+  // depends on the step (step 2 also adds the item to the cart, the last
+  // step opens the cart).
   const primaryAction = (className: string) => {
     switch (activeTool) {
       case "urun":
@@ -664,7 +645,7 @@ const DesignerShell = ({
             className={className}
             data-testid="designer-request-quote"
           >
-            Teklif iste ve tasarla
+            Devam et
           </Button>
         ) : (
           <Button
@@ -674,7 +655,7 @@ const DesignerShell = ({
             className={className}
             data-testid="designer-add-to-cart"
           >
-            Sepete ekle ve tasarla
+            Devam et
           </Button>
         )
       case "ai":
@@ -684,7 +665,7 @@ const DesignerShell = ({
             className={className}
             data-testid="designer-go-to-cart"
           >
-            Sepete devam et
+            Devam et
           </Button>
         )
       default:
@@ -776,44 +757,12 @@ const DesignerShell = ({
           })}
         </nav>
 
-        {/* Mobile bar while the sheet is collapsed: reopen it, or act */}
-        <div className="fixed inset-x-0 bottom-0 z-30 flex flex-col gap-y-2 rounded-t-2xl bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] small:hidden">
-          <button
-            type="button"
-            onClick={() => setIsSheetOpen(true)}
-            className="flex items-center justify-between text-sm"
-          >
-            <span className="font-medium text-black">
-              Adım {stepIndex + 1}/{STEPS.length} · {STEPS[stepIndex].label}
-            </span>
-            <span className="text-black/50">Aç ▲</span>
-          </button>
-          {primaryAction("h-12 w-full rounded-lg")}
-        </div>
-
-        {/* Backdrop behind the open mobile sheet - tap to close */}
-        {isSheetOpen && (
-          <div
-            className="fixed inset-0 z-40 bg-black/20 small:hidden"
-            onClick={() => setIsSheetOpen(false)}
-          />
-        )}
-
         {/* Tool panel - a bottom sheet on mobile (swipe down to close), a
             floating card beside the rail from `small` up. */}
         <div
-          className={`fixed inset-x-0 bottom-0 z-50 flex max-h-[80vh] flex-col rounded-t-2xl bg-white shadow-[0_-8px_24px_rgba(0,0,0,0.12)] small:static small:z-auto small:max-h-full small:w-[340px] small:shrink-0 small:self-start small:translate-y-0 small:overflow-hidden small:rounded-2xl small:border small:border-black/10 small:shadow-none ${
-            sheetDrag ? "" : "transition-transform duration-200 ease-out"
-          } ${isSheetOpen ? "translate-y-[var(--sheet-drag)]" : "translate-y-full"}`}
-          style={{ "--sheet-drag": `${sheetDrag}px` } as React.CSSProperties}
+          className="order-2 flex h-[40%] shrink-0 flex-col border-t border-black/10 bg-white small:order-none small:h-auto small:max-h-full small:w-[340px] small:self-start small:overflow-hidden small:rounded-2xl small:border"
         >
-          <div
-            className="flex shrink-0 cursor-grab touch-none items-center justify-center pb-1 pt-3 small:hidden"
-            {...sheetDragHandlers}
-          >
-            <span className="h-1.5 w-12 rounded-full bg-black/15" />
-          </div>
-          <div className="flex-1 overflow-y-auto px-5 pb-5 pt-2 small:p-5">
+          <div className="flex-1 overflow-y-auto p-5">
           {activeTool === "urun" && (
             <div className="flex flex-col gap-y-4">
               <h2 className="text-lg font-semibold text-black">Ürün</h2>
@@ -1176,14 +1125,14 @@ const DesignerShell = ({
           </div>
           {/* Uber's full-width black "Search": the card's primary action -
               inside the card on desktop, a sticky bottom bar on mobile */}
-          <div className="shrink-0 border-t border-black/10 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] small:pb-4">
+          <div className="shrink-0 border-t border-black/10 bg-white px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 small:p-4">
             {primaryAction("h-12 w-full rounded-lg")}
           </div>
         </div>
 
         {/* Canvas + AI bar - pb-16 on mobile keeps content clear of the
             fixed bottom tab bar, which sits outside normal flow there */}
-        <div className="relative mb-[118px] flex min-h-0 flex-1 flex-col overflow-hidden bg-black/[0.03] small:mb-0 small:rounded-2xl">
+        <div className="order-1 relative flex h-[60%] shrink-0 flex-col overflow-hidden bg-black/[0.03] small:order-none small:h-auto small:min-h-0 small:flex-1 small:shrink small:rounded-2xl">
           {/* Mobile: no header band - logo and step progress float on the view */}
           <div className="absolute inset-x-3 top-3 z-10 flex flex-col gap-y-2 small:hidden">
             <LocalizedClientLink
@@ -1192,9 +1141,7 @@ const DesignerShell = ({
             >
               Packshop
             </LocalizedClientLink>
-            <button
-              type="button"
-              onClick={() => setIsSheetOpen(true)}
+            <div
               className="flex w-full max-w-[60%] gap-1"
               aria-label={`Adım ${stepIndex + 1}/${STEPS.length}`}
             >
@@ -1204,7 +1151,7 @@ const DesignerShell = ({
                   className={`h-1 flex-1 rounded-full ${i <= stepIndex ? "bg-black" : "bg-black/15"}`}
                 />
               ))}
-            </button>
+            </div>
           </div>
           <div className="relative flex-1 bg-black/[0.02] small:bg-transparent flex items-center justify-center overflow-auto p-4 pt-24 small:p-8">
             {geometryPanels && (
