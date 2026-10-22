@@ -1,5 +1,3 @@
-import LocalizedClientLink from "@modules/common/components/localized-client-link"
-
 type Step = {
   title: string
   description: string
@@ -66,13 +64,6 @@ const DesignSteps = () => {
           </li>
         ))}
       </ol>
-
-      <LocalizedClientLink
-        href="/tasarla"
-        className="mt-8 inline-flex h-12 items-center rounded-lg bg-black px-6 text-base font-medium text-white hover:bg-black/85 transition-colors"
-      >
-        Hemen tasarlamaya başlayın
-      </LocalizedClientLink>
     </section>
   )
 }
