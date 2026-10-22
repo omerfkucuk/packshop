@@ -1,10 +1,21 @@
+import { cookies, headers } from "next/headers"
+
 import { listProducts } from "@lib/data/products"
+import { CITY_COOKIE, normalizeCity } from "@lib/util/turkish-cities"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
+import CityPicker from "../city-picker"
 import HeroConfigurator from "./hero-configurator"
 
 // The kargo poşeti products the configurator offers, in display order.
-const BAG_HANDLES = ["baskili-zipli-kargo-posetleri", "baskili-kargo-posetleri"]
+const BAG_HANDLES = ["baskili-kargo-posetleri"]
+
+// Visitor's city: their own pick (cookie) first, else Vercel's IP-based guess.
+async function getCity() {
+  const picked = (await cookies()).get(CITY_COOKIE)?.value
+  if (picked) return normalizeCity(picked)
+  return normalizeCity((await headers()).get("x-vercel-ip-city"))
+}
 
 // Uber-style hero: headline + an inline order form (bag type, size,
 // quantity → Tasarla) on the left, a rounded 2×2 image collage with a
@@ -21,6 +32,7 @@ const Hero = async ({ countryCode }: { countryCode: string }) => {
     )
     .catch(() => [])
 
+  const city = await getCity()
   const collage = products.flatMap((p) => (p.thumbnail ? [{ src: p.thumbnail, alt: p.title }] : []))
   const tiles = Array.from({ length: 4 }, (_, i) => collage[i % Math.max(collage.length, 1)])
 
@@ -28,12 +40,7 @@ const Hero = async ({ countryCode }: { countryCode: string }) => {
     <section className="w-full bg-white">
       <div className="content-container grid grid-cols-1 small:grid-cols-2 items-center gap-10 small:gap-16 py-10 small:py-16">
         <div className="flex flex-col">
-          <span className="mb-3 flex items-center gap-x-1.5 text-sm text-black/70">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z" />
-            </svg>
-            Türkiye geneline teslimat
-          </span>
+          <CityPicker city={city} />
           <h1 className="max-w-xl text-4xl xsmall:text-5xl medium:text-6xl font-bold tracking-tight text-black">
             Markanıza özel kargo poşeti alın
           </h1>

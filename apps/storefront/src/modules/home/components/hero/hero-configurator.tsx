@@ -25,15 +25,32 @@ const HeroConfigurator = ({ products }: { products: HttpTypes.StoreProduct[] }) 
   const [productId, setProductId] = useState(products[0].id)
   const product = products.find((p) => p.id === productId) ?? products[0]
   const variants = product.variants ?? []
-  const [variantId, setVariantId] = useState(variants[0]?.id)
-  const variant = variants.find((v) => v.id === variantId) ?? variants[0]
+
+  // Option-driven selection: a "Cep" option (Cepli/Cepsiz) renders as a
+  // two-way toggle, the remaining option (Ölçü) as the size field; the
+  // variant is whichever matches both.
+  const realOptions = (product.options ?? []).filter(
+    (o) => (o.values?.length ?? 0) > 0 && o.values?.[0]?.value !== "Default option value"
+  )
+  const pocketOption = realOptions.find((o) => /cep/i.test(o.title ?? ""))
+  const sizeOption = realOptions.find((o) => o !== pocketOption)
+  const [selected, setSelected] = useState<Record<string, string>>({})
+  const valueOf = (v: HttpTypes.StoreProductVariant, optionId?: string) =>
+    v.options?.find((o) => o.option_id === optionId)?.value
+  const variant =
+    variants.find((v) =>
+      [pocketOption, sizeOption].every(
+        (o) => !o || !selected[o.id] || valueOf(v, o.id) === selected[o.id]
+      )
+    ) ?? variants[0]
+  const choose = (optionId: string, value: string) =>
+    setSelected((s) => ({ ...s, [optionId]: value }))
   const [tiers, setTiers] = useState<Tier[]>([])
   const [quantity, setQuantity] = useState(1)
   const currency = variant?.calculated_price?.currency_code ?? "try"
 
   useEffect(() => {
-    setVariantId(variants[0]?.id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setSelected({})
   }, [productId])
 
   // Same tiers endpoint as the product page's quantity table.
@@ -67,9 +84,8 @@ const HeroConfigurator = ({ products }: { products: HttpTypes.StoreProduct[] }) 
     return tier?.unit_price ?? variant?.calculated_price?.calculated_amount ?? null
   }, [tiers, quantity, variant])
 
-  const sizeLabel = (v: HttpTypes.StoreProductVariant) =>
-    v.options?.find((o) => o.value && o.value !== "Default option value")?.value ?? v.title ?? ""
-  const hasSizes = variants.length > 1 || (variant && sizeLabel(variant) !== "Default variant")
+  const sizeValues = sizeOption?.values?.map((v) => v.value).filter(Boolean) as string[] | undefined
+  const pocketValues = pocketOption?.values?.map((v) => v.value).filter(Boolean) as string[] | undefined
 
   const start = () => {
     if (!variant) return
@@ -102,6 +118,31 @@ const HeroConfigurator = ({ products }: { products: HttpTypes.StoreProduct[] }) 
         </div>
       )}
 
+      {pocketOption && pocketValues && pocketValues.length > 1 && (
+        <div className="mb-4 inline-flex w-fit rounded-full bg-black/[0.05] p-1" role="radiogroup" aria-label={pocketOption.title}>
+          {pocketValues.map((value) => {
+            const active = (valueOf(variant, pocketOption.id) ?? pocketValues[0]) === value
+            return (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => choose(pocketOption.id, value)}
+                className={
+                  active
+                    ? "h-10 rounded-full bg-white px-5 text-sm font-semibold text-black shadow-sm"
+                    : "h-10 rounded-full px-5 text-sm font-medium text-black/60 hover:text-black"
+                }
+                data-testid="hero-pocket-option"
+              >
+                {value}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       <div className="relative flex flex-col gap-3">
         {/* connector between the two fields, like Uber's pickup → dropoff */}
         <span className="pointer-events-none absolute left-[23px] top-[38px] h-[44px] w-px bg-black" aria-hidden />
@@ -109,23 +150,23 @@ const HeroConfigurator = ({ products }: { products: HttpTypes.StoreProduct[] }) 
           <span className="sr-only">Ölçü</span>
           <span className="pointer-events-none absolute left-[18px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-black" aria-hidden />
           <select
-            value={variant?.id}
-            onChange={(e) => setVariantId(e.target.value)}
-            disabled={!hasSizes}
+            value={(sizeOption && valueOf(variant, sizeOption.id)) ?? ""}
+            onChange={(e) => sizeOption && choose(sizeOption.id, e.target.value)}
+            disabled={!sizeValues?.length}
             className={fieldClass}
             data-testid="hero-size-select"
           >
-            {hasSizes ? (
-              variants.map((v) => (
-                <option key={v.id} value={v.id}>
-                  Ölçü: {sizeLabel(v)} mm
+            {sizeValues?.length ? (
+              sizeValues.map((value) => (
+                <option key={value} value={value}>
+                  Ölçü: {value} cm
                 </option>
               ))
             ) : (
-              <option>Ölçü: Standart</option>
+              <option value="">Ölçü: Standart</option>
             )}
           </select>
-          {hasSizes && <Chevron />}
+          {!!sizeValues?.length && <Chevron />}
         </label>
         <label className="relative block">
           <span className="sr-only">Adet</span>
