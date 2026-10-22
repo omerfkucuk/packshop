@@ -40,7 +40,7 @@ const DesignSteps = () => {
   return (
     <section className="content-container py-12 small:py-20">
       <h2 className="max-w-xl text-3xl small:text-4xl font-bold tracking-tight text-black">
-        Markanıza özel kargo poşetini birkaç adımda tasarlayın
+        Fikrinizden gerçeğe, sadece birkaç adım
       </h2>
 
       <ol className="no-scrollbar -mx-6 mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 small:mx-0 small:grid small:grid-cols-4 small:overflow-visible small:px-0">
