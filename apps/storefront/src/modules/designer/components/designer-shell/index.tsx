@@ -674,28 +674,6 @@ const DesignerShell = ({
           >
             Packshop
           </LocalizedClientLink>
-          {/* Uber-style tool tabs (desktop); mobile keeps the bottom tab bar */}
-          <nav className="hidden small:flex h-full items-stretch gap-x-1 overflow-x-auto no-scrollbar">
-            {TOOLS.map((tool) => {
-              const Icon = tool.icon
-              const active = activeTool === tool.id
-              return (
-                <button
-                  key={tool.id}
-                  onClick={() => handleToolTap(tool.id)}
-                  className={`flex items-center gap-x-2 border-b-[3px] px-3 text-sm whitespace-nowrap transition-colors ${
-                    active
-                      ? "border-black font-medium text-black"
-                      : "border-transparent text-black/60 hover:text-black"
-                  }`}
-                  data-testid={`designer-tab-${tool.id}`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {tool.label}
-                </button>
-              )
-            })}
-          </nav>
         </div>
 
         <div className="flex items-center gap-x-4 min-w-0">
@@ -735,7 +713,7 @@ const DesignerShell = ({
       {/* Main row */}
       <div className="flex-1 flex flex-col min-h-0 small:flex-row small:gap-6 small:p-6">
         {/* Icon rail - a bottom tab bar on mobile, a left rail from `small` up */}
-        <nav className="fixed inset-x-0 bottom-0 z-40 flex h-16 w-full items-stretch justify-around border-t border-black/10 bg-white small:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-40 flex h-16 w-full items-stretch justify-around border-t border-black/10 bg-white small:static small:z-auto small:h-auto small:w-20 small:shrink-0 small:flex-col small:items-center small:justify-start small:gap-y-1 small:self-start small:border-t-0 small:bg-transparent">
           {TOOLS.map((tool) => {
             const Icon = tool.icon
             const active = activeTool === tool.id
