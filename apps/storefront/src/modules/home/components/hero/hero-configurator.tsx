@@ -95,7 +95,7 @@ const HeroConfigurator = ({ products }: { products: HttpTypes.StoreProduct[] }) 
   }
 
   const fieldClass =
-    "h-14 w-full appearance-none rounded-lg bg-black/[0.05] pl-12 pr-10 text-base text-black focus:outline-none focus:ring-2 focus:ring-black"
+    "h-14 w-full appearance-none rounded-lg bg-black/[0.05] pl-4 pr-10 text-base text-black focus:outline-none focus:ring-2 focus:ring-black"
 
   return (
     <div className="mt-8 flex max-w-md flex-col">
@@ -143,12 +143,9 @@ const HeroConfigurator = ({ products }: { products: HttpTypes.StoreProduct[] }) 
         </div>
       )}
 
-      <div className="relative flex flex-col gap-3">
-        {/* connector between the two fields, like Uber's pickup → dropoff */}
-        <span className="pointer-events-none absolute left-[23px] top-[38px] h-[44px] w-px bg-black" aria-hidden />
+      <div className="flex flex-col gap-3">
         <label className="relative block">
           <span className="sr-only">Ölçü</span>
-          <span className="pointer-events-none absolute left-[18px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-black" aria-hidden />
           <select
             value={(sizeOption && valueOf(variant, sizeOption.id)) ?? ""}
             onChange={(e) => sizeOption && choose(sizeOption.id, e.target.value)}
@@ -170,7 +167,6 @@ const HeroConfigurator = ({ products }: { products: HttpTypes.StoreProduct[] }) 
         </label>
         <label className="relative block">
           <span className="sr-only">Adet</span>
-          <span className="pointer-events-none absolute left-[18px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 bg-black" aria-hidden />
           <select
             value={quantity}
             onChange={(e) => setQuantity(Number(e.target.value))}
