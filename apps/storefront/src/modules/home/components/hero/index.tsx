@@ -48,7 +48,7 @@ const Hero = async ({ countryCode }: { countryCode: string }) => {
         <div className="flex flex-col">
           <CityPicker city={city} />
           <h1 className="max-w-xl text-4xl xsmall:text-5xl medium:text-6xl font-bold tracking-tight text-black">
-            Markanıza özel kargo poşeti alın
+            Markanıza özel kargo poşetinizi tasarlayın
           </h1>
           {products.length > 0 ? (
             <HeroConfigurator products={products} />
