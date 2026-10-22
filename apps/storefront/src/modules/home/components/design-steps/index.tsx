@@ -35,8 +35,9 @@ const STEPS: Step[] = [
   },
 ]
 
-// Uber-style "how it works": each step is an image, a point on a vertical
-// timeline, and its copy. On mobile the image moves above the copy.
+// Uber-style "how it works": one tall card per step - the photo runs into
+// a black base where the step's copy sits in white. Cards sit in a row on
+// desktop and scroll sideways (snapping per card) on mobile.
 const DesignSteps = () => {
   return (
     <section className="content-container py-12 small:py-20">
@@ -44,52 +45,36 @@ const DesignSteps = () => {
         Markanıza özel kargo poşetini birkaç adımda tasarlayın
       </h2>
 
-      <ol className="mt-10 small:mt-14">
-        {STEPS.map((step, i) => {
-          const last = i === STEPS.length - 1
-          return (
-            <li key={step.title} className="flex gap-5 small:gap-10">
-              <div className="hidden small:block w-[320px] shrink-0 pb-12">
-                <StepImage step={step} />
-              </div>
-
-              {/* Timeline: a square marker at the step title on a line that
-                  runs the full height of the list. */}
-              <div className="relative flex w-3 shrink-0 justify-center">
-                <span className="absolute inset-y-0 w-px bg-black" />
-                <span className="relative mt-1.5 h-2 w-2 bg-black" />
-              </div>
-
-              <div className="flex-1 pb-12 small:max-w-md">
-                <div className="mb-4 small:hidden">
-                  <StepImage step={step} />
-                </div>
-                <h3 className="text-base font-semibold text-black">
-                  {i + 1}. {step.title}
-                </h3>
-                <p className="mt-2 text-sm text-black/70">{step.description}</p>
-                {last && (
-                  <LocalizedClientLink
-                    href="/tasarla"
-                    className="mt-6 inline-block text-sm text-black underline underline-offset-4 hover:no-underline"
-                  >
-                    Hemen tasarlamaya başlayın
-                  </LocalizedClientLink>
-                )}
-              </div>
-            </li>
-          )
-        })}
+      <ol className="no-scrollbar -mx-6 mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 small:mx-0 small:grid small:grid-cols-4 small:overflow-visible small:px-0">
+        {STEPS.map((step, i) => (
+          <li
+            key={step.title}
+            className="flex w-[78%] shrink-0 snap-start flex-col overflow-hidden rounded-2xl bg-black xsmall:w-[45%] small:w-auto"
+          >
+            <div className="relative aspect-[4/5]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={step.image} alt={step.title} loading="lazy" className="h-full w-full object-cover" />
+              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black to-transparent" />
+              <span className="absolute bottom-0 left-5 flex h-12 w-12 items-center justify-center rounded-lg bg-white text-lg font-bold text-black">
+                {i + 1}
+              </span>
+            </div>
+            <div className="flex flex-1 flex-col px-5 pb-6 pt-5">
+              <h3 className="text-lg font-semibold text-white">{step.title}</h3>
+              <p className="mt-2 text-sm text-white/75">{step.description}</p>
+            </div>
+          </li>
+        ))}
       </ol>
+
+      <LocalizedClientLink
+        href="/tasarla"
+        className="mt-8 inline-flex h-12 items-center rounded-lg bg-black px-6 text-base font-medium text-white hover:bg-black/85 transition-colors"
+      >
+        Hemen tasarlamaya başlayın
+      </LocalizedClientLink>
     </section>
   )
 }
-
-const StepImage = ({ step }: { step: Step }) => (
-  <div className="aspect-[3/2] overflow-hidden bg-black/[0.04]">
-    {/* eslint-disable-next-line @next/next/no-img-element */}
-    <img src={step.image} alt={step.title} loading="lazy" className="h-full w-full object-cover" />
-  </div>
-)
 
 export default DesignSteps
