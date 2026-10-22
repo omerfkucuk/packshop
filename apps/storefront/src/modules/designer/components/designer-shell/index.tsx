@@ -131,7 +131,33 @@ const DesignerShell = ({
   // instead of an always-visible sidebar, so whether it's open needs
   // tracking separately from which tool is active. Ignored at `small` and
   // up, where the sidebar is always shown regardless of this value.
-  const handleToolTap = (tool: Tool) => setActiveTool(tool)
+  // Mobile: the tool panel is a bottom sheet - tapping a chip opens it (or
+  // closes it if that tool is already showing), dragging it down closes it.
+  const [isSheetOpen, setIsSheetOpen] = useState(false)
+  const [sheetDrag, setSheetDrag] = useState(0)
+  const sheetDragStart = useRef<number | null>(null)
+  const handleToolTap = (tool: Tool) => {
+    if (tool === activeTool && isSheetOpen) {
+      setIsSheetOpen(false)
+      return
+    }
+    setActiveTool(tool)
+    setIsSheetOpen(true)
+  }
+  const sheetDragHandlers = {
+    onTouchStart: (e: React.TouchEvent) => {
+      sheetDragStart.current = e.touches[0].clientY
+    },
+    onTouchMove: (e: React.TouchEvent) => {
+      if (sheetDragStart.current === null) return
+      setSheetDrag(Math.max(0, e.touches[0].clientY - sheetDragStart.current))
+    },
+    onTouchEnd: () => {
+      if (sheetDrag > 80) setIsSheetOpen(false)
+      setSheetDrag(0)
+      sheetDragStart.current = null
+    },
+  }
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
   // 3D is a read-only preview (orbit/rotate only) - all editing stays on
   // the 2D dieline regardless of which view is currently showing. Clicking
@@ -702,9 +728,9 @@ const DesignerShell = ({
       </header>
 
       {/* Main row */}
-      <div className="flex-1 flex flex-col min-h-0 overflow-y-auto pb-24 small:overflow-visible small:pb-6 small:flex-row small:gap-6 small:p-6">
+      <div className="flex-1 flex flex-col min-h-0 small:flex-row small:gap-6 small:p-6">
         {/* Icon rail - a bottom tab bar on mobile, a left rail from `small` up */}
-        <nav className="order-2 flex shrink-0 gap-2 overflow-x-auto px-4 pt-4 no-scrollbar small:order-none small:w-20 small:flex-col small:items-center small:gap-y-1 small:self-start small:overflow-visible small:p-0">
+        <nav className="fixed inset-x-0 bottom-[76px] z-30 flex gap-2 overflow-x-auto border-t border-black/10 bg-white px-4 py-2.5 no-scrollbar small:static small:z-auto small:w-20 small:shrink-0 small:flex-col small:items-center small:gap-y-1 small:self-start small:overflow-visible small:border-0 small:bg-transparent small:p-0">
           {TOOLS.map((tool) => {
             const Icon = tool.icon
             const active = activeTool === tool.id
@@ -726,12 +752,34 @@ const DesignerShell = ({
           })}
         </nav>
 
-        {/* Tool panel - an inline section under the tool chips on mobile, a
+        {/* Mobile add-to-cart bar (desktop has it inside the card) */}
+        <div className="fixed inset-x-0 bottom-0 z-30 bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-1 small:hidden">
+          {primaryAction("h-12 w-full rounded-lg")}
+        </div>
+
+        {/* Backdrop behind the open mobile sheet - tap to close */}
+        {isSheetOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/20 small:hidden"
+            onClick={() => setIsSheetOpen(false)}
+          />
+        )}
+
+        {/* Tool panel - a bottom sheet on mobile (swipe down to close), a
             floating card beside the rail from `small` up. */}
         <div
-          className="order-3 bg-white small:order-none small:flex small:max-h-full small:w-[340px] small:shrink-0 small:flex-col small:self-start small:overflow-hidden small:rounded-2xl small:border small:border-black/10"
+          className={`fixed inset-x-0 bottom-0 z-50 flex max-h-[80vh] flex-col rounded-t-2xl bg-white shadow-[0_-8px_24px_rgba(0,0,0,0.12)] small:static small:z-auto small:max-h-full small:w-[340px] small:shrink-0 small:self-start small:translate-y-0 small:overflow-hidden small:rounded-2xl small:border small:border-black/10 small:shadow-none ${
+            sheetDrag ? "" : "transition-transform duration-200 ease-out"
+          } ${isSheetOpen ? "translate-y-[var(--sheet-drag)]" : "translate-y-full"}`}
+          style={{ "--sheet-drag": `${sheetDrag}px` } as React.CSSProperties}
         >
-          <div className="p-5 small:flex-1 small:overflow-y-auto">
+          <div
+            className="flex shrink-0 cursor-grab touch-none items-center justify-center pb-1 pt-3 small:hidden"
+            {...sheetDragHandlers}
+          >
+            <span className="h-1.5 w-12 rounded-full bg-black/15" />
+          </div>
+          <div className="flex-1 overflow-y-auto px-5 pb-5 pt-2 small:p-5">
           {activeTool === "urun" && (
             <div className="flex flex-col gap-y-4">
               <h2 className="text-lg font-semibold text-black">Ürün</h2>
@@ -990,14 +1038,14 @@ const DesignerShell = ({
           </div>
           {/* Uber's full-width black "Search": the card's primary action -
               inside the card on desktop, a sticky bottom bar on mobile */}
-          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-black/10 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] small:static small:z-auto small:pb-4">
+          <div className="shrink-0 border-t border-black/10 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] small:pb-4">
             {primaryAction("h-12 w-full rounded-lg")}
           </div>
         </div>
 
         {/* Canvas + AI bar - pb-16 on mobile keeps content clear of the
             fixed bottom tab bar, which sits outside normal flow there */}
-        <div className="order-1 relative mx-4 mt-4 flex h-[56vh] shrink-0 flex-col overflow-hidden rounded-2xl bg-black/[0.03] small:order-none small:m-0 small:h-auto small:flex-1 small:shrink small:min-h-0">
+        <div className="relative mx-4 mb-[140px] mt-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl bg-black/[0.03] small:m-0">
           <div className="relative flex-1 bg-black/[0.02] small:bg-transparent flex items-center justify-center overflow-auto p-4 small:p-8">
             {geometryPanels && (
               <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
