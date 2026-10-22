@@ -47,8 +47,10 @@ const HeroConfigurator = ({ products }: { products: HttpTypes.StoreProduct[] }) 
       })
       .then(({ tiers }) => {
         if (cancelled) return
-        setTiers(tiers)
-        setQuantity(tiers[0]?.quantity ?? FALLBACK_QUANTITIES[0])
+        // A single "tier" is just the base price - same rule as QuantityTiers.
+        const real = tiers.length > 1 ? tiers : []
+        setTiers(real)
+        setQuantity(real[0]?.quantity ?? FALLBACK_QUANTITIES[0])
       })
       .catch(() => {
         if (cancelled) return
