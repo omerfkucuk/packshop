@@ -1148,7 +1148,7 @@ const DesignerShell = ({
             )}
             <form
               onSubmit={handleAiSubmit}
-              className="flex items-center gap-x-3"
+              className="flex items-center gap-x-2 small:gap-x-3"
             >
               <input
                 type="text"
@@ -1164,7 +1164,7 @@ const DesignerShell = ({
                     ? `${selectedBrand.brand_name} marka kitini kullanarak bir tasarım tarif et...`
                     : "Tasarımını tarif et, seçili öğeleri kullanarak senin için oluşturalım..."
                 }
-                className="flex-1 h-11 px-4 border border-black/10 rounded-lg text-sm focus:outline-none focus:border-black transition-colors"
+                className="flex-1 min-w-0 h-11 px-4 border border-black/10 rounded-lg text-sm focus:outline-none focus:border-black transition-colors"
                 data-testid="designer-ai-input"
               />
               <Button
@@ -1174,7 +1174,8 @@ const DesignerShell = ({
                 className="h-11 shrink-0"
                 data-testid="designer-ai-submit"
               >
-                AI ile Oluştur
+                <span className="small:hidden">Oluştur</span>
+                <span className="hidden small:inline">AI ile Oluştur</span>
               </Button>
             </form>
             {aiMessage && (
