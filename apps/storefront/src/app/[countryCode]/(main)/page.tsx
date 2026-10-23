@@ -5,6 +5,7 @@ import Hero from "@modules/home/components/hero"
 import DesignSteps from "@modules/home/components/design-steps"
 import PromoCards from "@modules/home/components/promo-cards"
 import CategoryGrid from "@modules/home/components/category-grid"
+import LatestPosts from "@modules/home/components/latest-posts"
 import { listCollections } from "@lib/data/collections"
 import { getRegion } from "@lib/data/regions"
 
@@ -41,6 +42,7 @@ export default async function Home(props: {
           <FeaturedProducts collections={collections} region={region} />
         </ul>
       </div>
+      <LatestPosts />
     </>
   )
 }
