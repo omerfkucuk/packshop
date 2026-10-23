@@ -20,9 +20,12 @@ const LatestPosts = async () => {
           Tüm yazılar
         </LocalizedClientLink>
       </div>
-      <div className="mt-8 grid grid-cols-1 gap-x-6 gap-y-10 xsmall:grid-cols-2 medium:grid-cols-3">
+      {/* Sideways snap-scroll row on mobile, a grid from tablet up. */}
+      <div className="no-scrollbar -mx-6 mt-8 flex snap-x snap-mandatory scroll-px-6 gap-4 overflow-x-auto px-6 xsmall:mx-0 xsmall:grid xsmall:grid-cols-2 xsmall:gap-x-6 xsmall:gap-y-10 xsmall:overflow-visible xsmall:px-0 medium:grid-cols-3">
         {posts.map((post) => (
-          <PostCard key={post.slug} post={post} />
+          <div key={post.slug} className="w-[80%] shrink-0 snap-start xsmall:w-auto">
+            <PostCard post={post} />
+          </div>
         ))}
       </div>
     </section>
