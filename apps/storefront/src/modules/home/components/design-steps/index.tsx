@@ -43,7 +43,7 @@ const DesignSteps = () => {
         Fikrinizden gerçeğe, sadece birkaç adım
       </h2>
 
-      <ol className="no-scrollbar -mx-6 mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 small:mx-0 small:grid small:grid-cols-4 small:overflow-visible small:px-0">
+      <ol className="no-scrollbar -mx-6 mt-10 flex snap-x snap-mandatory scroll-px-6 gap-4 overflow-x-auto px-6 small:mx-0 small:grid small:grid-cols-4 small:overflow-visible small:px-0">
         {STEPS.map((step, i) => (
           <li
             key={step.title}
