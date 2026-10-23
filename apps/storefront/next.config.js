@@ -13,6 +13,10 @@ const S3_PATHNAME = process.env.MEDUSA_CLOUD_S3_PATHNAME
  */
 const nextConfig = {
   reactStrictMode: true,
+  // İçerik Merkezi reads its Markdown posts from disk at request time.
+  outputFileTracingIncludes: {
+    "/**": ["./content/icerik-merkezi/**"],
+  },
   logging: {
     fetches: {
       fullUrl: true,

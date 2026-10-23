@@ -28,7 +28,9 @@
     "@stripe/react-stripe-js": "^5.3.0",
     "@stripe/stripe-js": "^8.2.0",
     "clsx": "^2.1.1",
+    "gray-matter": "^4.0.3",
     "lodash": "^4.17.21",
+    "marked": "^15.0.12",
     "next": "15.5.18",
     "pg": "^8.11.3",
     "qs": "^6.12.1",
@@ -43,6 +45,7 @@
   "devDependencies": {
     "@babel/core": "^7.17.5",
     "@medusajs/types": "2.17.2",
+    "@tailwindcss/typography": "^0.5.16",
     "@types/lodash": "^4.14.195",
     "@types/node": "17.0.21",
     "@types/pg": "^8.11.0",

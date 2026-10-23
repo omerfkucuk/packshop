@@ -137,6 +137,14 @@ export default async function Footer() {
                       Sepetim
                     </LocalizedClientLink>
                   </li>
+                  <li>
+                    <LocalizedClientLink
+                      className="hover:text-ui-fg-base"
+                      href="/icerik-merkezi"
+                    >
+                      İçerik Merkezi
+                    </LocalizedClientLink>
+                  </li>
                 </ul>
               </div>
             </div>
