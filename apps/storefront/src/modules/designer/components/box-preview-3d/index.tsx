@@ -103,6 +103,15 @@ const BoxPreview3D = ({
               position={[0, boundingRadius, -boundingRadius * 6]}
               scale={[boundingRadius * 10, boundingRadius * 10, 1]}
             />
+            {/* A bag is viewed nearly head-on, so its front needs a key
+                light of its own - without it white film renders mid-gray. */}
+            {isBag && (
+              <Lightformer
+                intensity={1.6}
+                position={[0, boundingRadius, boundingRadius * 6]}
+                scale={[boundingRadius * 10, boundingRadius * 10, 1]}
+              />
+            )}
           </Environment>
           {shape.type === "courier-bag" ? (
             <BagMesh

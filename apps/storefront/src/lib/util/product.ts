@@ -18,6 +18,8 @@ const GEOMETRY_TYPES: GeometryType[] = ["fefco-0201", "courier-bag"]
 export const getGeometryType = (
     product: HttpTypes.StoreProduct
 ): GeometryType | null => {
-    const tagValues = product.tags?.map((tag) => tag.value?.toLowerCase()) ?? []
+    // Trimmed - tags are typed by hand in the admin, and a stray space
+    // shouldn't silently turn the designer off.
+    const tagValues = product.tags?.map((tag) => tag.value?.trim().toLowerCase()) ?? []
     return GEOMETRY_TYPES.find((type) => tagValues.includes(type)) ?? null
 }
