@@ -1,22 +1,21 @@
 import { PanelGeometry, Point, PrintZone } from "../shared/types"
 import { PouchParams } from "./types"
 
-// A flat (non-gusseted) courier bag / kargo poşeti with a self-seal flap:
-// a front face (width x height), a back face of the same size, and the
-// flap hinged off the back's top edge (width x flapHeight). Product sizes
-// read "24x30+5" = width 24cm, height 30cm, flap 5cm, so the printable
-// back side is width x (height + flap).
+// A flat (non-gusseted) courier bag / kargo poşeti with a self-seal flap,
+// made from one piece of film: the front face (width x height) and the
+// back face join along a vertical side fold, and the flap is hinged off the
+// back's top edge (width x flapHeight). Product sizes read "24x30+5" =
+// width 24cm, height 30cm, flap 5cm, so the printable back side is
+// width x (height + flap).
 //
-// Front and back sit side by side with a gap rather than joined at the
-// bottom fold - this is the layout print templates use, and it keeps both
-// faces upright on screen. The flap stays attached to the back across a
-// real crease, so a design can wrap from the back onto the flap (see
-// deriveWrapZones).
-const FACE_GAP_MM = 40
+// Laid out flat, front on the left and back on the right, both upright -
+// the bag opens out from its right-hand side fold. Both the side fold and
+// the flap crease are real hinges in the film, so a design can wrap across
+// either (see deriveWrapZones).
 
-// Side seams are heat-welded, so keep artwork a little further from the
-// left/right edges than from the bottom fold or the flap crease.
-const SIDE_SEAL_MARGIN_MM = 8
+// The other side and the bottom are heat-welded seams, so keep artwork a
+// little further from those than from a fold or the flap crease.
+const SEAL_MARGIN_MM = 8
 const PRINT_SAFE_MARGIN_MM = 5
 
 export const COURIER_BAG_PANEL_NAMES = {
@@ -63,45 +62,44 @@ export function generateCourierBag(params: PouchParams): PanelGeometry[] {
     throw new Error("Courier bag: flap height must be positive and shorter than the bag")
   }
 
-  const sideInsets = { left: SIDE_SEAL_MARGIN_MM, right: SIDE_SEAL_MARGIN_MM }
+  const foldX = width
+  const backX1 = width * 2
+  const flapTopY = height + flapHeight
 
   // Front: once sealed, the flap folds down over its top `flapHeight`, so
   // the print zone stops below that strip - artwork there would be hidden.
   const front: PanelGeometry = {
     panelName: COURIER_BAG_PANEL_NAMES.front,
     cutLines: [
+      line({ x: foldX, y: 0 }, { x: 0, y: 0 }),
       line({ x: 0, y: 0 }, { x: 0, y: height }),
-      line({ x: 0, y: height }, { x: width, y: height }),
-      line({ x: width, y: height }, { x: width, y: 0 }),
-      line({ x: width, y: 0 }, { x: 0, y: 0 }),
+      line({ x: 0, y: height }, { x: foldX, y: height }),
     ],
-    creaseLines: [],
+    // The side fold to the back.
+    creaseLines: [line({ x: foldX, y: 0 }, { x: foldX, y: height })],
     printZones: [
-      rectZone(COURIER_BAG_PANEL_NAMES.front, 0, 0, width, height, {
-        ...sideInsets,
-        bottom: PRINT_SAFE_MARGIN_MM,
+      rectZone(COURIER_BAG_PANEL_NAMES.front, 0, 0, foldX, height, {
+        left: SEAL_MARGIN_MM,
+        right: PRINT_SAFE_MARGIN_MM,
+        bottom: SEAL_MARGIN_MM,
         top: flapHeight + PRINT_SAFE_MARGIN_MM,
       }),
     ],
   }
 
-  const bx0 = width + FACE_GAP_MM
-  const bx1 = bx0 + width
-  const flapTopY = height + flapHeight
-
   const back: PanelGeometry = {
     panelName: COURIER_BAG_PANEL_NAMES.back,
     cutLines: [
-      line({ x: bx0, y: height }, { x: bx0, y: 0 }),
-      line({ x: bx0, y: 0 }, { x: bx1, y: 0 }),
-      line({ x: bx1, y: 0 }, { x: bx1, y: height }),
+      line({ x: foldX, y: 0 }, { x: backX1, y: 0 }),
+      line({ x: backX1, y: 0 }, { x: backX1, y: height }),
     ],
     // The flap's fold line.
-    creaseLines: [line({ x: bx0, y: height }, { x: bx1, y: height })],
+    creaseLines: [line({ x: foldX, y: height }, { x: backX1, y: height })],
     printZones: [
-      rectZone(COURIER_BAG_PANEL_NAMES.back, bx0, 0, bx1, height, {
-        ...sideInsets,
-        bottom: PRINT_SAFE_MARGIN_MM,
+      rectZone(COURIER_BAG_PANEL_NAMES.back, foldX, 0, backX1, height, {
+        left: PRINT_SAFE_MARGIN_MM,
+        right: SEAL_MARGIN_MM,
+        bottom: SEAL_MARGIN_MM,
         top: PRINT_SAFE_MARGIN_MM,
       }),
     ],
@@ -113,14 +111,15 @@ export function generateCourierBag(params: PouchParams): PanelGeometry[] {
   const flap: PanelGeometry = {
     panelName: COURIER_BAG_PANEL_NAMES.flap,
     cutLines: [
-      line({ x: bx0, y: height }, { x: bx0, y: flapTopY }),
-      line({ x: bx0, y: flapTopY }, { x: bx1, y: flapTopY }),
-      line({ x: bx1, y: flapTopY }, { x: bx1, y: height }),
+      line({ x: foldX, y: height }, { x: foldX, y: flapTopY }),
+      line({ x: foldX, y: flapTopY }, { x: backX1, y: flapTopY }),
+      line({ x: backX1, y: flapTopY }, { x: backX1, y: height }),
     ],
     creaseLines: [],
     printZones: [
-      rectZone(COURIER_BAG_PANEL_NAMES.flap, bx0, height, bx1, flapTopY, {
-        ...sideInsets,
+      rectZone(COURIER_BAG_PANEL_NAMES.flap, foldX, height, backX1, flapTopY, {
+        left: SEAL_MARGIN_MM,
+        right: SEAL_MARGIN_MM,
         bottom: PRINT_SAFE_MARGIN_MM,
         top: PRINT_SAFE_MARGIN_MM,
       }),

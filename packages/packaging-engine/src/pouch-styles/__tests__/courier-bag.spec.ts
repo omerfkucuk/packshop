@@ -17,8 +17,8 @@ describe("generateCourierBag", () => {
     const [front] = generateCourierBag(params)
     const zone = front.printZones[0]
 
-    // 8mm side seals, 5mm bottom, flap (50) + 5mm at the top.
-    expect(zone.boundingBox).toEqual({ w: 240 - 16, h: 300 - 5 - 55 })
+    // 8mm side/bottom seals, 5mm at the side fold, flap (50) + 5mm at the top.
+    expect(zone.boundingBox).toEqual({ w: 240 - 8 - 5, h: 300 - 8 - 55 })
     expect(Math.max(...zone.boundary.map((p) => p.y))).toBe(300 - 55)
   })
 
@@ -31,13 +31,31 @@ describe("generateCourierBag", () => {
     expect(Math.max(...xs) - Math.min(...xs)).toBe(240)
   })
 
-  it("hinges the flap to the back with a crease, so artwork can wrap across it", () => {
+  it("joins front and back along a side fold, as one piece", () => {
+    const [front, back] = generateCourierBag(params)
+    const frontRight = Math.max(...front.cutLines.flat().map((p) => p.x))
+    const backLeft = Math.min(...back.cutLines.flat().map((p) => p.x))
+
+    expect(frontRight).toBe(240)
+    expect(backLeft).toBe(240)
+    expect(front.creaseLines).toEqual([
+      [
+        { x: 240, y: 0 },
+        { x: 240, y: 300 },
+      ],
+    ])
+  })
+
+  it("lets artwork wrap across the side fold and the flap crease", () => {
     const wraps = deriveWrapZones(generateCourierBag(params))
 
-    expect(wraps).toHaveLength(1)
-    expect(wraps[0].panels).toEqual(["Bag-Back", "Bag-Flap"])
-    expect(wraps[0].seamAxis).toBe("horizontal")
-    expect(wraps[0].seamCoordinate).toBe(300)
+    expect(wraps.map((w) => [w.panels, w.seamAxis, w.seamCoordinate])).toEqual(
+      expect.arrayContaining([
+        [["Bag-Front", "Bag-Back"], "vertical", 240],
+        [["Bag-Back", "Bag-Flap"], "horizontal", 300],
+      ])
+    )
+    expect(wraps).toHaveLength(2)
   })
 
   it("rejects a flap that isn't shorter than the bag", () => {
