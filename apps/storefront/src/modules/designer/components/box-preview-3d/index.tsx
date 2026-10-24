@@ -107,8 +107,8 @@ const BoxPreview3D = ({
                 light of its own - without it white film renders mid-gray. */}
             {isBag && (
               <Lightformer
-                intensity={1.6}
-                position={[0, boundingRadius, boundingRadius * 6]}
+                intensity={1.1}
+                position={[boundingRadius * 2, boundingRadius * 2, boundingRadius * 6]}
                 scale={[boundingRadius * 10, boundingRadius * 10, 1]}
               />
             )}

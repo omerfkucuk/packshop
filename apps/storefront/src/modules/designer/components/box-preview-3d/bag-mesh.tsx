@@ -15,26 +15,21 @@ export const DEFAULT_FILM_COLOR = "#f2f2ef"
 
 // How far each face bulges out at its fullest, as a share of the bag's
 // width - thin film over a product, not a pillow.
-const BULGE_RATIO = 0.075
-// The contents draw the film in: each edge pulls toward the middle by this
-// share of the bulge depth where the bag is fullest, so the sides curve in
-// and the corners stay put - the classic filled-mailer outline.
-const EDGE_DRAW_IN = 0.75
-// Soft creases the film forms where it's pulled tight around the contents:
-// they fan out from each corner toward the middle, fading with distance,
-// and never reach the flat seams.
-const CREASE_DEPTH_M = 0.0011
-const CREASES_PER_CORNER = 9
-// How far a corner's creases reach, as a share of the bag's shorter side.
-const CREASE_REACH = 0.45
+const BULGE_RATIO = 0.07
+// The contents take up a little film, so each edge pulls in slightly at
+// its middle - kept small: real mailers look loose, not stretched.
+const EDGE_DRAW_IN = 0.3
+// Loose film: the outline wanders a little instead of running dead straight.
+const EDGE_WANDER_M = 0.0018
+// Small irregular crinkles all over, plus a few broad soft folds - the
+// two things that make film read as film.
+const CRINKLE_DEPTH_M = 0.0012
+const FOLD_DEPTH_M = 0.0028
 // A gentle bow along the bag's height, as when it's held or propped up.
-const BEND_RATIO = 0.025
+const BEND_RATIO = 0.02
 // Width of the flat heat-welded seams (left side, bottom, and the mouth the
 // flap seals) - the film is pressed flat there, so the bulge starts inside.
-const SEAL_MM = 10
-// Heat-sealing presses a fine ribbed texture into the seams.
-const SEAL_RIB_PITCH_M = 0.004
-const SEAL_RIB_DEPTH_M = 0.00018
+const SEAL_MM = 6
 // Front and back film never quite touch, even at a seam - without this
 // they'd sit in the same plane there and z-fight.
 const SEAM_HALF_GAP_M = 0.0004
@@ -78,34 +73,42 @@ const profile = (t: number, startBand: number, endBand: number) => {
 
 type Face = "front" | "back"
 
-// Per-face, per-corner phase offsets - fixed, so the creases don't jump
-// around between renders, and different on each face so the back isn't a
-// mirror of the front.
-const CREASE_PHASES: Record<Face, number[]> = {
-  front: [0.4, 2.1, 3.7, 5.2],
-  back: [1.3, 4.4, 0.9, 2.8],
+// Smooth value noise in [-1, 1] - deterministic (seeded per face), so the
+// film's crinkles don't jump around between renders, and different on each
+// face so the back isn't a mirror of the front.
+const SEEDS: Record<Face, number> = { front: 11, back: 47 }
+
+const hash = (ix: number, iy: number, seed: number) => {
+  const h = Math.sin(ix * 127.1 + iy * 311.7 + seed * 74.7) * 43758.5453
+  return h - Math.floor(h)
 }
 
-const creasesAt = (x: number, y: number, face: Face, d: BagDimensionsM) => {
-  const reach = Math.min(d.width, d.height) * CREASE_REACH
-  const corners = [
-    [-d.width / 2, -d.height / 2],
-    [d.width / 2, -d.height / 2],
-    [d.width / 2, d.height / 2],
-    [-d.width / 2, d.height / 2],
-  ]
+const smoothstep = (t: number) => t * t * (3 - 2 * t)
+
+const noise = (x: number, y: number, seed: number) => {
+  const ix = Math.floor(x)
+  const iy = Math.floor(y)
+  const fx = smoothstep(x - ix)
+  const fy = smoothstep(y - iy)
+  const a = hash(ix, iy, seed)
+  const b = hash(ix + 1, iy, seed)
+  const c = hash(ix, iy + 1, seed)
+  const d = hash(ix + 1, iy + 1, seed)
+  return 2 * (a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy) - 1
+}
+
+// Ridged noise turns smooth bumps into crease lines (where the noise
+// crosses zero); a few octaves give big and small crinkles together.
+// Coordinates in meters.
+const crinklesAt = (x: number, y: number, seed: number) => {
   let total = 0
-  corners.forEach(([cx, cy], i) => {
-    const distSq = (x - cx) ** 2 + (y - cy) ** 2
-    const weight = Math.exp(-distSq / (reach * reach))
-    // Angle around the corner: equal steps of it are the fan's creases.
-    const angle = Math.atan2(y - cy, x - cx)
-    const phase = CREASE_PHASES[face][i]
-    total +=
-      weight *
-      (Math.sin(CREASES_PER_CORNER * angle + phase) +
-        0.35 * Math.sin(2.3 * CREASES_PER_CORNER * angle + phase * 1.7))
-  })
+  let amplitude = 1
+  let frequency = 14
+  for (let octave = 0; octave < 3; octave++) {
+    total += amplitude * (0.5 - Math.abs(noise(x * frequency, y * frequency, seed + octave)))
+    amplitude *= 0.5
+    frequency *= 2.2
+  }
   return total
 }
 
@@ -126,31 +129,34 @@ const surfacePoint = (
   const v = y / d.height + 0.5
   const pu = profile(u, sealX, 0)
   const pv = profile(v, sealY, sealY)
-  const fill = pu * pv
+  const seed = SEEDS[face]
+  // A little unevenness in how full the bag is, so the belly isn't a
+  // perfect dome.
+  const fill = pu * pv * (1 + 0.18 * noise(x * 5, y * 5, seed + 9))
   const depth = d.width * BULGE_RATIO
 
-  // sqrt(fill) keeps the creases off the flat seams.
-  const creases = CREASE_DEPTH_M * Math.sqrt(fill) * creasesAt(x, y, face, d)
-  // Ribs run along each seam: across x on the top/bottom seams, across y
-  // on the side seam (the fold side has none).
-  const inSideSeal = u <= sealX
-  const inEndSeal = v <= sealY || v >= 1 - sealY
-  const ribs = inEndSeal
-    ? Math.sin((2 * Math.PI * x) / SEAL_RIB_PITCH_M)
-    : inSideSeal
-      ? Math.sin((2 * Math.PI * y) / SEAL_RIB_PITCH_M)
-      : 0
+  // sqrt(pu * pv) keeps crinkles and folds off the flat seams.
+  const texture = Math.sqrt(pu * pv)
+  const crinkles = CRINKLE_DEPTH_M * texture * crinklesAt(x, y, seed)
+  const folds = FOLD_DEPTH_M * texture * noise(x * 4, y * 4, seed + 5)
 
-  const z = SEAM_HALF_GAP_M + lift + depth * fill + creases + SEAL_RIB_DEPTH_M * ribs
+  const z = SEAM_HALF_GAP_M + lift + depth * fill + crinkles + folds
   const bend = d.height * BEND_RATIO * (1 - Math.pow((2 * y) / d.height, 2))
 
   // The draw-in follows a plain arc along each edge - deepest at its middle,
-  // easing to nothing at the corners - so the outline curves smoothly.
+  // easing to nothing at the corners - and the outline wanders a little.
+  // Both use the same values on front and back so their edges stay joined.
   const arcU = Math.sin(Math.PI * Math.min(Math.max(u, 0), 1))
   const arcV = Math.sin(Math.PI * Math.min(Math.max(v, 0), 1))
+  const edgeU = Math.pow(Math.abs(2 * u - 1), 4)
+  const edgeV = Math.pow(Math.abs(2 * v - 1), 4)
   return [
-    x - Math.sign(x) * EDGE_DRAW_IN * depth * arcV * Math.pow(Math.abs(2 * u - 1), 3),
-    y - Math.sign(y) * EDGE_DRAW_IN * depth * 0.7 * arcU * Math.pow(Math.abs(2 * v - 1), 3),
+    x -
+      Math.sign(x) * EDGE_DRAW_IN * depth * arcV * edgeU +
+      EDGE_WANDER_M * edgeU * noise(y * 18, x > 0 ? 3 : 4, 101),
+    y -
+      Math.sign(y) * EDGE_DRAW_IN * depth * 0.7 * arcU * edgeV +
+      EDGE_WANDER_M * edgeV * noise(x * 18, y > 0 ? 5 : 6, 101),
     (face === "front" ? z : -z) + bend,
   ]
 }
@@ -237,7 +243,7 @@ const composeFaceTexture = (
 }
 
 // The bag sealed and standing upright, front toward the camera, with
-// something inside - thin glossy film, softly creased. The back is the same film seen from behind,
+// something inside - thin satin film, loosely crinkled. The back is the same film seen from behind,
 // and the flap folds over the top of the front - which turns its print
 // 180°, exactly as it reads on a real sealed bag.
 const BagMesh = ({ panels, resolvedLayout, backgroundColors, dimensionsM, onFaceClick }: BagMeshProps) => {
@@ -304,14 +310,14 @@ const BagMesh = ({ panels, resolvedLayout, backgroundColors, dimensionsM, onFace
     <>
       {PRINTED_PANELS.map((panelName) => (
         <mesh key={panelName} geometry={surfaces[panelName]} onClick={clickHandlerFor(panelName)}>
-          {/* Poly film: glossy, rather than matte board. */}
+          {/* Poly film: a soft satin sheen, not a mirror gloss. */}
           <meshPhysicalMaterial
             map={faceTextures[panelName] ?? null}
             color={faceTextures[panelName] ? "#ffffff" : DEFAULT_FILM_COLOR}
-            roughness={0.32}
+            roughness={0.48}
             metalness={0}
-            clearcoat={0.8}
-            clearcoatRoughness={0.18}
+            clearcoat={0.25}
+            clearcoatRoughness={0.55}
             emissive={armedPanel === panelName ? "#ffffff" : "#000000"}
             emissiveIntensity={armedPanel === panelName ? 0.12 : 0}
           />
