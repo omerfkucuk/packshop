@@ -8,7 +8,7 @@ import {
   type SemanticPlacement,
 } from "@dtc/layout-engine"
 import type { SelectedElement } from "../types"
-import { FEFCO_0201_PANEL_SEMANTICS, MAIN_PANELS } from "./panel-semantics"
+import type { PackagingProfile } from "./packaging-profiles"
 import { getLibraryElement } from "./element-library"
 import { measureText } from "./measure-text"
 
@@ -63,10 +63,13 @@ const CUSTOM_TEXT_ANCHOR_CYCLE: AnchorPoint[] = [
 
 // Turns the customer's selected brand elements into a CompositionPlan: each
 // selected logo placed once (front panel), the slogan (below the first
-// logo, in the selected font) repeated across all 4 main faces. This is
+// logo, in the selected font) repeated across every main face. This is
 // the "no real AI/text prompt yet" default plan - once AI composition
 // exists, it produces plans through the exact same resolveLayout() call.
-function buildCompositionPlan(elements: SelectedElement[]): CompositionPlan {
+function buildCompositionPlan(
+  elements: SelectedElement[],
+  profile: PackagingProfile
+): CompositionPlan {
   const logos = elements.filter((el) => el.type === "logo")
   const slogan = elements.find((el) => el.type === "text")
   const font = elements.find((el) => el.type === "font")?.value ?? null
@@ -94,7 +97,7 @@ function buildCompositionPlan(elements: SelectedElement[]): CompositionPlan {
   // per panel to pair every slogan repeat against.
   const firstLogoId = logos[0]?.id ?? null
 
-  for (const panel of MAIN_PANELS) {
+  for (const panel of profile.mainPanels) {
     if (slogan) {
       const base = {
         elementId: `slogan-${panel}`,
@@ -186,7 +189,7 @@ function buildCompositionPlan(elements: SelectedElement[]): CompositionPlan {
     })
   })
 
-  return { version: "1.0", boxType: "fefco-0201", elements: planElements }
+  return { version: "1.0", boxType: profile.type, elements: planElements }
 }
 
 // A "small"/"medium"/"large" SizeHint normally resolves to a SQUARE box
@@ -205,13 +208,14 @@ function buildCompositionPlan(elements: SelectedElement[]): CompositionPlan {
 export function computeAspectPreservingSize(
   el: SemanticPlacement,
   panels: PanelGeometry[],
+  profile: PackagingProfile,
   imageNaturalSizes: Record<string, Dimensions>
 ): Dimensions | null {
   const url = typeof el.content?.url === "string" ? el.content.url : null
   const natural = url ? imageNaturalSizes[url] : null
   if (!natural || natural.w <= 0 || natural.h <= 0) return null // not probed yet - square bucket fallback
 
-  const physicalPanelName = FEFCO_0201_PANEL_SEMANTICS[el.panel]
+  const physicalPanelName = profile.panelSemantics[el.panel]
   const zone = panels.find((p) => p.panelName === physicalPanelName)?.printZones[0]
   if (!zone) return null
 
@@ -244,7 +248,8 @@ const TEXT_MEASURE_REFERENCE_PX = 100
 // visible glyphs.
 export function computeTextAspectSize(
   el: SemanticPlacement,
-  panels: PanelGeometry[]
+  panels: PanelGeometry[],
+  profile: PackagingProfile
 ): Dimensions | null {
   if (el.elementType !== "text") return null
 
@@ -259,7 +264,7 @@ export function computeTextAspectSize(
 
   const { width, height } = measured
 
-  const physicalPanelName = FEFCO_0201_PANEL_SEMANTICS[el.panel]
+  const physicalPanelName = profile.panelSemantics[el.panel]
   const zone = panels.find((p) => p.panelName === physicalPanelName)?.printZones[0]
   if (!zone) return null
 
@@ -310,12 +315,13 @@ export type ResolveDesignResult = {
 // the rule-based default and the AI composer path, since a chosen brand
 // color applies identically either way.
 export function computeBackgroundColors(
-  elements: SelectedElement[]
+  elements: SelectedElement[],
+  profile: PackagingProfile
 ): Record<string, string> {
   const color = elements.find((el) => el.type === "color")?.value ?? null
   const backgroundColors: Record<string, string> = {}
   if (color) {
-    for (const physicalPanelName of Object.values(FEFCO_0201_PANEL_SEMANTICS)) {
+    for (const physicalPanelName of Object.values(profile.panelSemantics)) {
       if (physicalPanelName) backgroundColors[physicalPanelName] = color
     }
   }
@@ -324,17 +330,18 @@ export function computeBackgroundColors(
 
 export function applyDesign(
   panels: PanelGeometry[],
+  profile: PackagingProfile,
   elements: SelectedElement[],
   imageNaturalSizes: Record<string, Dimensions> = {}
 ): ResolveDesignResult {
-  const plan = buildCompositionPlan(elements)
+  const plan = buildCompositionPlan(elements, profile)
 
   const resolvedLayout = resolveLayout(plan, panels, {
-    panelSemantics: FEFCO_0201_PANEL_SEMANTICS,
+    panelSemantics: profile.panelSemantics,
     computeNaturalSize: (el) =>
-      computeAspectPreservingSize(el, panels, imageNaturalSizes) ??
-      computeTextAspectSize(el, panels),
+      computeAspectPreservingSize(el, panels, profile, imageNaturalSizes) ??
+      computeTextAspectSize(el, panels, profile),
   })
 
-  return { resolvedLayout, backgroundColors: computeBackgroundColors(elements) }
+  return { resolvedLayout, backgroundColors: computeBackgroundColors(elements, profile) }
 }

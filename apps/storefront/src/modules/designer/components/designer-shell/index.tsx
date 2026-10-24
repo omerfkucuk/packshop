@@ -9,6 +9,7 @@ import { HttpTypes } from "@medusajs/types"
 // so client bundles never pull in export/dxf.ts's @tarikjabiri/dxf
 // dependency, which is only ever needed server-side.
 import { generateFefco0201 } from "@dtc/packaging-engine/box-styles"
+import { generateCourierBag } from "@dtc/packaging-engine/pouch-styles"
 import type { Dimensions } from "@dtc/packaging-engine/shared"
 // Subpath import, not the package root - the root barrel also re-exports
 // ./providers (including OpenAiProvider, which pulls in the `openai` SDK).
@@ -24,7 +25,10 @@ import { saveDesignDraft, type DesignDraft } from "@lib/data/designs"
 import { getProductPrice } from "@lib/util/get-product-price"
 import { getCustomSizeRanges } from "@lib/util/custom-size"
 import { getGeometryType } from "@lib/util/product"
-import { parseDimensionsFromVariantTitle } from "@lib/util/parse-variant-dimensions"
+import {
+  parseBagDimensionsFromVariantTitle,
+  parseDimensionsFromVariantTitle,
+} from "@lib/util/parse-variant-dimensions"
 import { optionsAsKeymap } from "@modules/products/components/product-actions"
 import { Button } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -43,6 +47,8 @@ const BoxPreview3D = dynamic(() => import("../box-preview-3d"), {
 import { applyDesign, type ResolveDesignResult } from "../../utils/apply-design"
 import { applyTheme } from "../../utils/apply-theme"
 import { generateAiDesign } from "../../utils/compose-design"
+import { PACKAGING_PROFILES } from "../../utils/packaging-profiles"
+import type { PackagingShape } from "../box-preview-3d"
 import BrandKitPanel from "../brand-kit-panel"
 import ElementLibraryPanel from "../element-library-panel"
 import TextPanel from "../text-panel"
@@ -57,18 +63,6 @@ type Tool = "urun" | "komponent" | "marka-kiti" | "tema" | "ai"
 // least 27cm combined, and Boy must never be shorter than En.
 const MIN_PAIR_SUM_CM = 27
 
-// Display-only Turkish label for the physical panel a 3D face click
-// resolves to (see BoxMesh's onFaceClick) - shown in the "which face am I
-// looking at" pill above the focused 2D view. Mirrors
-// FEFCO_0201_PANEL_SEMANTICS's mapping in reverse; kept as its own small
-// map here rather than inverting that one at runtime since it only exists
-// for this one label, not any real geometry/layout decision.
-const PANEL_DISPLAY_NAME: Record<string, string> = {
-  "Panel-L1": "Ön",
-  "Panel-W1": "Sağ",
-  "Panel-L2": "Arka",
-  "Panel-W2": "Sol",
-}
 
 
 // The design flow as five sequential steps. Configuration ends by adding
@@ -301,48 +295,61 @@ const DesignerShell = ({
     }
   }
 
-  // Custom size inputs are in cm (Boy/En/Yükseklik) and need converting; a
-  // standard variant's title is already plain mm text (e.g. "450x350x250")
-  // since there's no structured dimension field on the variant itself.
-  const geometryDimensionsMm = useCustomSize
-    ? {
-        length: customHeight * 10,
-        width: customWidth * 10,
-        height: customDepth * 10,
-      }
-    : parseDimensionsFromVariantTitle(selectedVariant?.title)
+  const profile = geometryType ? PACKAGING_PROFILES[geometryType] : null
 
-  const geometryPanels =
-    geometryType === "fefco-0201" && geometryDimensionsMm
-      ? (() => {
-          try {
-            return generateFefco0201({
-              length: geometryDimensionsMm.length,
-              width: geometryDimensionsMm.width,
-              height: geometryDimensionsMm.height,
-              thickness: 3,
-            })
-          } catch {
-            return null
+  // The chosen size in mm, per packaging type. Box custom size inputs are in
+  // cm (Boy/En/Yükseklik) and need converting; a standard box variant's
+  // title is already plain mm text (e.g. "450x350x250"), while a bag's is
+  // trade notation in cm (e.g. "24x30+5") - there's no structured dimension
+  // field on the variant itself.
+  const packagingShape: PackagingShape | null = (() => {
+    if (geometryType === "courier-bag") {
+      const dimensionsMm = parseBagDimensionsFromVariantTitle(selectedVariant?.title)
+      return dimensionsMm ? { type: "courier-bag", dimensionsMm } : null
+    }
+    if (geometryType === "fefco-0201") {
+      const dimensionsMm = useCustomSize
+        ? {
+            length: customHeight * 10,
+            width: customWidth * 10,
+            height: customDepth * 10,
           }
-        })()
-      : null
+        : parseDimensionsFromVariantTitle(selectedVariant?.title)
+      return dimensionsMm ? { type: "fefco-0201", dimensionsMm } : null
+    }
+    return null
+  })()
+
+  const geometryPanels = packagingShape
+    ? (() => {
+        try {
+          return packagingShape.type === "courier-bag"
+            ? generateCourierBag(packagingShape.dimensionsMm)
+            : generateFefco0201({ ...packagingShape.dimensionsMm, thickness: 3 })
+        } catch {
+          return null
+        }
+      })()
+    : null
 
   // A theme applies instantly (no AI, no network call) once a brand is
   // selected - resolveThemeTemplate() + resolveLayout() only, the same
   // deterministic engine applyDesign() already uses. Free to recompute
   // every render, same as applyDesign() below.
   const themedDesign =
-    geometryPanels && selectedTheme && selectedBrand
-      ? applyTheme(geometryPanels, THEMES[selectedTheme], selectedBrand, imageNaturalSizes)
+    geometryPanels && profile && selectedTheme && selectedBrand
+      ? applyTheme(geometryPanels, profile, THEMES[selectedTheme], selectedBrand, imageNaturalSizes)
       : null
 
   // The AI-generated layout (once requested) takes over from both the
   // theme and the live rule-based default - see the resets in
   // toggleElement/removeElement/handleSelectTheme for why it can't just
   // linger after its inputs change.
-  const baseDesign = geometryPanels
-    ? aiDesign ?? themedDesign ?? applyDesign(geometryPanels, selectedElements, imageNaturalSizes)
+  const baseDesign =
+    geometryPanels && profile
+      ? aiDesign ??
+        themedDesign ??
+        applyDesign(geometryPanels, profile, selectedElements, imageNaturalSizes)
     : undefined
 
   // Manual drag overrides layer on top of whichever base design won above -
@@ -475,9 +482,7 @@ const DesignerShell = ({
   // geometryPanels changing (custom-size edit, product/variant swap) is a
   // new dieline, not a nudge - stale AI results and drag overrides computed
   // against the old geometry shouldn't silently carry over onto it.
-  const geometryFingerprint = geometryDimensionsMm
-    ? `${geometryDimensionsMm.length}x${geometryDimensionsMm.width}x${geometryDimensionsMm.height}`
-    : null
+  const geometryFingerprint = packagingShape ? JSON.stringify(packagingShape) : null
   const lastGeometryFingerprint = useRef(geometryFingerprint)
   useEffect(() => {
     if (lastGeometryFingerprint.current !== geometryFingerprint) {
@@ -591,7 +596,7 @@ const DesignerShell = ({
     e.preventDefault()
     if (!aiPrompt.trim()) return
 
-    if (!geometryPanels) {
+    if (!geometryPanels || !profile) {
       setAiMessage("Önce bir ürün ve ölçü seçin.")
       return
     }
@@ -604,6 +609,7 @@ const DesignerShell = ({
     try {
       const result = await generateAiDesign(
         geometryPanels,
+        profile,
         selectedElements,
         aiPrompt,
         selectedTheme
@@ -846,28 +852,32 @@ const DesignerShell = ({
             <div className="flex flex-col gap-y-6">
               <h2 className="text-lg font-semibold text-black">Konfigürasyon</h2>
 
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setUseCustomSize(false)}
-                  className={`h-8 px-3 rounded-full border text-sm transition-colors ${
-                    !useCustomSize
-                      ? "border-black text-black"
-                      : "border-black/10 text-black/70 hover:border-black/20"
-                  }`}
-                >
-                  Standart ölçüler
-                </button>
-                <button
-                  onClick={() => setUseCustomSize(true)}
-                  className={`h-8 px-3 rounded-full border text-sm transition-colors ${
-                    useCustomSize
-                      ? "border-black text-black"
-                      : "border-black/10 text-black/70 hover:border-black/20"
-                  }`}
-                >
-                  Özel ölçü
-                </button>
-              </div>
+              {/* Custom sizes are box dimensions (Boy/En/Yükseklik) - bags
+                  only come in their standard sizes for now. */}
+              {geometryType !== "courier-bag" && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setUseCustomSize(false)}
+                    className={`h-8 px-3 rounded-full border text-sm transition-colors ${
+                      !useCustomSize
+                        ? "border-black text-black"
+                        : "border-black/10 text-black/70 hover:border-black/20"
+                    }`}
+                  >
+                    Standart ölçüler
+                  </button>
+                  <button
+                    onClick={() => setUseCustomSize(true)}
+                    className={`h-8 px-3 rounded-full border text-sm transition-colors ${
+                      useCustomSize
+                        ? "border-black text-black"
+                        : "border-black/10 text-black/70 hover:border-black/20"
+                    }`}
+                  >
+                    Özel ölçü
+                  </button>
+                </div>
+              )}
 
               {!useCustomSize &&
                 (product.options || []).map((option) => (
@@ -1179,7 +1189,7 @@ const DesignerShell = ({
                     onClick={() => setFocusedPanelName(null)}
                     className="flex items-center gap-1 rounded-lg border border-black/10 bg-white px-3 py-1.5 text-xs text-black/60 hover:text-black transition-colors"
                   >
-                    ← {PANEL_DISPLAY_NAME[focusedPanelName] ?? focusedPanelName} · Tüm yüzler
+                    ← {profile?.displayNames[focusedPanelName] ?? focusedPanelName} · Tüm yüzler
                   </button>
                 )}
                 <div className="flex rounded-lg border border-black/10 bg-white p-0.5 text-xs">
@@ -1210,12 +1220,12 @@ const DesignerShell = ({
                 </div>
               </div>
             )}
-            {geometryPanels && viewMode === "3d" ? (
+            {geometryPanels && packagingShape && viewMode === "3d" ? (
               <BoxPreview3D
                 panels={geometryPanels}
                 resolvedLayout={appliedDesign?.resolvedLayout}
                 backgroundColors={appliedDesign?.backgroundColors}
-                dimensionsMm={geometryDimensionsMm!}
+                shape={packagingShape}
                 className="h-full w-full"
                 onFaceClick={(panelName) => {
                   setFocusedPanelName(panelName)

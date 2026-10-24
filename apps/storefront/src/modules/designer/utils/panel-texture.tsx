@@ -47,7 +47,9 @@ export async function renderPanelTexture(
   resolvedLayout: ResolvedLayout,
   backgroundColor: string | undefined,
   pxPerMm: number,
-  fontFaceCss?: string
+  fontFaceCss?: string,
+  // Color of the unprinted material when no background color was chosen.
+  materialColor: string = DEFAULT_BOARD_COLOR
 ): Promise<PanelTextureResult> {
   const zone = panel.printZones[0]
   if (!zone) {
@@ -97,7 +99,7 @@ export async function renderPanelTexture(
         y={origin.y}
         width={widthMm}
         height={heightMm}
-        fill={backgroundColor ?? DEFAULT_BOARD_COLOR}
+        fill={backgroundColor ?? materialColor}
       />
       <g clipPath={`url(#${clipId})`}>
         {elements.map((el) => {

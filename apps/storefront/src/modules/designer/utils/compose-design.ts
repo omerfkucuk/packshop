@@ -6,7 +6,7 @@ import {
   computeBackgroundColors,
   type ResolveDesignResult,
 } from "./apply-design"
-import { FEFCO_0201_PANEL_SEMANTICS, MAIN_PANELS } from "./panel-semantics"
+import type { PackagingProfile } from "./packaging-profiles"
 
 function toComposerElements(elements: SelectedElement[]) {
   const logo = elements.find((el) => el.type === "logo")
@@ -28,6 +28,7 @@ export type GenerateAiDesignResult = ResolveDesignResult & {
 
 export async function generateAiDesign(
   panels: PanelGeometry[],
+  profile: PackagingProfile,
   elements: SelectedElement[],
   prompt: string,
   theme: ThemeId | null
@@ -35,17 +36,17 @@ export async function generateAiDesign(
   const { resolvedLayout, constraintReport } = await composeAiDesign({
     prompt,
     locale: "tr",
-    boxType: "fefco-0201",
-    availablePanels: MAIN_PANELS,
+    boxType: profile.type,
+    availablePanels: profile.mainPanels,
     selectedElements: toComposerElements(elements),
     theme: theme ?? undefined,
     panels,
-    panelSemantics: FEFCO_0201_PANEL_SEMANTICS,
+    panelSemantics: profile.panelSemantics,
   })
 
   return {
     resolvedLayout,
-    backgroundColors: computeBackgroundColors(elements),
+    backgroundColors: computeBackgroundColors(elements, profile),
     warningMessage: constraintReport.valid
       ? undefined
       : "Tasarımda küçük bir yerleşim sorunu olabilir, gözden geçirin.",

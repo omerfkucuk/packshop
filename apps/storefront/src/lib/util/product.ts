@@ -8,11 +8,12 @@ export const isCustomProduct = (product: HttpTypes.StoreProduct): boolean => {
     return !!product.tags?.some((tag) => tag.value?.toLowerCase() === "custom");
 }
 
-// Known dieline geometry generators a product tag can point at - only
-// FEFCO 0201 (box) exists in @dtc/packaging-engine so far.
-export type GeometryType = "fefco-0201"
+// Known dieline geometry generators a product tag can point at, in
+// @dtc/packaging-engine: FEFCO 0201 (box) and the self-seal courier bag
+// (kargo poşeti).
+export type GeometryType = "fefco-0201" | "courier-bag"
 
-const GEOMETRY_TYPES: GeometryType[] = ["fefco-0201"]
+const GEOMETRY_TYPES: GeometryType[] = ["fefco-0201", "courier-bag"]
 
 export const getGeometryType = (
     product: HttpTypes.StoreProduct

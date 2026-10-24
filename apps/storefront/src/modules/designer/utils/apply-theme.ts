@@ -7,7 +7,7 @@ import {
 import type { ThemeDefinition } from "@dtc/ai-composer/domain"
 import type { Brand } from "@lib/data/brands"
 import { getLibraryElement } from "./element-library"
-import { FEFCO_0201_PANEL_SEMANTICS, MAIN_PANELS } from "./panel-semantics"
+import type { PackagingProfile } from "./packaging-profiles"
 import {
   computeAspectPreservingSize,
   computeTextAspectSize,
@@ -59,23 +59,29 @@ function buildSlotResolver(brand: Brand): SlotResolver {
 // and the AI path both use - no network call, no cost.
 export function applyTheme(
   panels: PanelGeometry[],
+  profile: PackagingProfile,
   theme: ThemeDefinition,
   brand: Brand,
   imageNaturalSizes: Record<string, Dimensions> = {}
 ): ResolveDesignResult {
-  const plan = resolveThemeTemplate(theme, "fefco-0201", MAIN_PANELS, buildSlotResolver(brand))
+  const plan = resolveThemeTemplate(
+    theme,
+    profile.type,
+    profile.mainPanels,
+    buildSlotResolver(brand)
+  )
 
   const resolvedLayout = resolveLayout(plan, panels, {
-    panelSemantics: FEFCO_0201_PANEL_SEMANTICS,
+    panelSemantics: profile.panelSemantics,
     computeNaturalSize: (el) =>
-      computeAspectPreservingSize(el, panels, imageNaturalSizes) ??
-      computeTextAspectSize(el, panels),
+      computeAspectPreservingSize(el, panels, profile, imageNaturalSizes) ??
+      computeTextAspectSize(el, panels, profile),
   })
 
   const backgroundColors: Record<string, string> = {}
   const color = brand.colors?.[0]
   if (color) {
-    for (const physicalPanelName of Object.values(FEFCO_0201_PANEL_SEMANTICS)) {
+    for (const physicalPanelName of Object.values(profile.panelSemantics)) {
       if (physicalPanelName) backgroundColors[physicalPanelName] = color
     }
   }

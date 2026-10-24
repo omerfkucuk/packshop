@@ -5,15 +5,22 @@ import { Canvas } from "@react-three/fiber"
 import { ContactShadows, Environment, Lightformer, OrbitControls } from "@react-three/drei"
 import type { PanelGeometry } from "@dtc/packaging-engine/shared"
 import type { ResolvedLayout } from "@dtc/layout-engine"
+import type { BagDimensionsMm } from "@lib/util/parse-variant-dimensions"
 import BoxMesh from "./box-mesh"
+import BagMesh from "./bag-mesh"
 
 export type Dimensions3D = { length: number; width: number; height: number }
+
+// The product being previewed and its real size in mm.
+export type PackagingShape =
+  | { type: "fefco-0201"; dimensionsMm: Dimensions3D }
+  | { type: "courier-bag"; dimensionsMm: BagDimensionsMm }
 
 type BoxPreview3DProps = {
   panels: PanelGeometry[]
   resolvedLayout?: ResolvedLayout | null
   backgroundColors?: Record<string, string>
-  dimensionsMm: Dimensions3D
+  shape: PackagingShape
   className?: string
   /** See BoxMesh's own doc - fires with a printed face's panel name on
    *  click, omitted entirely means the box itself doesn't respond to
@@ -21,7 +28,8 @@ type BoxPreview3DProps = {
   onFaceClick?: (panelName: string) => void
 }
 
-// Orbit/zoom preview of the assembled box - actual element editing always
+// Orbit/zoom preview of the assembled box or sealed bag - actual element
+// editing always
 // stays on the precise mm-based 2D dieline (DielinePreview); clicking a
 // printed face here (onFaceClick) is a shortcut INTO that same 2D editor,
 // not a second editing surface of its own. Loaded via
@@ -31,27 +39,32 @@ const BoxPreview3D = ({
   panels,
   resolvedLayout,
   backgroundColors,
-  dimensionsMm,
+  shape,
   className,
   onFaceClick,
 }: BoxPreview3DProps) => {
   // Scene-unit convention: meters, not raw mm - three.js's default light
   // intensities, camera near/far planes, and OrbitControls' own internal
   // defaults are all implicitly tuned assuming roughly meter-scale scenes.
-  const lengthM = dimensionsMm.length / 1000
-  const widthM = dimensionsMm.width / 1000
-  const heightM = dimensionsMm.height / 1000
+  const isBag = shape.type === "courier-bag"
+  const heightM = shape.dimensionsMm.height / 1000
+  const extentM = isBag
+    ? [shape.dimensionsMm.width / 1000, heightM]
+    : [shape.dimensionsMm.length / 1000, shape.dimensionsMm.width / 1000, heightM]
 
   // Derived from the model's own size, not a hardcoded constant - this
   // designer allows arbitrary custom box sizes, and a fixed camera
   // distance would clip through a very flat box or dwarf a very tall one.
-  const boundingRadius = 0.5 * Math.hypot(lengthM, widthM, heightM)
+  const boundingRadius = 0.5 * Math.hypot(...extentM)
 
   return (
     <div className={className}>
       <Canvas
         camera={{
-          position: [boundingRadius * 2.2, boundingRadius * 1.6, boundingRadius * 2.2],
+          // A flat bag reads best nearly head-on; a box from a corner.
+          position: isBag
+            ? [boundingRadius * 0.9, boundingRadius * 0.5, boundingRadius * 2.8]
+            : [boundingRadius * 2.2, boundingRadius * 1.6, boundingRadius * 2.2],
           fov: 35,
         }}
       >
@@ -91,13 +104,31 @@ const BoxPreview3D = ({
               scale={[boundingRadius * 10, boundingRadius * 10, 1]}
             />
           </Environment>
-          <BoxMesh
-            panels={panels}
-            resolvedLayout={resolvedLayout}
-            backgroundColors={backgroundColors}
-            dimensionsM={{ length: lengthM, width: widthM, height: heightM }}
-            onFaceClick={onFaceClick}
-          />
+          {shape.type === "courier-bag" ? (
+            <BagMesh
+              panels={panels}
+              resolvedLayout={resolvedLayout}
+              backgroundColors={backgroundColors}
+              dimensionsM={{
+                width: shape.dimensionsMm.width / 1000,
+                height: heightM,
+                flapHeight: shape.dimensionsMm.flapHeight / 1000,
+              }}
+              onFaceClick={onFaceClick}
+            />
+          ) : (
+            <BoxMesh
+              panels={panels}
+              resolvedLayout={resolvedLayout}
+              backgroundColors={backgroundColors}
+              dimensionsM={{
+                length: shape.dimensionsMm.length / 1000,
+                width: shape.dimensionsMm.width / 1000,
+                height: heightM,
+              }}
+              onFaceClick={onFaceClick}
+            />
+          )}
         </Suspense>
         {/* Grounds the box - without this it visibly floats, one of the
             biggest "this is obviously a 3D render" tells. */}
